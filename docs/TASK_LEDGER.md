@@ -9,8 +9,8 @@ This ledger is evidence-driven. Never mark a phase CLOSED because a prompt says 
 | P02 | CLOSED | Closed from exact-main SHA `efa56808db13fa45f803131f7bcf2d65c485a66d`; Planning `34228695674`, P00 `34228695950`, P01 `34228695746`, P02 `34228695995` SUCCESS; protected first-run Setup, SQL negative/retry, Review/Health critical gate and bilingual browser evidence verified; exact-main artifact produced and hashed |
 | P03 | CLOSED | Closed from exact-main SHA `20d2542427a388ac81e5249cc59f60dcbfa2ea91`; Planning `34239792230`, P00 `34239792270`, P01 `34239792297`, P02 `34239792244`, P03 web security `34239792235`, P03 identity/account security `34239792740` SUCCESS; exact-main identity/browser/security artifact produced and hashed |
 | P04 | CLOSED | Closed from exact-main SHA `c3aa76a8d456c9b951b602001bcbe1023ae26dd9`; 8/8 applicable exact-main workflows SUCCESS; RBAC, Default Deny, server-side/service authorization, admin/IDOR and bilingual Permissions UI evidence verified and artifact produced/hashed |
-| P05 | OPEN | Metadata-driven entities/services/fields/result mappings plus independent `ServiceEnvironmentConfig` per Service + UAT/Production environment; secure admin/versioning/import-export and no-custom-controller/view sample proof |
-| P06 | LOCKED | Secret vault, isolated authentication profiles/SecretRefs, explicit Shared AuthProfile support, rotation/redaction, cross-service-safe token cache keys |
+| P05 | CLOSED | Closed from exact-main implementation SHA `4d706fab57071236e9847670342f5a399b3527e6`; 10/10 applicable exact-main workflows SUCCESS; metadata catalog, versioning, isolation/security, JSON-schema import/export, generic sample proof and bilingual protected administration verified; artifact produced/hashed |
+| P06 | OPEN | Secret vault, isolated authentication profiles/SecretRefs, explicit Shared AuthProfile support, rotation/redaction, cross-service-safe token cache keys |
 | P07 | LOCKED | Generic service execution engine resolving the exact Service + Environment + AuthProfile binding; high-fidelity dynamic Service Execution UI |
 | P08 | LOCKED | MOJ x-api-key + `/genToken` + Bearer flow based on official docs/fixtures without assuming credentials are shared between MOJ services |
 | P09 | LOCKED | MOJ entity + five services, exact official request/response contracts, independent endpoint/auth bindings, tests and authorized UAT smoke if available |
@@ -47,7 +47,13 @@ P04 culminated in the normally merged permissions administration/UI PR #20 at ex
 
 The exact-main artifact `P04-Permissions-UI-Evidence-c3aa76a8d456c9b951b602001bcbe1023ae26dd9` is 476,233 bytes with workflow digest `sha256:b5b6fa42c7dd114b302a2db3572c25130f01e2c045586a90bcaf90b97d290826`. Acceptance covers editable seeded roles, permission catalog, RolePermissions/UserRoles, per-service permission matrix, Default Deny, server-side authorization, role create/rename, user-role assignment/removal, last-enabled-System-Administrator protection, forged identifier denial, truthful pending-approvals presentation and Arabic RTL / English LTR responsive browser evidence. No owner-only or external evidence was deferred for P04. Detailed evidence is recorded in `docs/evidence/P04_RBAC_PERMISSIONS_UI.md`.
 
-P05 is the next legal phase only after this P04 closure-reconciliation change is normally integrated to `main` and the resulting exact-main closed-phase regressions remain green.
+## P05 closure record
+
+P05 was implemented on `worker/p05-metadata-catalog` and normally integrated through PR #22, yielding exact implementation `main` SHA `4d706fab57071236e9847670342f5a399b3527e6`. All ten applicable exact-main workflows succeeded on that SHA, including P05 Metadata Catalog run `34262416559`.
+
+The exact-main artifact `P05-Metadata-Evidence-4d706fab57071236e9847670342f5a399b3527e6` is 507,662 bytes with workflow digest `sha256:4f903fb240b6f0195fa7ad260afac9b45ece0d443e57f0752457d567abf41796`. Acceptance covers metadata-driven Entity/Environment/Service/ServiceField/ResultMapping persistence; independent UAT/Production service bindings; Production HTTPS and server-certificate validation; secret-bearing header rejection; atomic rejection of invalid definitions; used-definition versioning and historical preservation; schema-governed JSON export/import round trip; protected Arabic RTL / English LTR administration; and a complete synthetic service without custom per-service Controller/View code. No owner-only or external evidence was deferred for P05. Detailed evidence is recorded in `docs/evidence/P05_METADATA_CATALOG.md`.
+
+P06 is the next legal phase only after this P05 closure-reconciliation change is normally integrated to `main` and the resulting exact-main closed-phase regressions remain green.
 
 ## Cross-phase gates
 
