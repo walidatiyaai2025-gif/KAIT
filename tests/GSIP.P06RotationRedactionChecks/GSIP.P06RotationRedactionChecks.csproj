@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>GSIP.P06RotationRedactionChecks</AssemblyName>
+    <RootNamespace>GSIP.P06RotationRedactionChecks</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\GSIP.Application\GSIP.Application.csproj" />
+    <Compile Remove="RotationSafety\**\*.cs" />
+  </ItemGroup>
+</Project>
