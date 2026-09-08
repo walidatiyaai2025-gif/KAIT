@@ -33,12 +33,20 @@ try
     await ExpectInvalidAsync(() => catalog.CreateServiceAsync(entity.Id, BuildService("NO-CERT", "Bad Certificate", validateProductionCertificate: false)), "Production certificate validation was allowed to be disabled.");
     await ExpectInvalidAsync(() => catalog.CreateServiceAsync(entity.Id, BuildService("SECRET-HDR", "Secret Header", nonSecretHeadersJson: "{\"Authorization\":\"Bearer synthetic\"}")), "Secret-bearing Authorization header was accepted as metadata.");
 
+    var rejectedCodes = new[] { "HTTP-PROD", "NO-CERT", "SECRET-HDR" };
+    Assert(!db.ChangeTracker.Entries<CatalogService>().Any(entry => entry.State == EntityState.Added && rejectedCodes.Contains(entry.Entity.Code, StringComparer.OrdinalIgnoreCase)),
+        "Rejected service definitions remained attached to the EF change tracker.");
+    Assert(!await db.CatalogServices.AsNoTracking().AnyAsync(x => rejectedCodes.Contains(x.Code)),
+        "Rejected service definitions were persisted immediately.");
+
     await catalog.MarkServiceUsedAsync(service.Id);
     var revised = await catalog.UpdateServiceAsync(service.Id, BuildService("SAMPLE-CHECK", "Synthetic Service Revised"));
     Assert(revised.Id != service.Id && revised.DefinitionKey == service.DefinitionKey && revised.Version == 2 && revised.IsCurrent,
         "Used service definition was silently mutated instead of versioned.");
     var old = await db.CatalogServices.AsNoTracking().SingleAsync(x => x.Id == service.Id);
     Assert(!old.IsCurrent && old.Version == 1 && old.NameEn == "Synthetic Service", "Historical service definition was not preserved.");
+    Assert(!await db.CatalogServices.AsNoTracking().AnyAsync(x => rejectedCodes.Contains(x.Code)),
+        "A later valid SaveChanges persisted previously rejected service definitions.");
 
     var exported = await catalog.ExportJsonAsync();
     Assert(exported.Contains("\"schemaVersion\": 1", StringComparison.Ordinal), "Export schema version is missing.");
@@ -83,6 +91,7 @@ try
         productionHttpsEnforced = true,
         certificateValidationEnforced = true,
         secretHeaderRejection = true,
+        rejectedDefinitionAtomicity = true,
         jsonSchemaRoundTrip = true,
         customServiceControllerOrViewRequired = false
     };
