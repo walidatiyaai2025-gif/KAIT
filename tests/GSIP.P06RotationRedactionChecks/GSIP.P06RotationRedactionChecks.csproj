@@ -6,5 +6,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\GSIP.Application\GSIP.Application.csproj" />
+    <Compile Remove="RotationSafety\**\*.cs" />
   </ItemGroup>
 </Project>
