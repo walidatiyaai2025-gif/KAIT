@@ -29,7 +29,8 @@ public sealed record AuthorizedServiceExecutionBinding(
     bool ValidateServerCertificate,
     string ProxyUrl,
     Guid? AuthProfileId,
-    long? AuthProfileVersion);
+    long? AuthProfileVersion,
+    string NonSecretHeadersJson = "{}");
 
 public interface IServiceExecutionSecurityGate
 {
@@ -143,7 +144,8 @@ public sealed class ServiceExecutionSecurityGate(
                 config.ValidateServerCertificate,
                 config.ProxyUrl,
                 config.AuthProfileId,
-                authProfileVersion);
+                authProfileVersion,
+                config.NonSecretHeadersJson);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
