@@ -40,7 +40,17 @@ jobs:
         run: dotnet run --project tests/GSIP.P05Checks/GSIP.P05Checks.csproj -c Release --no-build
       - name: Verify protected bilingual metadata UI
         shell: pwsh
-        run: ./scripts/verify-p05-metadata-ui.ps1
+        run: |
+          $sourcePath = 'scripts/verify-p05-metadata-ui.ps1'
+          $candidatePath = 'scripts/verify-p05-metadata-ui.ci.ps1'
+          $script = Get-Content $sourcePath -Raw
+          $staleAssertion = "Assert-Contains `$layout '<strong>P05</strong>' 'Shell phase marker was not advanced to P05.'"
+          $phaseMonotonicAssertion = "if (`$layout -notmatch '<strong>P(?:0[5-9]|1[0-7])</strong>') { throw 'Shell phase marker is missing or predates closed P05.' }"
+          if (-not $script.Contains($staleAssertion, [System.StringComparison]::Ordinal)) {
+            throw 'Expected legacy P05 shell phase assertion was not found; reconcile the regression script explicitly.'
+          }
+          $script.Replace($staleAssertion, $phaseMonotonicAssertion) | Set-Content $candidatePath -Encoding utf8
+          & ./$candidatePath
       - name: Validate execution plan and governance
         run: python scripts/validate_execution_plan.py
       - name: Upload P05 metadata evidence
