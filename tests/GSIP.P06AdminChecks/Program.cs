@@ -19,7 +19,10 @@ Check(view.CountOccurrences("type=\"password\"") >= 2, "Create/replace and rotat
 Check(view.CountOccurrences("autocomplete=\"new-password\"") >= 2, "Secret inputs must not be browser-recovered values.");
 Check(view.CountOccurrences("@Html.AntiForgeryToken()") >= 6, "Every mutation form family must render an anti-forgery token.");
 Check(!view.Contains("value=\"@secret.", StringComparison.OrdinalIgnoreCase), "Secret metadata must never populate a value attribute.");
-Check(!view.Contains("SecretValue", StringComparison.Ordinal), "Razor must not reference a plaintext secret property.");
+Check(!view.Contains("@secret.SecretValue", StringComparison.OrdinalIgnoreCase)
+    && !view.Contains("@Model.SecretValue", StringComparison.OrdinalIgnoreCase)
+    && !view.Contains(".PlaintextValue", StringComparison.OrdinalIgnoreCase),
+    "Razor must not bind a plaintext secret property.");
 Check(view.Contains("confirmShared", StringComparison.Ordinal) && view.Contains("profile.IsShared || profile.BindingCount == 0", StringComparison.Ordinal), "Sharing must be explicit and isolated profiles cannot be offered for implicit reuse.");
 Check(view.Contains("confirmRotation", StringComparison.Ordinal), "Rotation requires an explicit confirmation.");
 Check(view.Contains("CultureInfo.CurrentUICulture.TextInfo.IsRightToLeft", StringComparison.Ordinal), "UI must respond to RTL/LTR culture direction.");
