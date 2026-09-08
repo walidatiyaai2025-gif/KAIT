@@ -9,6 +9,7 @@ public sealed class PermissionsDashboardViewModel
     public required IReadOnlyDictionary<Guid, IReadOnlySet<string>> RolePermissionGrants { get; init; }
     public required IReadOnlyDictionary<string, IReadOnlySet<Guid>> ServiceExecuteGrants { get; init; }
     public UserRoleSummaryViewModel? SelectedUser { get; init; }
+    public required int PendingApprovals { get; init; }
     public required DateTimeOffset GeneratedAtUtc { get; init; }
 
     public int TotalUsers => Users.Count;
@@ -23,6 +24,9 @@ public sealed class PermissionsDashboardViewModel
     public bool HasServiceExecute(Guid roleId, string serviceCode) =>
         ServiceExecuteGrants.TryGetValue(serviceCode, out var roles)
         && roles.Contains(roleId);
+
+    public bool SelectedUserHasRole(Guid roleId) =>
+        SelectedUser?.RoleIds.Contains(roleId) == true;
 }
 
 public sealed record PermissionRoleViewModel(Guid Id, string Name, bool IsSeedRole);
@@ -37,4 +41,5 @@ public sealed record UserRoleSummaryViewModel(
     string Username,
     bool IsEnabled,
     bool IsPrivileged,
+    IReadOnlySet<Guid> RoleIds,
     IReadOnlyList<string> Roles);

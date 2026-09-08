@@ -19,16 +19,16 @@
                 <span class="sr-only">@L["SearchPlaceholder"]</span>
                 <input id="permissions-search" type="search" placeholder="@L["SearchPlaceholder"]" autocomplete="off" />
             </label>
-            <button class="secondary-action" type="button" disabled title="@L["ProvisioningLater"]">+ @L["CreateRole"]</button>
+            <a class="secondary-action action-link" href="#role-admin">+ @L["CreateRole"]</a>
             <button class="primary-action" type="button" disabled title="@L["ProvisioningLater"]">+ @L["AddUser"]</button>
         </div>
     </header>
 
     <section class="permissions-kpis" aria-label="@L["PageTitle"]">
+        <article><span class="metric-icon">⌛</span><div><strong>@Model.PendingApprovals</strong><span>@L["PendingApprovals"]</span></div></article>
         <article><span class="metric-icon">◎</span><div><strong>@Model.TotalUsers</strong><span>@L["TotalUsers"]</span></div></article>
         <article><span class="metric-icon">◈</span><div><strong>@Model.ActiveRoles</strong><span>@L["ActiveRoles"]</span></div></article>
         <article><span class="metric-icon">◆</span><div><strong>@Model.PrivilegedUsers</strong><span>@L["PrivilegedUsers"]</span></div></article>
-        <article><span class="metric-icon">⇄</span><div><strong>@Model.ExplicitServiceGrants</strong><span>@L["ServiceGrants"]</span></div></article>
     </section>
 
     <div class="permissions-workspace">
@@ -115,11 +115,56 @@
                                 @foreach (var role in Model.SelectedUser.Roles){<span class="role-chip">@L.Role(role)</span>}
                             }
                         </div>
+                        <h3>@L["ManageAssignedRoles"]</h3>
+                        <div class="user-role-management">
+                            @foreach (var role in Model.Roles)
+                            {
+                                var assigned = Model.SelectedUserHasRole(role.Id);
+                                <form method="post" asp-controller="Permissions" asp-action="SetUserRole" class="user-role-row" data-role-id="@role.Id">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="userId" value="@Model.SelectedUser.Id" />
+                                    <input type="hidden" name="roleId" value="@role.Id" />
+                                    <input type="hidden" name="isAssigned" value="@((!assigned).ToString().ToLowerInvariant())" />
+                                    <input type="hidden" name="culture" value="@culture" />
+                                    <span>@L.Role(role.Name)</span>
+                                    <button class="role-assignment-button @(assigned ? "remove" : "assign")" type="submit">@(assigned ? L["Remove"] : L["Assign"])</button>
+                                </form>
+                            }
+                        </div>
                     </div>
                 }
             }
         </aside>
     </div>
+
+    <section id="role-admin" class="permission-panel role-admin-panel" aria-labelledby="role-admin-title">
+        <div class="panel-heading">
+            <div><h2 id="role-admin-title">@L["RoleAdministration"]</h2><p>@L["RoleAdministrationSubtitle"]</p></div>
+            <span class="default-deny-badge">@L["DefaultDeny"]</span>
+        </div>
+        <div class="role-admin-body">
+            <form method="post" asp-controller="Permissions" asp-action="CreateRole" class="role-create-form">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="userId" value="@Model.SelectedUser?.Id" />
+                <input type="hidden" name="culture" value="@culture" />
+                <label><span>@L["NewRoleName"]</span><input name="roleName" maxlength="100" required autocomplete="off" /></label>
+                <button class="primary-action" type="submit">@L["Create"]</button>
+            </form>
+            <div class="role-admin-list">
+                @foreach (var role in Model.Roles)
+                {
+                    <form method="post" asp-controller="Permissions" asp-action="RenameRole" class="role-admin-row" data-role-id="@role.Id" data-role-name="@role.Name">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="roleId" value="@role.Id" />
+                        <input type="hidden" name="userId" value="@Model.SelectedUser?.Id" />
+                        <input type="hidden" name="culture" value="@culture" />
+                        <label><span>@(role.IsSeedRole ? L["SeedRole"] : L["RoleAdministration"])</span><input name="roleName" value="@role.Name" maxlength="100" required /></label>
+                        <button class="secondary-action" type="submit">@L["Rename"]</button>
+                    </form>
+                }
+            </div>
+        </div>
+    </section>
 
     <section class="permission-panel service-matrix-panel" aria-labelledby="service-matrix-title">
         <div class="panel-heading">

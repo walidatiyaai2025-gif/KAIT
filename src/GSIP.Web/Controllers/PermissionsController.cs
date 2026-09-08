@@ -3,6 +3,7 @@ using GSIP.Infrastructure.Authorization;
 using GSIP.Infrastructure.Setup;
 using GSIP.Web.Models;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,7 +11,9 @@ namespace GSIP.Web.Controllers;
 
 [Authorize(Policy = GsipPermissions.RolesManage)]
 [Route("permissions")]
-public sealed class PermissionsController(GsipDbContext dbContext) : Controller
+public sealed class PermissionsController(
+    GsipDbContext dbContext,
+    RoleManager<IdentityRole<Guid>> roleManager) : Controller
 {
     [HttpGet("")]
     public async Task<IActionResult> Index([FromQuery] Guid? userId, CancellationToken cancellationToken)
@@ -84,18 +87,25 @@ public sealed class PermissionsController(GsipDbContext dbContext) : Controller
             .ToListAsync(cancellationToken);
         var userRoleRows = await dbContext.UserRoles.AsNoTracking().ToListAsync(cancellationToken);
         var roleNames = roleModels.ToDictionary(role => role.Id, role => role.Name);
-        var userModels = users.Select(user => new UserRoleSummaryViewModel(
+        var userModels = users.Select(user =>
+        {
+            var assignedRoleIds = userRoleRows
+                .Where(row => row.UserId == user.Id && roleNames.ContainsKey(row.RoleId))
+                .Select(row => row.RoleId)
+                .ToHashSet();
+            var assignedRoleNames = assignedRoleIds
+                .Select(roleId => roleNames[roleId])
+                .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            return new UserRoleSummaryViewModel(
                 user.Id,
                 user.DisplayName,
                 user.Username,
                 user.IsEnabled,
                 user.IsPrivileged,
-                userRoleRows
-                    .Where(row => row.UserId == user.Id && roleNames.ContainsKey(row.RoleId))
-                    .Select(row => roleNames[row.RoleId])
-                    .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
-                    .ToList()))
-            .ToList();
+                assignedRoleIds,
+                assignedRoleNames);
+        }).ToList();
 
         var selectedUser = userId.HasValue
             ? userModels.FirstOrDefault(user => user.Id == userId.Value)
@@ -110,8 +120,142 @@ public sealed class PermissionsController(GsipDbContext dbContext) : Controller
             RolePermissionGrants = rolePermissionGrants,
             ServiceExecuteGrants = serviceExecuteGrants,
             SelectedUser = selectedUser,
+            PendingApprovals = 0,
             GeneratedAtUtc = DateTimeOffset.UtcNow
         });
+    }
+
+    [HttpPost("roles")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateRole(
+        string roleName,
+        Guid? userId,
+        string? culture,
+        CancellationToken cancellationToken)
+    {
+        var normalizedName = ValidateRoleName(roleName);
+        if (normalizedName is null)
+        {
+            return BadRequest("Role name must contain 1 to 100 printable characters.");
+        }
+
+        if (await roleManager.FindByNameAsync(normalizedName) is not null)
+        {
+            return Conflict("A role with this name already exists.");
+        }
+
+        var result = await roleManager.CreateAsync(new IdentityRole<Guid>
+        {
+            Id = Guid.NewGuid(),
+            Name = normalizedName
+        });
+        if (!result.Succeeded)
+        {
+            return BadRequest("The role could not be created.");
+        }
+
+        return RedirectToAction(nameof(Index), new { culture = NormalizeCulture(culture), userId });
+    }
+
+    [HttpPost("roles/rename")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RenameRole(
+        Guid roleId,
+        string roleName,
+        Guid? userId,
+        string? culture,
+        CancellationToken cancellationToken)
+    {
+        var normalizedName = ValidateRoleName(roleName);
+        if (normalizedName is null)
+        {
+            return BadRequest("Role name must contain 1 to 100 printable characters.");
+        }
+
+        var role = await roleManager.FindByIdAsync(roleId.ToString());
+        if (role is null)
+        {
+            return NotFound();
+        }
+
+        var duplicate = await roleManager.FindByNameAsync(normalizedName);
+        if (duplicate is not null && duplicate.Id != roleId)
+        {
+            return Conflict("A role with this name already exists.");
+        }
+
+        var result = await roleManager.SetRoleNameAsync(role, normalizedName);
+        if (!result.Succeeded)
+        {
+            return BadRequest("The role could not be renamed.");
+        }
+
+        return RedirectToAction(nameof(Index), new { culture = NormalizeCulture(culture), userId });
+    }
+
+    [HttpPost("user-role")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SetUserRole(
+        Guid userId,
+        Guid roleId,
+        bool isAssigned,
+        string? culture,
+        CancellationToken cancellationToken)
+    {
+        var user = await dbContext.Users
+            .AsNoTracking()
+            .SingleOrDefaultAsync(candidate => candidate.Id == userId, cancellationToken);
+        if (user is null)
+        {
+            return NotFound();
+        }
+
+        if (!await dbContext.Roles.AsNoTracking().AnyAsync(role => role.Id == roleId, cancellationToken))
+        {
+            return NotFound();
+        }
+
+        var existing = await dbContext.UserRoles
+            .SingleOrDefaultAsync(
+                row => row.UserId == userId && row.RoleId == roleId,
+                cancellationToken);
+
+        if (isAssigned)
+        {
+            if (existing is null)
+            {
+                dbContext.UserRoles.Add(new IdentityUserRole<Guid>
+                {
+                    UserId = userId,
+                    RoleId = roleId
+                });
+                await dbContext.SaveChangesAsync(cancellationToken);
+            }
+        }
+        else if (existing is not null)
+        {
+            if (roleId == Guid.Parse(GsipRoles.SystemAdministratorId) && user.IsEnabled)
+            {
+                var remainingEnabledAdministrators = await (
+                    from userRole in dbContext.UserRoles.AsNoTracking()
+                    join candidate in dbContext.Users.AsNoTracking() on userRole.UserId equals candidate.Id
+                    where userRole.RoleId == roleId
+                        && candidate.IsEnabled
+                        && candidate.Id != userId
+                    select candidate.Id)
+                    .Distinct()
+                    .CountAsync(cancellationToken);
+                if (remainingEnabledAdministrators == 0)
+                {
+                    return BadRequest("The last enabled System Administrator role assignment cannot be removed.");
+                }
+            }
+
+            dbContext.UserRoles.Remove(existing);
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        return RedirectToAction(nameof(Index), new { culture = NormalizeCulture(culture), userId });
     }
 
     [HttpPost("role-permission")]
@@ -220,6 +364,18 @@ public sealed class PermissionsController(GsipDbContext dbContext) : Controller
         var value when value.StartsWith("Audit.", StringComparison.Ordinal) => "Audit",
         _ => "Operations"
     };
+
+    private static string? ValidateRoleName(string? roleName)
+    {
+        var value = roleName?.Trim();
+        if (string.IsNullOrWhiteSpace(value)
+            || value.Length > 100
+            || value.Any(char.IsControl))
+        {
+            return null;
+        }
+        return value;
+    }
 
     private static string NormalizeCulture(string? culture) =>
         string.Equals(culture, "ar-KW", StringComparison.OrdinalIgnoreCase) ? "ar-KW" : "en";
