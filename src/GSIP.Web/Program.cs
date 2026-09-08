@@ -32,6 +32,7 @@ builder.Services.AddLocalization(options => options.ResourcesPath = "Resources")
 builder.Services.AddScoped<ShellText>();
 builder.Services.AddScoped<IdentityText>();
 builder.Services.AddScoped<MetadataText>();
+builder.Services.AddScoped<ExecutionText>();
 builder.Services
     .AddControllersWithViews()
     .AddViewLocalization();
