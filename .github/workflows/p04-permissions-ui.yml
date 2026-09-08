@@ -1,0 +1,63 @@
+name: P04 Permissions UI
+
+on:
+  push:
+    branches:
+      - main
+      - 'worker/p04-permissions-ui-*'
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  permissions-ui:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    env:
+      GSIP_P04_SQL: 'Server=(localdb)\MSSQLLocalDB;Database=GSIP_P04_UI_CORE_${{ github.run_id }}_${{ github.run_attempt }};Integrated Security=true;TrustServerCertificate=true;MultipleActiveResultSets=true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pinned .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore solution
+        run: dotnet restore GSIP.sln
+
+      - name: Build solution Release
+        run: dotnet build GSIP.sln --configuration Release --no-restore
+
+      - name: Start SQL Server LocalDB
+        shell: pwsh
+        run: |
+          sqllocaldb start MSSQLLocalDB
+          sqllocaldb info MSSQLLocalDB
+
+      - name: Preserve P04 RBAC authorization contracts
+        shell: pwsh
+        run: dotnet run --project tests/GSIP.P04Checks/GSIP.P04Checks.csproj --configuration Release --no-build
+
+      - name: Verify P04 role administration and IDOR protections
+        shell: pwsh
+        run: dotnet run --project tests/GSIP.P04AdminChecks/GSIP.P04AdminChecks.csproj --configuration Release
+
+      - name: Verify protected bilingual permissions UI
+        shell: pwsh
+        run: ./scripts/verify-p04-permissions-ui.ps1
+
+      - name: Validate execution plan and governance
+        run: python scripts/validate_execution_plan.py
+
+      - name: Upload P04 permissions UI evidence
+        if: ${{ always() && github.event_name == 'push' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: P04-Permissions-UI-Evidence-${{ github.sha }}
+          path: artifacts/p04-permissions-ui/
+          if-no-files-found: error
+          retention-days: 30
