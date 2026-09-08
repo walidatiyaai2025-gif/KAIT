@@ -185,10 +185,19 @@ try {
     $en = Invoke-WebRequest "$baseUrl/permissions?culture=en" -UseBasicParsing -WebSession $session
     $ar = Invoke-WebRequest "$baseUrl/permissions?culture=ar-KW" -UseBasicParsing -WebSession $session
     if ($en.StatusCode -ne 200 -or $ar.StatusCode -ne 200) { throw 'Authenticated permissions route did not return HTTP 200 in both cultures.' }
-    if ($en.Content -notmatch 'data-ui="permissions-dashboard"' -or $en.Content -notmatch 'Permissions &amp; Role Management') { throw 'English permissions dashboard content is incomplete.' }
-    if ($ar.Content -notmatch '<html lang="ar" dir="rtl"' -or $ar.Content -notmatch 'إدارة الصلاحيات والأدوار') { throw 'Arabic RTL permissions dashboard content is incomplete.' }
-    if ($en.Content -notmatch 'Synthetic P04 Administrator') { throw 'Authenticated user details panel is not rendering synthetic account data.' }
-    if ($en.Content -notmatch 'Marriage Cases Service') { throw 'Configured service permission matrix did not render.' }
+
+    $enRawPath = Join-Path $artifactDir 'permissions-en-response.html'
+    $arRawPath = Join-Path $artifactDir 'permissions-ar-response.html'
+    $en.Content | Set-Content $enRawPath -Encoding utf8
+    $ar.Content | Set-Content $arRawPath -Encoding utf8
+    $enDecoded = [System.Net.WebUtility]::HtmlDecode($en.Content)
+    $arDecoded = [System.Net.WebUtility]::HtmlDecode($ar.Content)
+
+    if ($en.Content -notmatch 'data-ui="permissions-dashboard"' -or $enDecoded -notmatch 'Permissions & Role Management') { throw 'English permissions dashboard content is incomplete.' }
+    if ($ar.Content -notmatch '<html lang="ar" dir="rtl" data-culture-name="ar-KW">') { throw 'Arabic permissions response does not advertise the required ar-KW RTL document direction.' }
+    if ($arDecoded -notmatch 'إدارة الصلاحيات والأدوار') { throw 'Arabic localized permissions title is missing after HTML decoding.' }
+    if ($enDecoded -notmatch 'Synthetic P04 Administrator') { throw 'Authenticated user details panel is not rendering synthetic account data.' }
+    if ($enDecoded -notmatch 'Marriage Cases Service') { throw 'Configured service permission matrix did not render.' }
 
     $enHtml = $en.Content.Replace('href="/', "href=`"$baseUrl/").Replace('src="/', "src=`"$baseUrl/")
     $arHtml = $ar.Content.Replace('href="/', "href=`"$baseUrl/").Replace('src="/', "src=`"$baseUrl/")
