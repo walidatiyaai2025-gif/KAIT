@@ -4,8 +4,10 @@ using System.Text;
 using GSIP.Application.Authorization;
 using GSIP.Application.Metadata;
 using GSIP.Application.Secrets;
+using GSIP.Application.Security;
 using GSIP.Domain.Metadata;
 using GSIP.Domain.Secrets;
+using GSIP.Infrastructure.Secrets;
 using GSIP.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -17,7 +19,8 @@ namespace GSIP.Web.Controllers;
 public sealed class AuthProfilesController(
     IMetadataCatalogService catalog,
     IAuthProfileService authProfiles,
-    ISecretVault secretVault) : Controller
+    ISecretVault secretVault,
+    SecretRotationPersistenceAdapter rotationPersistence) : Controller
 {
     private const int MinimumSecretCharacters = 8;
     private const int MaximumSecretCharacters = 4096;
@@ -159,7 +162,6 @@ public sealed class AuthProfilesController(
         string? culture,
         CancellationToken cancellationToken)
     {
-        // Never carry a submitted secret value into validation/UI state.
         ModelState.Remove(nameof(secretValue));
 
         var profile = await FindProfileAsync(authProfileId, cancellationToken);
@@ -185,8 +187,6 @@ public sealed class AuthProfilesController(
         }
         if (profile.Secrets.Any(secret => string.Equals(secret.Name, normalizedLabel, StringComparison.Ordinal)))
         {
-            // Replacement must use the atomic rotation boundary. Do not emulate it
-            // with unconditional SetSecretReferenceAsync.
             return Conflict("An existing secret slot must be changed through atomic rotation.");
         }
 
@@ -194,7 +194,13 @@ public sealed class AuthProfilesController(
         SecretRef? createdReference = null;
         try
         {
-            var created = await secretVault.CreateActiveAsync(clearBytes, cancellationToken);
+            var created = await secretVault.CreateActiveAsync(
+                profile.OwnerServiceId,
+                profile.OwnerEnvironmentId,
+                profile.Id,
+                normalizedLabel,
+                clearBytes,
+                cancellationToken);
             createdReference = created.Reference;
             await authProfiles.SetSecretReferenceAsync(profile.Id, normalizedLabel, created.Reference, cancellationToken);
             createdReference = null;
@@ -204,7 +210,7 @@ public sealed class AuthProfilesController(
         {
             if (createdReference.HasValue)
             {
-                await RevokeBestEffortAsync(createdReference.Value);
+                await RevokeBestEffortAsync(profile, normalizedLabel, createdReference.Value);
             }
             SetRejected();
         }
@@ -226,10 +232,6 @@ public sealed class AuthProfilesController(
         string? culture,
         CancellationToken cancellationToken)
     {
-        // The current canonical foundation is explicitly merge-blocked until it
-        // exposes atomic expected-current-reference/generation CAS. Accepting a
-        // plaintext candidate here and doing an unconditional replacement would
-        // violate the integrated P06 rotation contract, so fail closed.
         ModelState.Remove(nameof(secretValue));
 
         if (!confirmRotation || !IsAcceptableSecretValue(secretValue))
@@ -241,6 +243,10 @@ public sealed class AuthProfilesController(
         if (profile is null)
         {
             return NotFound();
+        }
+        if (!profile.IsEnabled)
+        {
+            return Conflict("A disabled AuthProfile cannot rotate secrets.");
         }
 
         var snapshot = await catalog.GetSnapshotAsync(cancellationToken);
@@ -256,7 +262,34 @@ public sealed class AuthProfilesController(
             return NotFound();
         }
 
-        return Conflict("Atomic rotation is unavailable until the canonical foundation CAS/generation boundary is integrated.");
+        var clearBytes = Encoding.UTF8.GetBytes(secretValue);
+        try
+        {
+            var scope = SecretRotationScope.Create(
+                profile.OwnerServiceId,
+                profile.OwnerEnvironmentId,
+                profile.Id,
+                secret.Generation);
+
+            await SecretRotationSafety.RotateAsync(
+                scope,
+                _ => ValueTask.CompletedTask,
+                token => rotationPersistence.StageAsync(scope, secret.Name, clearBytes, token),
+                (candidate, token) => rotationPersistence.ActivateAsync(secret.Reference, secret.Name, candidate, token),
+                (candidate, token) => rotationPersistence.DiscardAsync(candidate, token),
+                cancellationToken);
+            SetSuccess();
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or ArgumentException or KeyNotFoundException)
+        {
+            SetRejected();
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(clearBytes);
+        }
+
+        return RedirectToIndex(culture);
     }
 
     [HttpPost("{authProfileId:guid}/state")]
@@ -317,8 +350,6 @@ public sealed class AuthProfilesController(
             return BadRequest("Invalid AuthProfile metadata request.");
         }
 
-        // Name/AuthType mutation is intentionally not implemented through a
-        // second persistence path. The canonical IAuthProfileService must own it.
         return Conflict("AuthProfile metadata mutation requires a canonical foundation operation.");
     }
 
@@ -338,8 +369,6 @@ public sealed class AuthProfilesController(
             return NotFound();
         }
 
-        // Canonical AuthProfiles always own at least one exact binding. Deleting
-        // an in-use profile without a foundation transaction would be unsafe.
         if (profile.Bindings.Count > 0)
         {
             return Conflict("An in-use AuthProfile cannot be deleted.");
@@ -419,6 +448,15 @@ public sealed class AuthProfilesController(
                 try
                 {
                     var descriptor = await secretVault.GetDescriptorAsync(secret.Reference, cancellationToken);
+                    if (descriptor.ServiceId != profile.OwnerServiceId
+                        || descriptor.EnvironmentId != profile.OwnerEnvironmentId
+                        || descriptor.AuthProfileId != profile.Id
+                        || !string.Equals(descriptor.SecretName, secret.Name, StringComparison.Ordinal)
+                        || descriptor.Generation != secret.Generation)
+                    {
+                        throw new SecretReferenceRejectedException();
+                    }
+
                     secretModels.Add(new SecretRefSummaryViewModel(
                         CreateSecretSlotId(profile.Id, secret.Name),
                         secret.Name,
@@ -585,16 +623,21 @@ public sealed class AuthProfilesController(
         return new Guid(hash.AsSpan(0, 16));
     }
 
-    private async Task RevokeBestEffortAsync(SecretRef secretRef)
+    private async Task RevokeBestEffortAsync(AuthProfileDescriptor profile, string secretName, SecretRef secretRef)
     {
         try
         {
-            await secretVault.RevokeAsync(secretRef, CancellationToken.None);
+            await secretVault.RevokeAsync(
+                profile.OwnerServiceId,
+                profile.OwnerEnvironmentId,
+                profile.Id,
+                secretName,
+                secretRef,
+                CancellationToken.None);
         }
         catch (Exception)
         {
-            // The primary operation has already failed. Never surface cleanup
-            // exceptions because a provider exception may contain sensitive data.
+            // Do not surface cleanup exceptions; providers may include secret data.
         }
     }
 
