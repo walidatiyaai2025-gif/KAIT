@@ -141,6 +141,9 @@ public sealed class MetadataCatalogService(GsipDbContext dbContext, ISystemClock
         dbContext.ServiceFieldDefinitions.RemoveRange(service.Fields);
         dbContext.ResultMappingDefinitions.RemoveRange(service.ResultMappings);
         await dbContext.SaveChangesAsync(cancellationToken);
+        service.EnvironmentConfigs.Clear();
+        service.Fields.Clear();
+        service.ResultMappings.Clear();
         service.Code = normalized.Code;
         service.NameAr = normalized.NameAr;
         service.NameEn = normalized.NameEn;
