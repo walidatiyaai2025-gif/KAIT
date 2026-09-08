@@ -26,7 +26,8 @@ try {
     if (-not $healthy) { throw "GSIP.Web did not become healthy. See $stderr" }
 
     $loginResponse = Invoke-WebRequest "$baseUrl/login?culture=en" -UseBasicParsing
-    if ($loginResponse.BaseResponse.ResponseUri.AbsolutePath -ne '/setup') { throw 'Login was not gated to /setup before setup completion.' }
+    $redirectPath = $loginResponse.BaseResponse.ResponseUri.AbsolutePath.TrimEnd('/')
+    if (-not $redirectPath.StartsWith('/setup', [System.StringComparison]::OrdinalIgnoreCase)) { throw "Login was not gated to /setup before setup completion. Final path: $redirectPath" }
     if ($loginResponse.Content -notmatch 'data-setup-step="Welcome"') { throw 'First-run Welcome screen was not returned after login gate.' }
 
     $en = Invoke-WebRequest "$baseUrl/setup?culture=en" -UseBasicParsing
