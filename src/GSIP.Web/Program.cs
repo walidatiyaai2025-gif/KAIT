@@ -45,7 +45,8 @@ app.UseStaticFiles();
 
 app.Use(async (context, next) =>
 {
-    var bypassForClosedP01Regression = app.Configuration.GetValue<bool>("Setup:BypassGateForRegression");
+    var bypassForClosedP01Regression = app.Environment.IsEnvironment("RegressionTesting")
+        && app.Configuration.GetValue<bool>("Setup:BypassGateForRegression");
     var path = context.Request.Path;
     var exempt = path.StartsWithSegments("/setup", StringComparison.OrdinalIgnoreCase)
         || path.StartsWithSegments("/health", StringComparison.OrdinalIgnoreCase);
