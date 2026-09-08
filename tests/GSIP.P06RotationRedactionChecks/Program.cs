@@ -79,6 +79,28 @@ var safeExceptionJson = SecretRedaction.ToSafeJson(safeException, knownSecrets);
 AssertNoSentinel(safeExceptionJson, "Exception-safe representation leaked sentinel plaintext.");
 Assert(!safeExceptionJson.Contains("stack", StringComparison.OrdinalIgnoreCase), "Exception-safe representation unexpectedly contained stack data.");
 
+// Defensive redaction must itself fail closed. A serializer getter, formatter,
+// exception Message override or known-secret enumerable may fail with plaintext
+// embedded in its exception; none may escape from the safe surface.
+var throwingSerializerResult = SecretRedaction.ToSafeJson(new ThrowingSerializationProbe(Sentinel), knownSecrets);
+Assert(throwingSerializerResult == SecretRedaction.Redacted, "Throwing serializer did not fail closed.");
+AssertNoSentinel(throwingSerializerResult, "Throwing serializer leaked its exception plaintext.");
+
+var throwingFieldResult = SecretRedaction.RedactFields(
+    new Dictionary<string, object?> { ["diagnostic"] = new ThrowingFormattable(Sentinel) },
+    knownSecrets);
+Assert(throwingFieldResult["diagnostic"] == SecretRedaction.Redacted, "Throwing structured formatter did not fail closed.");
+AssertNoSentinel(JsonSerializer.Serialize(throwingFieldResult), "Throwing structured formatter leaked plaintext.");
+
+var throwingMessageResult = SecretRedaction.ToSafeException(new ThrowingMessageException(Sentinel), knownSecrets);
+var throwingMessageJson = SecretRedaction.ToSafeJson(throwingMessageResult, knownSecrets);
+AssertNoSentinel(throwingMessageJson, "Throwing exception Message leaked plaintext.");
+Assert(throwingMessageResult.Message == SecretRedaction.Redacted, "Throwing exception Message did not fail closed.");
+
+var throwingKnownSecretResult = SecretRedaction.RedactText("diagnostic text", new ThrowingSecretEnumerable(Sentinel));
+Assert(throwingKnownSecretResult == SecretRedaction.Redacted, "Throwing known-secret source did not fail closed.");
+AssertNoSentinel(throwingKnownSecretResult, "Throwing known-secret source leaked plaintext.");
+
 var configuredState = SecretRedaction.ToSafeSecretState(configured: true, generation: 7);
 Assert(configuredState.DisplayValue == SecretRedaction.UiMask, "UI-safe secret state did not use the constant mask.");
 AssertNoSentinel(JsonSerializer.Serialize(configuredState), "UI-safe representation leaked sentinel plaintext.");
@@ -169,6 +191,7 @@ var manifest = new
     exceptionRedaction = true,
     validationRedaction = true,
     uiMasking = true,
+    redactionFailuresFailClosed = true,
     sentinelLeakChecks = true,
     cacheIdentityIncludes = new[] { "ServiceId", "EnvironmentId", "AuthProfileId", "AuthProfileVersion", "SecretGeneration", "Audience", "Scope", "ValidityFingerprint" },
     serviceEnvironmentIsolation = true,
@@ -233,3 +256,45 @@ sealed record LeakProbe(
     NestedProbe Nested);
 
 sealed record NestedProbe(string ConsumerSecret, string DiagnosticMessage);
+
+sealed class ThrowingSerializationProbe
+{
+    private readonly string _sentinel;
+
+    public ThrowingSerializationProbe(string sentinel) => _sentinel = sentinel;
+
+    public string Value => throw new InvalidOperationException($"serializer getter leaked {_sentinel}");
+}
+
+sealed class ThrowingFormattable : IFormattable
+{
+    private readonly string _sentinel;
+
+    public ThrowingFormattable(string sentinel) => _sentinel = sentinel;
+
+    public string ToString(string? format, IFormatProvider? formatProvider) =>
+        throw new InvalidOperationException($"formatter leaked {_sentinel}");
+
+    public override string ToString() => ToString(null, null);
+}
+
+sealed class ThrowingMessageException : Exception
+{
+    private readonly string _sentinel;
+
+    public ThrowingMessageException(string sentinel) => _sentinel = sentinel;
+
+    public override string Message => throw new InvalidOperationException($"message getter leaked {_sentinel}");
+}
+
+sealed class ThrowingSecretEnumerable : IEnumerable<string?>
+{
+    private readonly string _sentinel;
+
+    public ThrowingSecretEnumerable(string sentinel) => _sentinel = sentinel;
+
+    public IEnumerator<string?> GetEnumerator() =>
+        throw new InvalidOperationException($"secret source leaked {_sentinel}");
+
+    System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+}
