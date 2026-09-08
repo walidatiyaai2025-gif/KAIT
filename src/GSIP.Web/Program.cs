@@ -1,13 +1,21 @@
 using System.Globalization;
 using GSIP.Application.Configuration;
+using GSIP.Application.Setup;
 using GSIP.Infrastructure;
 using GSIP.Integrations;
 using GSIP.Web;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Localization;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var keyDirectory = Path.Combine(builder.Environment.ContentRootPath, "App_Data", "keys");
+Directory.CreateDirectory(keyDirectory);
+
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(keyDirectory))
+    .SetApplicationName("GSIP");
 builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
 builder.Services.AddScoped<ShellText>();
 builder.Services
@@ -34,6 +42,28 @@ localizationOptions.RequestCultureProviders.Insert(0, new QueryStringRequestCult
 
 app.UseRequestLocalization(localizationOptions);
 app.UseStaticFiles();
+
+app.Use(async (context, next) =>
+{
+    var bypassForClosedP01Regression = app.Configuration.GetValue<bool>("Setup:BypassGateForRegression");
+    var path = context.Request.Path;
+    var exempt = path.StartsWithSegments("/setup", StringComparison.OrdinalIgnoreCase)
+        || path.StartsWithSegments("/health", StringComparison.OrdinalIgnoreCase);
+
+    if (!bypassForClosedP01Regression && !exempt)
+    {
+        var setup = context.RequestServices.GetRequiredService<ISetupService>();
+        var status = await setup.GetStatusAsync(context.RequestAborted);
+        if (!status.IsCompleted)
+        {
+            var culture = CultureInfo.CurrentUICulture.Name;
+            context.Response.Redirect($"/setup?culture={Uri.EscapeDataString(culture)}");
+            return;
+        }
+    }
+
+    await next();
+});
 
 app.MapHealthChecks("/health/live", new HealthCheckOptions
 {
