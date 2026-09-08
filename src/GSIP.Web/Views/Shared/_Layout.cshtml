@@ -8,7 +8,8 @@
     var isSetup = Context.Request.Path.StartsWithSegments("/setup");
     var isPermissions = Context.Request.Path.StartsWithSegments("/permissions");
     var isMetadata = Context.Request.Path.StartsWithSegments("/metadata");
-    var isHome = !isPermissions && !isMetadata;
+    var isAuthProfiles = Context.Request.Path.StartsWithSegments("/auth-profiles");
+    var isHome = !isPermissions && !isMetadata && !isAuthProfiles;
 }
 <!doctype html>
 <html lang="@language" dir="@direction" data-culture-name="@CultureInfo.CurrentUICulture.Name">
@@ -51,6 +52,7 @@
                 <a class="nav-item @(isHome ? "active" : string.Empty)" href="/?culture=@CultureInfo.CurrentUICulture.Name"><span class="nav-glyph">⌂</span><span>@L["Home"]</span></a>
                 <a class="nav-item @(isMetadata ? "active" : string.Empty)" href="/metadata?culture=@CultureInfo.CurrentUICulture.Name"><span class="nav-glyph">◇</span><span>@L["Entities"]</span></a>
                 <a class="nav-item @(isMetadata ? "active" : string.Empty)" href="/metadata?culture=@CultureInfo.CurrentUICulture.Name"><span class="nav-glyph">▦</span><span>@L["Services"]</span></a>
+                <a class="nav-item @(isAuthProfiles ? "active" : string.Empty)" href="/auth-profiles?culture=@CultureInfo.CurrentUICulture.Name"><span class="nav-glyph">◆</span><span>@L["AuthProfiles"]</span></a>
                 <span class="nav-item disabled" aria-disabled="true"><span class="nav-glyph">≡</span><span>@L["Requests"]</span></span>
                 <span class="nav-item disabled" aria-disabled="true"><span class="nav-glyph">◴</span><span>@L["Audit"]</span></span>
                 <a class="nav-item @(isPermissions ? "active" : string.Empty)" href="/permissions?culture=@CultureInfo.CurrentUICulture.Name"><span class="nav-glyph">◈</span><span>@L["Permissions"]</span></a>
