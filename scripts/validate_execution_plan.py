@@ -6,10 +6,10 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 PLAN = ROOT / "execution" / "GSIP_Full_Execution.json"
 REQUIRED_UI = [
-    ROOT / "docs/ui-baseline/bilingual_kuwait_government_services_dashboard.png",
-    ROOT / "docs/ui-baseline/bilingual_kuwait_government_service_portal.png",
-    ROOT / "docs/ui-baseline/bilingual_kuwait_government_permissions_dashboard.png",
-    ROOT / "docs/ui-baseline/kuwait_government_audit_dashboard.png",
+    ROOT / "docs/ui-baseline/bilingual_kuwait_government_services_dashboard.svg",
+    ROOT / "docs/ui-baseline/bilingual_kuwait_government_service_portal.svg",
+    ROOT / "docs/ui-baseline/bilingual_kuwait_government_permissions_dashboard.svg",
+    ROOT / "docs/ui-baseline/kuwait_government_audit_dashboard.svg",
 ]
 REQUIRED_DOCS = [
     ROOT / "AGENTS.md",
@@ -21,6 +21,7 @@ REQUIRED_DOCS = [
     ROOT / "docs/SECURITY_SECRETS_POLICY.md",
     ROOT / "docs/FINAL_ACCEPTANCE_CRITERIA.md",
     ROOT / "docs/plans/GSIP_Complete_Implementation_Plan_AR.md",
+    ROOT / "docs/moj-api-reference/INDEX.md",
 ]
 
 def fail(message: str) -> None:
@@ -56,4 +57,4 @@ missing = [p.relative_to(ROOT).as_posix() for p in REQUIRED_DOCS + REQUIRED_UI i
 if missing:
     fail("missing required files: " + ", ".join(missing))
 
-print("Execution plan valid: 18 phases, all delays = 40 seconds, required governance/UI files present.")
+print("Execution plan valid: 18 phases, all delays = 40 seconds, required governance/UI/MOJ reference files present.")
