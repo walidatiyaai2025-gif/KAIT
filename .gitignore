@@ -1,0 +1,49 @@
+# .NET build output
+**/bin/
+**/obj/
+artifacts/
+TestResults/
+coverage/
+*.trx
+
+# IDE
+.vs/
+.idea/
+*.user
+*.suo
+
+# Local/runtime configuration and secrets
+.env
+.env.*
+!.env.example
+appsettings.Local.json
+appsettings.*.Local.json
+appsettings.Secrets.json
+**/secrets.json
+**/*.secrets.json
+*.pfx
+*.p12
+*.key
+*.pem
+!docs/**/*.pem.example
+
+# Data Protection / runtime state
+keys/
+DataProtection-Keys/
+App_Data/
+*.db
+*.sqlite
+*.sqlite3
+
+# Installer/build staging
+publish/
+installer/output/
+installer/staging/
+*.msi
+*.exe
+
+# OS/temp
+.DS_Store
+Thumbs.db
+*.tmp
+*.bak
