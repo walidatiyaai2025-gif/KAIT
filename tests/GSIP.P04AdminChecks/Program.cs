@@ -61,17 +61,20 @@ try
 
     var renameResult = await controller.RenameRole(customRole.Id, "Synthetic Reviewer", regular.Id, "en", CancellationToken.None);
     Assert(renameResult is RedirectToActionResult, "Custom roles must be renameable.");
-    Assert(await db.Roles.AnyAsync(role => role.Id == customRole.Id && role.Name == "Synthetic Reviewer"),
-        "Renamed custom role was not persisted.");
+    db.ChangeTracker.Clear();
+    Assert(await db.Roles.AsNoTracking().AnyAsync(role => role.Id == customRole.Id && role.Name == "Synthetic Reviewer"),
+        "Renamed custom role was not persisted to SQL.");
     Assert(await controller.RenameRole(Guid.NewGuid(), "Ghost Role", regular.Id, "en", CancellationToken.None) is NotFoundResult,
         "Unknown role IDs must be rejected during rename.");
 
     var seedRename = await controller.RenameRole(auditorRoleId, "Auditor Renamed", regular.Id, "en", CancellationToken.None);
     Assert(seedRename is RedirectToActionResult, "Seed roles must remain editable.");
-    Assert(await db.Roles.AnyAsync(role => role.Id == auditorRoleId && role.Name == "Auditor Renamed"),
-        "Seed role rename was not persisted.");
+    db.ChangeTracker.Clear();
+    Assert(await db.Roles.AsNoTracking().AnyAsync(role => role.Id == auditorRoleId && role.Name == "Auditor Renamed"),
+        "Seed role rename was not persisted to SQL.");
     Assert(await controller.RenameRole(auditorRoleId, GsipRoles.Auditor, regular.Id, "en", CancellationToken.None) is RedirectToActionResult,
         "Seed role restore must succeed after rename validation.");
+    db.ChangeTracker.Clear();
 
     Assert(await controller.SetUserRole(regular.Id, customRole.Id, true, "en", CancellationToken.None) is RedirectToActionResult,
         "Assigning an existing role to an existing user must succeed.");
