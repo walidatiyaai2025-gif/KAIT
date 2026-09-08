@@ -1,0 +1,62 @@
+name: P02 First-run Setup Wizard
+
+on:
+  push:
+    branches:
+      - main
+      - 'worker/p02-*'
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  setup-wizard-acceptance:
+    runs-on: windows-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pinned .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore GSIP.sln
+
+      - name: Build Release
+        run: dotnet build GSIP.sln --configuration Release --no-restore
+
+      - name: Preserve P00 contracts
+        run: dotnet run --project tests/GSIP.BaselineChecks/GSIP.BaselineChecks.csproj --configuration Release --no-build
+
+      - name: Preserve P01 architecture and design contracts
+        run: dotnet run --project tests/GSIP.P01Checks/GSIP.P01Checks.csproj --configuration Release --no-build
+
+      - name: Start SQL Server LocalDB
+        shell: pwsh
+        run: |
+          sqllocaldb start MSSQLLocalDB
+          sqllocaldb info MSSQLLocalDB
+
+      - name: Run P02 SQL/setup/security checks
+        shell: pwsh
+        env:
+          GSIP_P02_SQL_SERVER: '(localdb)\MSSQLLocalDB'
+        run: dotnet run --project tests/GSIP.P02Checks/GSIP.P02Checks.csproj --configuration Release --no-build
+
+      - name: Run P02 first-run browser evidence
+        shell: pwsh
+        run: ./scripts/verify-p02-setup.ps1
+
+      - name: Upload P02 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: P02-Setup-Evidence-${{ github.sha }}
+          path: artifacts/p02-setup/
+          if-no-files-found: error
+          retention-days: 30
