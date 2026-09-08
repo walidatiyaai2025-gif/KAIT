@@ -112,7 +112,8 @@ public static class SecretRedaction
         }
         catch (Exception)
         {
-            secrets = Array.Empty<string>();
+            result["redactionFailure"] = Redacted;
+            return result;
         }
 
         try
