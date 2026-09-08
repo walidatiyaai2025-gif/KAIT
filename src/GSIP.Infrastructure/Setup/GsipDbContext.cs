@@ -1,16 +1,46 @@
 using GSIP.Application.Abstractions;
+using GSIP.Infrastructure.Identity;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace GSIP.Infrastructure.Setup;
 
-public sealed class GsipDbContext(DbContextOptions<GsipDbContext> options) : DbContext(options), IDataSession
+public sealed class GsipDbContext(DbContextOptions<GsipDbContext> options)
+    : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>(options), IDataSession
 {
     public DbSet<SystemSetupRecord> SystemSetup => Set<SystemSetupRecord>();
     public DbSet<BootstrapAdministrator> BootstrapAdministrators => Set<BootstrapAdministrator>();
     public DbSet<ServiceEnvironmentPlaceholder> ServiceEnvironmentPlaceholders => Set<ServiceEnvironmentPlaceholder>();
+    public DbSet<AuthenticationAuditEvent> AuthenticationAuditEvents => Set<AuthenticationAuditEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<ApplicationUser>(entity =>
+        {
+            entity.Property(x => x.DisplayName).HasMaxLength(160).IsRequired();
+            entity.Property(x => x.IsEnabled).IsRequired();
+            entity.Property(x => x.IsPrivileged).IsRequired();
+            entity.Property(x => x.MustChangePassword).IsRequired();
+        });
+
+        modelBuilder.Entity<AuthenticationAuditEvent>(entity =>
+        {
+            entity.ToTable("AuthenticationAuditEvents");
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => x.OccurredAtUtc);
+            entity.HasIndex(x => new { x.UserId, x.OccurredAtUtc });
+            entity.Property(x => x.EventType).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.ResultCode).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.CorrelationId).HasMaxLength(100).IsRequired();
+            entity.HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
         modelBuilder.Entity<SystemSetupRecord>(entity =>
         {
             entity.ToTable("SystemSetup");
@@ -73,6 +103,7 @@ public sealed class BootstrapAdministrator
     public string PasswordHash { get; set; } = string.Empty;
     public bool MustChangePassword { get; set; } = true;
     public DateTimeOffset CreatedAtUtc { get; set; }
+    public DateTimeOffset? ActivatedAtUtc { get; set; }
 }
 
 public sealed class ServiceEnvironmentPlaceholder

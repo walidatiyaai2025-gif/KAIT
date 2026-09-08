@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="PhaseLabel"><value>الهوية وأمن الحساب</value></data>
+  <data name="LoginTitle"><value>دخول آمن إلى الحساب</value></data>
+  <data name="LoginIntro"><value>سجّل الدخول بحساب GSIP. تخضع الحسابات ذات الامتيازات للتحقق متعدد العوامل وتغيير كلمة المرور الإلزامي قبل فتح مساحة العمل.</value></data>
+  <data name="Username"><value>اسم المستخدم</value></data>
+  <data name="UsernamePlaceholder"><value>أدخل اسم حساب المستخدم</value></data>
+  <data name="Password"><value>كلمة المرور</value></data>
+  <data name="RememberMe"><value>تذكّر هذا الحساب على هذا المتصفح الموثوق</value></data>
+  <data name="SignIn"><value>تسجيل دخول آمن</value></data>
+  <data name="SignOut"><value>تسجيل الخروج</value></data>
+  <data name="AuthRequiredFields"><value>أدخل اسم المستخدم وكلمة المرور.</value></data>
+  <data name="AuthInvalid"><value>اسم المستخدم أو كلمة المرور غير صحيحة.</value></data>
+  <data name="AuthLocked"><value>تم قفل الحساب مؤقتاً بعد محاولات فاشلة متكررة. حاول لاحقاً أو تواصل مع مسؤول مخوّل.</value></data>
+  <data name="AuthDisabled"><value>هذا الحساب معطّل. تواصل مع مسؤول مخوّل.</value></data>
+  <data name="SecureSessionNotice"><value>لا يتم تسجيل كلمات المرور أو رموز التحقق أو أسرار المصادقة في السجلات أو بيانات التدقيق.</value></data>
+  <data name="MfaEnrollTitle"><value>تفعيل التحقق متعدد العوامل</value></data>
+  <data name="MfaEnrollIntro"><value>أضف المفتاح إلى تطبيق المصادقة ثم أدخل الرمز الحالي المكوّن من ستة أرقام لتفعيل MFA.</value></data>
+  <data name="AuthenticatorKey"><value>مفتاح إعداد تطبيق المصادقة</value></data>
+  <data name="MfaCode"><value>رمز التحقق</value></data>
+  <data name="MfaCodePlaceholder"><value>رمز من 6 أرقام</value></data>
+  <data name="ConfirmMfa"><value>تفعيل MFA</value></data>
+  <data name="MfaVerifyTitle"><value>التحقق متعدد العوامل</value></data>
+  <data name="MfaVerifyIntro"><value>أدخل الرمز الحالي من تطبيق المصادقة المسجل للمتابعة.</value></data>
+  <data name="Verify"><value>تحقق وتابع</value></data>
+  <data name="MfaInvalid"><value>رمز التحقق غير صحيح أو انتهت صلاحيته.</value></data>
+  <data name="PasswordChangeTitle"><value>تغيير كلمة المرور</value></data>
+  <data name="PasswordChangeIntro"><value>يتطلب حسابك تغيير كلمة المرور قبل السماح بالوصول العادي.</value></data>
+  <data name="CurrentPassword"><value>كلمة المرور الحالية</value></data>
+  <data name="NewPassword"><value>كلمة المرور الجديدة</value></data>
+  <data name="ConfirmPassword"><value>تأكيد كلمة المرور الجديدة</value></data>
+  <data name="ChangePassword"><value>غيّر كلمة المرور وتابع</value></data>
+  <data name="PasswordRequiredFields"><value>أكمل جميع حقول كلمة المرور.</value></data>
+  <data name="PasswordMismatch"><value>كلمة المرور الجديدة وتأكيدها غير متطابقين.</value></data>
+  <data name="PasswordChangeRejected"><value>تم رفض تغيير كلمة المرور. تحقق من كلمة المرور الحالية وسياسة كلمات المرور المطبقة.</value></data>
+  <data name="ProtectedStep"><value>خطوة هوية محمية</value></data>
+</root>

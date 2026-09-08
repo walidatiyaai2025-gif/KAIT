@@ -1,0 +1,80 @@
+name: P03 Identity and Account Security
+
+on:
+  push:
+    branches:
+      - main
+      - 'worker/p03-identity-*'
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  identity-account-security:
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pinned .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore solution
+        run: dotnet restore GSIP.sln
+
+      - name: Restore web security checks
+        run: dotnet restore tests/GSIP.P03SecurityChecks/GSIP.P03SecurityChecks.csproj
+
+      - name: Build solution Release
+        run: dotnet build GSIP.sln --configuration Release --no-restore
+
+      - name: Build web security checks Release
+        run: dotnet build tests/GSIP.P03SecurityChecks/GSIP.P03SecurityChecks.csproj --configuration Release --no-restore
+
+      - name: Preserve P00 contracts
+        run: dotnet run --project tests/GSIP.BaselineChecks/GSIP.BaselineChecks.csproj --configuration Release --no-build
+
+      - name: Preserve P01 architecture and bilingual shell contracts
+        run: dotnet run --project tests/GSIP.P01Checks/GSIP.P01Checks.csproj --configuration Release --no-build
+
+      - name: Start SQL Server LocalDB
+        shell: pwsh
+        run: |
+          sqllocaldb start MSSQLLocalDB
+          sqllocaldb info MSSQLLocalDB
+
+      - name: Preserve P02 SQL/setup/security contracts
+        shell: pwsh
+        env:
+          GSIP_P02_SQL_SERVER: '(localdb)\MSSQLLocalDB'
+        run: dotnet run --project tests/GSIP.P02Checks/GSIP.P02Checks.csproj --configuration Release --no-build
+
+      - name: Run P03 identity SQL/security checks
+        shell: pwsh
+        env:
+          GSIP_P03_SQL_SERVER: '(localdb)\MSSQLLocalDB'
+        run: dotnet run --project tests/GSIP.P03Checks/GSIP.P03Checks.csproj --configuration Release --no-build
+
+      - name: Run P03 security-header checks
+        run: dotnet run --project tests/GSIP.P03SecurityChecks/GSIP.P03SecurityChecks.csproj --configuration Release --no-build
+
+      - name: Run P03 bilingual auth browser evidence
+        shell: pwsh
+        run: ./scripts/verify-p03-identity.ps1
+
+      - name: Validate execution plan and governance
+        run: python scripts/validate_execution_plan.py
+
+      - name: Upload P03 identity evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: P03-Identity-Evidence-${{ github.sha }}
+          path: artifacts/p03-identity/
+          if-no-files-found: error
+          retention-days: 30

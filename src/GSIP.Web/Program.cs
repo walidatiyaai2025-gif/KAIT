@@ -1,9 +1,11 @@
 using System.Globalization;
+using System.Threading.RateLimiting;
 using GSIP.Application.Configuration;
 using GSIP.Application.Setup;
 using GSIP.Infrastructure;
 using GSIP.Integrations;
 using GSIP.Web;
+using GSIP.Web.Security;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Localization;
@@ -18,13 +20,31 @@ builder.Services.AddDataProtection()
     .SetApplicationName("GSIP");
 builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
 builder.Services.AddScoped<ShellText>();
+builder.Services.AddScoped<IdentityText>();
 builder.Services
     .AddControllersWithViews()
     .AddViewLocalization();
 builder.Services.Configure<PortalShellOptions>(builder.Configuration.GetSection(PortalShellOptions.SectionName));
-builder.Services.AddGsipInfrastructure();
+builder.Services.AddGsipInfrastructure(builder.Configuration, builder.Environment);
 builder.Services.AddGsipIntegrations();
 builder.Services.AddHealthChecks();
+
+var loginPermitLimit = Math.Max(1, builder.Configuration.GetValue<int?>("IdentitySecurity:LoginRateLimitPermitCount") ?? 10);
+var loginWindowSeconds = Math.Clamp(builder.Configuration.GetValue<int?>("IdentitySecurity:LoginRateLimitWindowSeconds") ?? 60, 1, 3600);
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("login", context => RateLimitPartition.GetFixedWindowLimiter(
+        partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        factory: _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = loginPermitLimit,
+            Window = TimeSpan.FromSeconds(loginWindowSeconds),
+            QueueLimit = 0,
+            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+            AutoReplenishment = true
+        }));
+});
 
 var app = builder.Build();
 
@@ -41,6 +61,7 @@ var localizationOptions = new RequestLocalizationOptions()
 localizationOptions.RequestCultureProviders.Insert(0, new QueryStringRequestCultureProvider());
 
 app.UseRequestLocalization(localizationOptions);
+app.UseGsipSecurityHeaders();
 app.UseStaticFiles();
 
 app.Use(async (context, next) =>
@@ -65,6 +86,11 @@ app.Use(async (context, next) =>
 
     await next();
 });
+
+app.UseRouting();
+app.UseRateLimiter();
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapHealthChecks("/health/live", new HealthCheckOptions
 {
