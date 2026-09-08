@@ -16,6 +16,6 @@ public sealed class ShellController(ISystemClock clock) : Controller
     private ShellViewModel CreateModel()
     {
         var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "0.1.0";
-        return new ShellViewModel(version, "P01", clock.UtcNow);
+        return new ShellViewModel(version, "P02", clock.UtcNow);
     }
 }
