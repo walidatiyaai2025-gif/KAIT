@@ -106,6 +106,9 @@ static void CheckDesignSystem(string root, List<string> failures)
     {
         Expect(css.Contains(component, StringComparison.Ordinal), $"Design-system component {component} is missing.", failures);
     }
+
+    var dashboard = File.ReadAllText(Path.Combine(root, "src", "GSIP.Web", "Views", "Shell", "Index.cshtml"));
+    Expect(dashboard.Contains("v@(Model.ProductVersion)", StringComparison.Ordinal), "Dashboard version must use an explicit Razor expression instead of leaking model syntax.", failures);
 }
 
 static void CheckPhaseBoundaries(string root, List<string> failures)

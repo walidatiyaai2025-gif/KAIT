@@ -31,13 +31,19 @@ try {
     $ar.Content | Set-Content (Join-Path $artifactDir 'dashboard-ar.html') -Encoding utf8
     $login.Content | Set-Content (Join-Path $artifactDir 'login-en.html') -Encoding utf8
 
+    $enDecoded = [System.Net.WebUtility]::HtmlDecode($en.Content)
+    $arDecoded = [System.Net.WebUtility]::HtmlDecode($ar.Content)
+    $loginDecoded = [System.Net.WebUtility]::HtmlDecode($login.Content)
+
     if ($en.Content -notmatch '<html lang="en" dir="ltr" data-culture-name="en">') { throw 'English shell culture/direction is incorrect.' }
     if ($ar.Content -notmatch '<html lang="ar" dir="rtl" data-culture-name="ar-KW">') { throw 'Arabic shell culture/direction is incorrect.' }
-    if ($ar.Content -notmatch 'بوابة تكامل الخدمات الحكومية') { throw 'Arabic localized product name is missing.' }
-    if ($ar.Content -match '>ProductName<') { throw 'Arabic resource lookup fell back to a resource key.' }
-    if ($en.Content -notmatch 'Government Services Integration Portal') { throw 'English localized product name is missing.' }
-    if ($login.Content -notmatch 'data-auth-state="shell-only"') { throw 'P01 login shell boundary marker is missing.' }
-    if ($login.Content -notmatch 'disabled') { throw 'P01 login controls must remain disabled.' }
+    if ($arDecoded -notmatch 'بوابة تكامل الخدمات الحكومية') { throw 'Arabic localized product name is missing after HTML decoding.' }
+    if ($arDecoded -match '>ProductName<') { throw 'Arabic resource lookup fell back to a resource key.' }
+    if ($enDecoded -notmatch 'Government Services Integration Portal') { throw 'English localized product name is missing.' }
+    if ($enDecoded -match '@Model\.ProductVersion') { throw 'Razor model expression leaked as literal text.' }
+    if ($enDecoded -notmatch 'v0\.1\.0') { throw 'Expected visible semantic version v0.1.0 is missing.' }
+    if ($loginDecoded -notmatch 'data-auth-state="shell-only"') { throw 'P01 login shell boundary marker is missing.' }
+    if ($loginDecoded -notmatch 'disabled') { throw 'P01 login controls must remain disabled.' }
 
     $browserCandidates = @(
         (Join-Path $env:ProgramFiles 'Google/Chrome/Application/chrome.exe'),
