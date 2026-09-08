@@ -1,0 +1,116 @@
+name: P07 Upgrade Persistence Acceptance
+
+on:
+  push:
+    branches:
+      - main
+      - worker/p07-upgrade-persistence-acceptance
+  pull_request:
+    paths:
+      - 'scripts/verify-p07-upgrade-persistence.ps1'
+      - '.github/workflows/p07-upgrade-persistence.yml'
+      - 'src/GSIP.Infrastructure/Setup/**'
+      - 'src/GSIP.Infrastructure/Metadata/**'
+      - 'src/GSIP.Infrastructure/Secrets/**'
+      - 'src/GSIP.Domain/Metadata/**'
+      - 'src/GSIP.Domain/Secrets/**'
+      - 'src/GSIP.Application/Execution/**'
+      - 'src/GSIP.Infrastructure/Execution/**'
+
+permissions:
+  contents: read
+
+jobs:
+  upgrade-persistence:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact candidate with closed-phase history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ env.CANDIDATE_SHA }}
+
+      - name: Verify exact candidate checkout
+        shell: pwsh
+        run: |
+          $actual = (git rev-parse HEAD).Trim()
+          if ($actual -ne $env:CANDIDATE_SHA) {
+            throw "Exact candidate mismatch: expected=$env:CANDIDATE_SHA actual=$actual"
+          }
+          Write-Host "EXACT_CANDIDATE_SHA=$actual"
+
+      - name: Setup pinned .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore solution
+        run: dotnet restore GSIP.sln
+
+      - name: Build solution Release
+        run: dotnet build GSIP.sln -c Release --no-restore
+
+      - name: Start SQL Server LocalDB
+        shell: pwsh
+        run: |
+          sqllocaldb start MSSQLLocalDB
+          sqllocaldb info MSSQLLocalDB
+
+      - name: Verify exact P06 upgrade persistence and P07 clean schema
+        shell: pwsh
+        run: ./scripts/verify-p07-upgrade-persistence.ps1
+
+      - name: Validate execution plan and governance
+        run: python scripts/validate_execution_plan.py
+
+      - name: Build sanitized exact-candidate evidence
+        shell: pwsh
+        run: |
+          $evidenceDir = Join-Path $PWD 'evidence/p07-upgrade-persistence'
+          New-Item -ItemType Directory -Force -Path $evidenceDir | Out-Null
+
+          $manifest = [ordered]@{
+            Project = 'GSIP'
+            Phase = 'P07'
+            Unit = 'upgrade-persistence-acceptance'
+            CandidateSha = $env:CANDIDATE_SHA
+            SourceClosedPhaseSha = 'fef5882abf8a6f12990c3e7c0e9f849d08cd7947'
+            Restore = 'PASS'
+            ReleaseBuild = 'PASS'
+            MigrationUpgrade = 'PASS'
+            SchemaChange = 'NONE'
+            DataPreservation = 'PASS'
+            ConfigurationIsolation = 'PASS'
+            ProtectedVaultPayloadPreserved = 'PASS'
+            CleanInstallSchema = 'PASS'
+            Governance = 'PASS'
+            SecretsIncluded = $false
+          }
+
+          $manifestPath = Join-Path $evidenceDir 'manifest.json'
+          $manifest | ConvertTo-Json | Set-Content -Path $manifestPath -Encoding utf8
+
+          $manifestHash = (Get-FileHash -Algorithm SHA256 -Path $manifestPath).Hash.ToLowerInvariant()
+          $manifestSize = (Get-Item $manifestPath).Length
+          "manifest.json  size=$manifestSize  sha256=$manifestHash" |
+            Set-Content -Path (Join-Path $evidenceDir 'SHA256SUMS.txt') -Encoding utf8
+
+          $contents = Get-Content -Raw -Path $manifestPath
+          if ($contents -match '(?i)(password|clientsecret|authorization\s*:|bearer\s+|plaintext)') {
+            throw 'Evidence manifest contains a prohibited secret-like field.'
+          }
+
+          Write-Host "EVIDENCE_CANDIDATE_SHA=$env:CANDIDATE_SHA"
+          Write-Host "EVIDENCE_MANIFEST_SIZE=$manifestSize"
+          Write-Host "EVIDENCE_MANIFEST_SHA256=$manifestHash"
+
+      - name: Upload exact-candidate evidence artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: p07-upgrade-persistence-evidence-${{ env.CANDIDATE_SHA }}
+          path: evidence/p07-upgrade-persistence/
+          if-no-files-found: error
+          retention-days: 30
