@@ -1,0 +1,52 @@
+name: P06 Rotation Redaction Cache
+
+on:
+  push:
+    branches:
+      - main
+      - 'worker/p06-rotation-redaction-cache'
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  rotation-redaction-cache:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup pinned .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Restore solution
+        run: dotnet restore GSIP.sln
+      - name: Restore P06 rotation/redaction checks
+        run: dotnet restore tests/GSIP.P06RotationRedactionChecks/GSIP.P06RotationRedactionChecks.csproj
+      - name: Build solution Release
+        run: dotnet build GSIP.sln -c Release --no-restore
+      - name: Build P06 rotation/redaction checks Release
+        run: dotnet build tests/GSIP.P06RotationRedactionChecks/GSIP.P06RotationRedactionChecks.csproj -c Release --no-restore
+      - name: Run redaction, sentinel and token-cache identity checks
+        run: dotnet run --project tests/GSIP.P06RotationRedactionChecks/GSIP.P06RotationRedactionChecks.csproj -c Release --no-build
+      - name: Fail if sentinel plaintext entered evidence output
+        shell: pwsh
+        run: |
+          $sentinel = 'P06_SENTINEL_3A7F2D0C91E84B76A5D4_SECRET'
+          $files = Get-ChildItem artifacts/p06-rotation-redaction-cache -File -Recurse
+          $hits = $files | Select-String -SimpleMatch $sentinel
+          if ($hits) {
+            throw 'Synthetic sentinel plaintext leaked into evidence output.'
+          }
+      - name: Validate execution plan and governance
+        run: python scripts/validate_execution_plan.py
+      - name: Upload P06 rotation/redaction/cache evidence
+        if: ${{ always() && github.event_name == 'push' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: P06-Rotation-Redaction-Cache-Evidence-${{ github.sha }}
+          path: artifacts/p06-rotation-redaction-cache/
+          if-no-files-found: error
+          retention-days: 30
