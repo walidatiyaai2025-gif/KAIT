@@ -4,8 +4,8 @@ This ledger is evidence-driven. Never mark a phase CLOSED because a prompt says 
 
 | Phase | Status | Scope / closure focus |
 |---|---|---|
-| P00 | OPEN | Live-state baseline, platform/toolchain pinning, repo structure, version policy, build/test/CI baseline, control-doc reconciliation |
-| P01 | LOCKED | Solution architecture and bilingual shell; mandatory design-system baseline |
+| P00 | CLOSED | Closed from exact-main SHA `8156c46ce8ce366424d955a6194d677c2da5055f`; Planning Integrity `34210899288` SUCCESS; P00 Build Baseline `34210899267` SUCCESS; exact-main baseline artifact produced and hashed |
+| P01 | OPEN | Solution architecture and bilingual shell; mandatory design-system baseline and P01 UI evidence |
 | P02 | LOCKED | Complete first-run Setup Wizard before Login, SQL Server test/create/use/migrations/admin/security/review/finish; create service/environment placeholders only, never source-coded live credentials |
 | P03 | LOCKED | Identity, MFA, sessions, lockout/rate limiting, account security and auth audit |
 | P04 | LOCKED | RBAC, server-side authorization, per-service permissions, high-fidelity permissions UI |
@@ -22,6 +22,10 @@ This ledger is evidence-driven. Never mark a phase CLOSED because a prompt says 
 | P15 | LOCKED | Professional Windows/IIS installer, upgrade/repair/uninstall path, versioned artifact + SHA-256 |
 | P16 | LOCKED | Full automated acceptance on exact release candidate including setup→login→RBAC→MOJ→history→audit→installer + UI parity + service/environment isolation |
 | P17 | LOCKED | Final convergence, exact-main regression repair, stale integration recovery, ledger/evidence reconciliation and final release closure |
+
+## P00 closure record
+
+P00 implementation was integrated by PR #2. The exact integrated `main` SHA `8156c46ce8ce366424d955a6194d677c2da5055f` passed both required workflows and produced `GSIP-P00-Baseline-0.1.0-8156c46ce8ce.zip` with workflow artifact digest `sha256:455be98b93727c20646193da3682f92a20bbc9d373881ea6b3b4f443d967a731`. No owner-only evidence was deferred for P00.
 
 ## Cross-phase gates
 

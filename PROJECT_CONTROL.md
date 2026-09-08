@@ -6,11 +6,25 @@
 - Repository: `walidatiyaai2025-gif/KAIT`
 - Default branch: `main`
 - Delivery model: phase-gated autonomous implementation
-- Current planned product state: P00 build/runtime/CI baseline implementation in progress
+- Current planned product state: P00 CLOSED; P01 solution architecture and bilingual shell is the next legal phase after transition exact-main verification
+- Initial executable version: `0.1.0`
+- Pinned SDK / target framework: .NET SDK `10.0.400` / `net10.0`
 - Initial entity: Ministry of Justice (MOJ), Kuwait
 - UI languages: Arabic (RTL) and English (LTR)
 - Deployment target: Windows Server / IIS
 - Database target: Microsoft SQL Server
+
+## Last closed phase evidence
+
+P00 was closed from exact integrated `main` SHA `8156c46ce8ce366424d955a6194d677c2da5055f` after:
+
+- normal integration through PR #2;
+- Planning Integrity run `34210899288`: SUCCESS;
+- P00 Build Baseline run `34210899267`: SUCCESS;
+- pinned SDK selection, restore, Release build, executable contract checks, publish/package/hash/upload all succeeded;
+- exact-main artifact `GSIP-P00-Baseline-0.1.0-8156c46ce8ce.zip` was produced;
+- workflow artifact digest: `sha256:455be98b93727c20646193da3682f92a20bbc9d373881ea6b3b4f443d967a731`;
+- no owner-only or external evidence was deferred.
 
 ## Authoritative documents
 
@@ -32,10 +46,11 @@ No old prompt, screenshot caption, branch description, or stale ledger overrides
 ## Phase policy
 
 - Exactly one canonical current phase exists at a time.
-- The current phase begins at P00.
+- P00 is closed; P01 is the next phase.
 - Future phases remain locked until the current phase is formally CLOSED.
 - Phase exit requires implementation + tests + evidence + documentation reconciliation + pushed commit + required CI + exact-main recheck.
 - Integration recovery and exact-main regressions take priority over new feature work.
+- A phase-transition branch does not authorize new-phase implementation until that transition is integrated and the resulting exact-main gate is green.
 
 ## Branch and PR policy
 
@@ -48,7 +63,7 @@ No old prompt, screenshot caption, branch description, or stale ledger overrides
 
 ## Versioning
 
-P00 pins .NET 10 LTS / `net10.0`, the deterministic SDK baseline, initial version and artifact naming in `docs/BUILD_AND_VERSIONING.md`. Do not silently change pinned platform versions later.
+P00 pinned .NET 10 LTS / `net10.0`, SDK `10.0.400`, initial version `0.1.0` and artifact naming in `docs/BUILD_AND_VERSIONING.md`. Do not silently change pinned platform versions later.
 
 ## Setup contract
 
