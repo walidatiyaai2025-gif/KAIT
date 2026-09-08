@@ -24,11 +24,12 @@ public sealed class MetadataCatalogService(GsipDbContext dbContext, ISystemClock
     {
         var entities = await dbContext.CatalogEntities.AsNoTracking()
             .OrderBy(x => x.DisplayOrder).ThenBy(x => x.Code).ToListAsync(cancellationToken);
-        var services = await dbContext.CatalogServices.AsNoTracking()
+        var services = await dbContext.CatalogServices.AsNoTrackingWithIdentityResolution()
             .Where(x => x.IsCurrent)
             .Include(x => x.EnvironmentConfigs)
             .Include(x => x.Fields)
             .Include(x => x.ResultMappings)
+            .AsSplitQuery()
             .OrderBy(x => x.Code)
             .ToListAsync(cancellationToken);
         var environments = await dbContext.CatalogEnvironments.AsNoTracking()
