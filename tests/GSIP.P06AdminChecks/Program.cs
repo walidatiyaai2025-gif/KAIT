@@ -17,13 +17,15 @@ Check(!model.Contains("SecretValue", StringComparison.Ordinal), "Presentation mo
 Check(!model.Contains("PlaintextValue", StringComparison.Ordinal), "Presentation model cannot carry plaintext secret aliases.");
 Check(view.CountOccurrences("type=\"password\"") >= 2, "Create/replace and rotate must use password inputs.");
 Check(view.CountOccurrences("autocomplete=\"new-password\"") >= 2, "Secret inputs must not be browser-recovered values.");
-Check(view.CountOccurrences("@Html.AntiForgeryToken()") >= 6, "Every mutation form family must render an anti-forgery token.");
+Check(view.CountOccurrences("@Html.AntiForgeryToken()") >= 7, "Every mutation form family, including metadata edit, must render an anti-forgery token.");
+Check(view.Contains("action=\"/auth-profiles/@profile.Id\"", StringComparison.Ordinal), "Existing AuthProfile metadata must be editable.");
+Check(view.Contains("metadata-edit-form", StringComparison.Ordinal), "AuthProfile metadata edit form is missing.");
 Check(!view.Contains("value=\"@secret.", StringComparison.OrdinalIgnoreCase), "Secret metadata must never populate a value attribute.");
 Check(!view.Contains("@secret.SecretValue", StringComparison.OrdinalIgnoreCase)
     && !view.Contains("@Model.SecretValue", StringComparison.OrdinalIgnoreCase)
     && !view.Contains(".PlaintextValue", StringComparison.OrdinalIgnoreCase),
     "Razor must not bind a plaintext secret property.");
-Check(view.Contains("confirmShared", StringComparison.Ordinal) && view.Contains("profile.IsShared || profile.BindingCount == 0", StringComparison.Ordinal), "Sharing must be explicit and isolated profiles cannot be offered for implicit reuse.");
+Check(view.CountOccurrences("confirmShared") >= 2 && view.Contains("profile.IsShared || profile.BindingCount == 0", StringComparison.Ordinal), "Create/edit sharing must be explicit and isolated profiles cannot be offered for implicit reuse.");
 Check(view.Contains("confirmRotation", StringComparison.Ordinal), "Rotation requires an explicit confirmation.");
 Check(view.Contains("CultureInfo.CurrentUICulture.TextInfo.IsRightToLeft", StringComparison.Ordinal), "UI must respond to RTL/LTR culture direction.");
 Check(css.Contains(":focus-visible", StringComparison.Ordinal) && css.Contains("@media(max-width:480px)", StringComparison.Ordinal), "Keyboard focus and narrow mobile behavior are required.");
