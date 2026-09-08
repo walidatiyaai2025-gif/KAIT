@@ -103,8 +103,8 @@ public sealed class MetadataCatalogService(GsipDbContext dbContext, ISystemClock
             DescriptionEn = normalized.DescriptionEn, Active = normalized.Active, Version = 1, IsCurrent = true,
             CreatedAtUtc = now, UpdatedAtUtc = now
         };
-        dbContext.CatalogServices.Add(service);
         await AddChildrenAsync(service, normalized, cancellationToken);
+        dbContext.CatalogServices.Add(service);
         await dbContext.SaveChangesAsync(cancellationToken);
         return service;
     }
@@ -120,17 +120,21 @@ public sealed class MetadataCatalogService(GsipDbContext dbContext, ISystemClock
 
         if (service.FirstUsedAtUtc.HasValue)
         {
+            var revision = CreateRevision(service, normalized, normalized.Active);
+            await AddChildrenAsync(revision, normalized, cancellationToken);
+
             await using var revisionTransaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
             service.IsCurrent = false;
             service.UpdatedAtUtc = clock.UtcNow;
             await dbContext.SaveChangesAsync(cancellationToken);
-            var revision = CreateRevision(service, normalized, normalized.Active);
             dbContext.CatalogServices.Add(revision);
-            await AddChildrenAsync(revision, normalized, cancellationToken);
             await dbContext.SaveChangesAsync(cancellationToken);
             await revisionTransaction.CommitAsync(cancellationToken);
             return revision;
         }
+
+        var replacementChildren = new CatalogService();
+        await AddChildrenAsync(replacementChildren, normalized, cancellationToken);
 
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
         dbContext.ServiceEnvironmentConfigs.RemoveRange(service.EnvironmentConfigs);
@@ -144,7 +148,9 @@ public sealed class MetadataCatalogService(GsipDbContext dbContext, ISystemClock
         service.DescriptionEn = normalized.DescriptionEn;
         service.Active = normalized.Active;
         service.UpdatedAtUtc = clock.UtcNow;
-        await AddChildrenAsync(service, normalized, cancellationToken);
+        foreach (var config in replacementChildren.EnvironmentConfigs) service.EnvironmentConfigs.Add(config);
+        foreach (var field in replacementChildren.Fields) service.Fields.Add(field);
+        foreach (var mapping in replacementChildren.ResultMappings) service.ResultMappings.Add(mapping);
         await dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         return service;
