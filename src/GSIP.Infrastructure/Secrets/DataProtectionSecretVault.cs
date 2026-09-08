@@ -38,7 +38,7 @@ public sealed class DataProtectionSecretVault(
         if (generation < 2)
             throw new SecretReferenceRejectedException();
 
-        await ValidateScopeAsync(serviceId, environmentId, authProfileId, cancellationToken);
+        await ValidateOwnerScopeAsync(serviceId, environmentId, authProfileId, cancellationToken);
         var current = await dbContext.AuthProfileSecrets.AsNoTracking().SingleOrDefaultAsync(
             x => x.AuthProfileId == authProfileId && x.SecretName == normalizedName,
             cancellationToken);
@@ -65,7 +65,7 @@ public sealed class DataProtectionSecretVault(
         CancellationToken cancellationToken = default)
     {
         var normalizedName = NormalizeSecretName(secretName);
-        await ValidateScopeAsync(serviceId, environmentId, authProfileId, cancellationToken);
+        await ValidateOwnerScopeAsync(serviceId, environmentId, authProfileId, cancellationToken);
 
         var existing = await dbContext.SecretVaultEntries.AsNoTracking().SingleOrDefaultAsync(
             x => x.Reference == secretRef.Value,
@@ -169,11 +169,23 @@ public sealed class DataProtectionSecretVault(
     {
         ArgumentNullException.ThrowIfNull(operation);
         var normalizedName = NormalizeSecretName(secretName);
+        if (serviceId == Guid.Empty || environmentId == Guid.Empty || authProfileId == Guid.Empty)
+            throw new SecretReferenceRejectedException();
+
+        var bindingAllowed = await dbContext.AuthProfileBindings.AsNoTracking().AnyAsync(
+            x => x.AuthProfileId == authProfileId
+                 && x.ServiceId == serviceId
+                 && x.EnvironmentId == environmentId,
+            cancellationToken);
+        var profileEnabled = await dbContext.AuthProfiles.AsNoTracking().AnyAsync(
+            x => x.Id == authProfileId && x.IsEnabled,
+            cancellationToken);
+        if (!bindingAllowed || !profileEnabled)
+            throw new SecretReferenceRejectedException();
+
         var entry = await dbContext.SecretVaultEntries.AsNoTracking().SingleOrDefaultAsync(
             x => x.Reference == secretRef.Value
                  && x.State == SecretLifecycleState.Active
-                 && x.OwnerServiceId == serviceId
-                 && x.OwnerEnvironmentId == environmentId
                  && x.OwnerAuthProfileId == authProfileId
                  && x.SecretName == normalizedName,
             cancellationToken);
@@ -222,7 +234,7 @@ public sealed class DataProtectionSecretVault(
         if (!configExists)
             throw new SecretReferenceRejectedException();
         if (authProfileId.HasValue)
-            await ValidateScopeAsync(serviceId, environmentId, authProfileId.Value, cancellationToken);
+            await ValidateOwnerScopeAsync(serviceId, environmentId, authProfileId.Value, cancellationToken);
 
         var working = secretMaterial.ToArray();
         byte[] protectedPayload;
@@ -257,7 +269,7 @@ public sealed class DataProtectionSecretVault(
         return ToDescriptor(entry);
     }
 
-    private async Task ValidateScopeAsync(Guid serviceId, Guid environmentId, Guid authProfileId, CancellationToken cancellationToken)
+    private async Task ValidateOwnerScopeAsync(Guid serviceId, Guid environmentId, Guid authProfileId, CancellationToken cancellationToken)
     {
         if (serviceId == Guid.Empty || environmentId == Guid.Empty || authProfileId == Guid.Empty)
             throw new SecretReferenceRejectedException();

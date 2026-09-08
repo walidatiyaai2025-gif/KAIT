@@ -101,6 +101,18 @@ var throwingKnownSecretResult = SecretRedaction.RedactText("diagnostic text", ne
 Assert(throwingKnownSecretResult == SecretRedaction.Redacted, "Throwing known-secret source did not fail closed.");
 AssertNoSentinel(throwingKnownSecretResult, "Throwing known-secret source leaked plaintext.");
 
+var throwingKnownSecretFields = SecretRedaction.RedactFields(
+    new Dictionary<string, object?> { ["diagnostic"] = $"structured value {Sentinel}" },
+    new ThrowingSecretEnumerable(Sentinel));
+Assert(
+    throwingKnownSecretFields.Count == 1
+        && throwingKnownSecretFields.TryGetValue("redactionFailure", out var structuredSecretSourceFailure)
+        && structuredSecretSourceFailure == SecretRedaction.Redacted,
+    "Structured redaction did not fail closed when the known-secret source failed.");
+AssertNoSentinel(
+    JsonSerializer.Serialize(throwingKnownSecretFields),
+    "Structured redaction leaked plaintext when the known-secret source failed.");
+
 var configuredState = SecretRedaction.ToSafeSecretState(configured: true, generation: 7);
 Assert(configuredState.DisplayValue == SecretRedaction.UiMask, "UI-safe secret state did not use the constant mask.");
 AssertNoSentinel(JsonSerializer.Serialize(configuredState), "UI-safe representation leaked sentinel plaintext.");
