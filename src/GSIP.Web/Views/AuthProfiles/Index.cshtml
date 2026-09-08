@@ -152,6 +152,29 @@
                     </div>
                 </header>
 
+                <details class="secure-details profile-settings">
+                    <summary>@L["EditMetadata"]</summary>
+                    <form method="post" action="/auth-profiles/@profile.Id" class="auth-form metadata-edit-form">
+                        @Html.AntiForgeryToken()
+                        <label>@L["ProfileName"]<input name="name" value="@profile.Name" maxlength="160" required autocomplete="off" /></label>
+                        <label>@L["AuthenticationType"]
+                            <select name="authenticationType" required>
+                                <option value="ApiKey" selected="@(profile.AuthenticationType == "ApiKey")">API Key</option>
+                                <option value="BearerToken" selected="@(profile.AuthenticationType == "BearerToken")">Bearer Token</option>
+                                <option value="UsernamePassword" selected="@(profile.AuthenticationType == "UsernamePassword")">Username / Password</option>
+                                <option value="ClientCredentials" selected="@(profile.AuthenticationType == "ClientCredentials")">Client Credentials</option>
+                            </select>
+                        </label>
+                        <fieldset class="sharing-fieldset">
+                            <legend>@L["IsolationMode"]</legend>
+                            <label class="choice"><input type="radio" name="sharingMode" value="Isolated" checked="@(!profile.IsShared)" /> @L["Isolated"]</label>
+                            <label class="choice"><input type="radio" name="sharingMode" value="Shared" checked="@profile.IsShared" /> @L["Shared"]</label>
+                            <label class="confirm-share"><input type="checkbox" name="confirmShared" value="true" checked="@profile.IsShared" /> @L["ConfirmShared"]</label>
+                        </fieldset>
+                        <button class="auth-button secondary" type="submit">@L["Save"]</button>
+                    </form>
+                </details>
+
                 <div class="profile-columns">
                     <section class="profile-section">
                         <h4>@L["Secrets"]</h4>
