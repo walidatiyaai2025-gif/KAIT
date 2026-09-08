@@ -1,0 +1,134 @@
+{
+  "SchemaVersion": 1,
+  "Name": "GSIP - Full Autonomous Implementation Sequence",
+  "Loop": false,
+  "DefaultDelaySeconds": 40,
+  "Messages": [
+    {
+      "Label": "P00 - Baseline and live-state discovery",
+      "Text": "ابدأ مشروع Government Services Integration Portal (GSIP) من الحالة الحية للمستودع. إذا كان المستودع يحتوي عملاً سابقاً، اقرأ README/AGENTS/خطط المشروع وPRs/branches/CI قبل أي كتابة، ولا تكرر عملاً موجوداً. ثبّت المتطلبات المرجعية: ASP.NET Core مؤسسي ثنائي اللغة، Setup Wizard أول تشغيل، SQL Server، Users/Roles/Permissions، Audit، Metadata-driven entities/services، Integration Engine آمن، والجهة الأولى MOJ بخمس خدمات. أنشئ/حدّث وثيقة PROJECT_CONTROL.md وCURRENT_PHASE.md وTASK_LEDGER.md بشكل مختصر وقابل للتدقيق. ثبّت versioning وbranch policy وCI baseline. لا تبدأ وظائف مستقبلية قبل إغلاق هذه المرحلة. نفّذ build/tests الموجودة، أصلح أي regression، commit/push ثم سجّل evidence للـ exact head. ممنوع hard-code لأي secret أو API key أو password.",
+      "Enabled": true,
+      "DelaySeconds": 40,
+      "Sent": false
+    },
+    {
+      "Label": "P01 - Solution architecture and bilingual shell",
+      "Text": "نفّذ P01 فقط بعد تأكيد إغلاق P00 من الحالة الحية. أنشئ solution architecture واضحة: GSIP.Web, GSIP.Application, GSIP.Domain, GSIP.Infrastructure, GSIP.Integrations, GSIP.Contracts مع مشاريع الاختبارات. استخدم Dependency Injection وOptions pattern وEF Core abstractions المناسبة. اعتبر ملفات التصميم الأربعة الموجودة في docs/ui-baseline/ مرجعاً بصرياً ملزماً للإصدار الأول: Dashboard، Service Execution، Permissions، Audit & Monitoring. ابنِ Design System عالي المطابقة: navy/blue/gold، top header، sidebar، cards، tables، forms، alerts، badges، spacing والvisual hierarchy. ممنوع استبدالها بقالب Admin جاهز أو تبسيطها جذرياً. أنشئ docs/DESIGN_DECISIONS.md؛ أي انحراف جوهري يحتاج سبباً موثقاً ولقطات قبل/بعد. فعّل localization resource-based للعربية والإنجليزية مع RTL/LTR حقيقي وتبديل اللغة مع بقاء المسار والحالة. أضف landing/login shell فقط دون تنفيذ business features قبل أوانها. أضف unit smoke tests وbrowser screenshot baseline checks بالعربية والإنجليزية، شغّل build/tests، أصلح، commit/push وحدث ledger/evidence. لا تغلق P01 بدون Design Parity Evidence على exact head.",
+      "Enabled": true,
+      "DelaySeconds": 40,
+      "Sent": false
+    },
+    {
+      "Label": "P02 - Complete first-run Setup Wizard",
+      "Text": "نفّذ First-Run Setup Wizard كاملاً قبل بقية النظام. عند عدم وجود SetupCompleted=true يجب تحويل أي مستخدم إلى /setup وعدم إظهار Login. الخطوات إلزامية بنظام Back/Next/Progress: Welcome+Language، Preflight، Database، Test Connection، Create/Use Existing DB، EF migrations، إنشاء System Administrator، Organization/Branding، Security Baseline، Integration Environment، MOJ Auth placeholders، Notifications optional، Review/Health Check، Finish. Database step يجب أن يسأل Server/Instance, Database Name, Windows أو SQL Authentication, Username/Password عند الحاجة, Encrypt, TrustServerCertificate, Timeout مع زر Test Connection. خزّن connection secret بشكل آمن ولا تطبعه في log. دعم restart/resume أثناء setup، ومنع Finish عند critical failure. بعد Finish اقفل setup routes إلا recovery server-side مصرح. اكتب E2E tests لنجاح setup ولحالات DB credentials خاطئة وmigration failure/retry. build/test/repair ثم commit/push/evidence.",
+      "Enabled": true,
+      "DelaySeconds": 40,
+      "Sent": false
+    },
+    {
+      "Label": "P03 - Identity, MFA, sessions and account security",
+      "Text": "نفّذ نظام الهوية بعد نجاح setup: ASP.NET Core Identity أو طبقة ناضجة مكافئة، login/logout، password policy configurable، lockout/rate limiting، session timeout، remember-me policy، account enable/disable، last login، forced password change، MFA enrollment/verification مع إلزامه للحسابات privileged وفق الإعداد. طبّق HTTPS/HSTS production settings، Secure/HttpOnly/SameSite cookies، CSRF، CSP/security headers. أضف audit events لكل login success/failure/logout/MFA/lockout دون تخزين كلمات مرور أو tokens. اختبر negative paths ومحاولات تجاوز الحماية. لا تبدأ RBAC التفصيلي قبل إغلاق هذه المرحلة. build/tests/evidence/commit/push.",
+      "Enabled": true,
+      "DelaySeconds": 40,
+      "Sent": false
+    },
+    {
+      "Label": "P04 - RBAC and service-level permissions",
+      "Text": "ابنِ RBAC دقيقاً: System Administrator, Integration Manager, Service Operator, Auditor, Read Only كـ seed roles قابلة للتعديل. أنشئ permissions على الأقل: Entities.View/Manage, Services.View/Execute/Manage, ServiceSecrets.Manage, Users.View/Manage, Roles.Manage, Requests.ViewOwn/ViewDepartment/ViewAll/Export, Audit.View/Export/ViewSensitive, Settings.Manage, Diagnostics.Run, System.Backup/Restore. أضف RolePermissions وUserRoles وservice permission matrix بحيث يمكن منع/السماح بخدمة محددة لكل role. أي permission جديدة Default Deny. طبّق authorization server-side على controllers/handlers/API وليس UI فقط. نفّذ شاشة Permissions & Role Management عالية المطابقة لملف docs/ui-baseline/bilingual_kuwait_government_permissions_dashboard.png وتشمل users, roles, matrix, assigned roles, pending approvals. احفظ screenshots عربية وإنجليزية وقارنها بالمرجع؛ لا تغلق المرحلة مع critical visual drift. أضف negative authorization tests وIDOR tests. build/test/repair ثم commit/push/evidence.",
+      "Enabled": true,
+      "DelaySeconds": 40,
+      "Sent": false
+    },
+    {
+      "Label": "P05 - Entity and Service metadata catalog",
+      "Text": "ابنِ Metadata-Driven catalog بحيث لا يحتاج النظام كوداً جديداً لكل خدمة. Entities: Code, NameAr/En, Logo, Active, DisplayOrder. Environments: UAT/Production, BaseUrl, Proxy/TLS/Timeout/Health. Services: Code, NameAr/En, Description, Method, RelativePath, ContentType, AuthProfile, Active. ServiceFields: Key, LabelAr/En, Type, Required, Regex, Min/Max, options, order, Sensitive, Masking. ResultMappings: source path, labels, type, formatter, Sensitive, order. أنشئ admin CRUD آمن مع versioning للتعريفات المستخدمة وعدم التعديل الصامت. أضف import/export metadata JSON schema. اختبر إنشاء جهة وخدمة تجريبية كاملة دون كتابة Controller/View خاص. commit/push/evidence.",
+      "Enabled": true,
+      "DelaySeconds": 40,
+      "Sent": false
+    },
+    {
+      "Label": "P06 - Secret vault and authentication profiles",
+      "Text": "ابنِ Secret Vault abstraction. لا تخزن أي API key/token/password كنص صريح. استخدم ASP.NET Core Data Protection مع key storage مناسب لـ Windows Server/DPAPI أو certificate حسب deployment، مع إمكانية rotation. AuthProfile types: None, ApiKeyHeader, StaticBearer, TokenEndpoint, ApiKeyPlusBearer, CustomHeaders. في UI لا تعرض secret كاملاً بعد الحفظ؛ اعرض masked state وLastRotatedAt وTest/Rotate/Revoke. امنع logs/exceptions/request dumps من Authorization/x-api-key/password. نفّذ token cache encrypted/in-memory حسب الحاجة مع expiry safety window وsingle-flight refresh لمنع stampede. أضف tests للـ encryption، rotation، log redaction، expired token، revoked key. commit/push/evidence.",
+      "Enabled": true,
+      "DelaySeconds": 40,
+      "Sent": false
+    },
+    {
+      "Label": "P07 - Generic service execution engine",
+      "Text": "ابنِ Generic Execution Engine: المستخدم يختار Entity ثم Service المسموح بها، النظام يبني form من ServiceFields، يعمل client+server validation، ينشئ RequestId/CorrelationId، يحل Environment/AuthProfile، ينفذ HttpClient request، ثم يحول response إلى Structured Result عبر ResultMappings. استخدم HttpClientFactory/resilience بدون إعادة POST تلقائياً إلا عندما service metadata تصرح بأنه SafeToRetry. سجّل status code/duration/endpoint alias دون secrets. نفّذ Service Execution UI عالية المطابقة لملف docs/ui-baseline/bilingual_kuwait_government_service_portal.png بما يشمل entity/service selectors، dynamic request fields، service-info card، Result/Raw Response/History، request metadata، status states. عالج 2xx/400/401/403/404/409/429/5xx/timeout/TLS بشكل واضح ثنائي اللغة. أضف screenshots عربية وإنجليزية وvisual-regression evidence، واختبر fake endpoints لكل الحالات. commit/push/evidence.",
+      "Enabled": true,
+      "DelaySeconds": 40,
+      "Sent": false
+    },
+    {
+      "Label": "P08 - MOJ authentication token flow",
+      "Text": "نفّذ MOJ authentication profile استناداً إلى التوثيق الرسمي المرفق بالمشروع وليس التخمين. يجب دعم x-api-key gateway header، وPOST /genToken الذي يستقبل username/password بصيغة application/x-www-form-urlencoded ويعيد token داخل response data وفق schema الرسمي، ثم يستخدم Authorization: Bearer <token> لبقية Marriage APIs عند طلب التوثيق لذلك. اجعل base URL والheader name والpaths من environment/metadata وليس hard-coded. خزّن API key وusername/password في Secret Vault. أضف token generation Test button في الإدارة وcontract fixtures لـ 200/401/expired token. لا تستخدم credentials حقيقية في source/tests. commit/push/evidence.",
+      "Enabled": true,
+      "DelaySeconds": 40,
+      "Sent": false
+    },
+    {
+      "Label": "P09 - Seed and implement the five MOJ services",
+      "Text": "أضف وزارة العدل MOJ كأول Entity وأنشئ seed metadata للخدمات الخمس فقط: Marriage Cases Service, Is Single Basic Service, Marriage Couple Last Case Service, Family Judgment Text Service, Procuration Status Service. لا تخترع request/response fields: اقرأ OpenAPI/Swagger snapshots الرسمية واحفظ نسخة مرجعية، ثم استخرج الحقول المطلوبة ونوعها وvalidation والendpoint والمصادقة والresponse mappings منها. الحقول المؤكدة من التوثيق تُستخدم كما هي؛ أي حقل غير مؤكد يبقى blocked حتى يُقرأ schema الرسمي. أضف contract tests لكل خدمة لحالات 200/400/401/404/500 أو ما يحدده التوثيق. عند توفر UAT credentials المصرح بها نفّذ smoke محدود غير مدمر فقط. commit/push/evidence.",
+      "Enabled": true,
+      "DelaySeconds": 40,
+      "Sent": false
+    },
+    {
+      "Label": "P10 - Requests, result history and exports",
+      "Text": "ابنِ Request History كاملاً. كل تنفيذ يخزن RequestId, user, department, entity/service/version, masked input snapshot, status code, duration, correlation id, timestamps. تخزين structured result/raw response يكون configurable لكل خدمة، encrypted إذا كان حساساً، ويمكن تعطيل raw storage. المستخدم يرى Own history افتراضياً؛ Department/All حسب permission. أضف search/filter/date range/status/entity/service. export/print/PDF/CSV/Excel حسب permission، وكل عملية export تسجل Audit Event. لا تعرض civil IDs أو payload حساس دون masking/permission. اختبر isolation بين المستخدمين والأقسام. commit/push/evidence.",
+      "Enabled": true,
+      "DelaySeconds": 40,
+      "Sent": false
+    },
+    {
+      "Label": "P11 - Audit trail, tamper evidence and monitoring",
+      "Text": "ابنِ Audit & Monitoring: immutable-from-UI append-only events للهوية والصلاحيات وتغييرات metadata/secrets وتشغيل الخدمات وعرض البيانات الحساسة والتصدير والsetup/configuration. أضف PreviousHash/RecordHash chain أو tamper-evident mechanism قابل للتحقق. لا تسجل secrets مطلقاً. نفّذ Audit dashboard عالية المطابقة لملف docs/ui-baseline/kuwait_government_audit_dashboard.png: KPIs، date/entity/service/user/status filters، request-volume visualization، security indicators، audit table، detail drawer، masked request/response payload، authentication/device/source metadata. retention configurable؛ لا تثبت مدة قانونية نهائية في الكود. أضف screenshots عربية وإنجليزية ومقارنة visual parity، verification job للـ hash chain وtests لاكتشاف العبث. commit/push/evidence.",
+      "Enabled": true,
+      "DelaySeconds": 40,
+      "Sent": false
+    },
+    {
+      "Label": "P12 - Admin operations, health and diagnostics",
+      "Text": "اكمل Admin Operations: environment endpoints، service activation/versioning، timeouts، proxy، TLS options، SMTP، branding، language defaults، retention، maintenance mode. أضف System Health checks للـ DB، Data Protection keys، disk، MOJ token generation، external endpoint reachability، clock skew. Diagnostics يجب أن يكون permission-protected ويعمل sanitization للheaders/payload. Secret rotation workflow: create new -> test -> activate -> revoke old مع audit. أضف alerts للـ repeated failures ومشاكل health. commit/push/evidence.",
+      "Enabled": true,
+      "DelaySeconds": 40,
+      "Sent": false
+    },
+    {
+      "Label": "P13 - Arabic/English UX and accessibility convergence",
+      "Text": "نفّذ UI DESIGN PARITY GATE + convergence كامل للواجهات: Home/Entities/Services/Service Execution/Requests/Audit/Permissions/Settings/Setup/Login. المرجع البصري الملزم هو الملفات الأربعة داخل docs/ui-baseline/. قارن Dashboard مع bilingual_kuwait_government_services_dashboard.png، وService Execution مع bilingual_kuwait_government_service_portal.png، وPermissions مع bilingual_kuwait_government_permissions_dashboard.png، وAudit مع kuwait_government_audit_dashboard.png. العربية RTL والإنجليزية LTR دون layout breaks، وCivil ID inputs تظل ذات اتجاه رقمي صحيح. استخرج كل النصوص إلى resources وmetadata bilingual fields. طبق responsive design desktop/tablet/mobile؛ Desktop يجب أن يكون High-Fidelity للمرجع، وTablet/Mobile يعيدان ترتيب نفس المكونات دون حذف وظائف. طبّق keyboard navigation، labels، focus states، contrast، validation summaries، empty/loading/error states. أنشئ screenshots evidence بالعربية والإنجليزية للـ 4 شاشات على exact head مع visual comparison، وسجل أي فرق جوهري في docs/DESIGN_DECISIONS.md. ممنوع إغلاق P13 مع critical visual drift أو استبدال المرجع بقالب أبسط. أصلح كل regression قبل الإغلاق. commit/push/evidence.",
+      "Enabled": true,
+      "DelaySeconds": 40,
+      "Sent": false
+    },
+    {
+      "Label": "P14 - Security hardening and resilience",
+      "Text": "نفّذ hardening شامل: authorization bypass/IDOR tests، CSRF/XSS/output encoding، rate limiting، session fixation، brute force، secure headers، secret/log leakage scans، database migration safety، retry storm prevention، timeout/cancellation، external API outage behavior، token refresh concurrency، input fuzzing للحقول الديناميكية، upload/logo restrictions إن وجدت. راجع NuGet dependencies والlicenses والثغرات. لا تعتبر المرحلة مغلقة مع Critical/High vulnerability معروفة. وثق threat model مختصر وsecurity checklist. commit/push/evidence.",
+      "Enabled": true,
+      "DelaySeconds": 40,
+      "Sent": false
+    },
+    {
+      "Label": "P15 - Windows/IIS installer and upgrade path",
+      "Text": "أنشئ Deployment Installer احترافي بنظام Next/Next لـ Windows Server/IIS: Welcome، prerequisites، install path/site، App Pool identity، IIS binding، HTTPS certificate selection، file deployment، ACL، verification، ثم Launch First-Run Setup. لا تطلب DB/API secrets داخل installer نفسه إلا إذا كانت آلية التخزين الآمن مثبتة؛ المسار الافتراضي هو إدخالها داخل /setup بعد التثبيت. اختبر clean install، upgrade من إصدار سابق، repair، uninstall مع الحفاظ على DB/Data Protection keys افتراضياً، وعدم نسخ dev DB. أنشئ versioned installer artifact وSHA-256 وinstall log sanitized. commit/push/evidence.",
+      "Enabled": true,
+      "DelaySeconds": 40,
+      "Sent": false
+    },
+    {
+      "Label": "P16 - Full automated acceptance and release candidate",
+      "Text": "شغّل full acceptance على exact candidate: clean setup -> admin login+MFA -> create/operator user -> permissions -> select MOJ entity -> run each service against mocks/contract fixtures ثم UAT smoke فقط إن كانت credentials والبيانات مصرح بها -> result/history -> audit -> export permission checks -> secret rotation -> health -> backup/restore rehearsal. شغّل unit/integration/E2E/security/localization/performance baseline. نفّذ UI Design Parity acceptance للـ 4 شاشات المرجعية بالعربية والإنجليزية، واحفظ screenshots + comparison evidence على نفس exact commit؛ أي critical visual drift أو component أساسي مفقود يمنع release candidate. أصلح كل فشل وأعد التشغيل على نفس exact commit. أنشئ release notes، database migration notes، deployment/rollback runbook، UAT checklist، version وartifact hashes. لا تدّعِ final complete إذا بقيت بوابة قابلة للتنفيذ فاشلة.",
+      "Enabled": true,
+      "DelaySeconds": 40,
+      "Sent": false
+    },
+    {
+      "Label": "P17 - Final convergence and closure",
+      "Text": "نفّذ convergence نهائي من الحالة الحية: افحص main/PRs/branches/CI/evidence، استرجع أي work مشروع غير مدمج ولا تكرر التنفيذ، أصلح exact-main regressions، reconcile TASK_LEDGER وCURRENT_PHASE وPROJECT_CONTROL من النتائج الفعلية، وتأكد أن كل phases مغلقة قانونياً. يجب أن تكون setup/database/security/RBAC/catalog/auth engine/MOJ services/requests/audit/localization/installer/tests/release artifacts كلها مثبتة على exact final commit. راجع Design Parity Evidence للملفات الأربعة في docs/ui-baseline/ وتأكد أن Dashboard/Service Execution/Permissions/Audit تم تنفيذها High-Fidelity بالعربية والإنجليزية وأن أي انحراف جوهري موثق ومقبول؛ لا تعتبر الإغلاق كاملاً مع visual gate فاشلة. تحقق من UNPUSHED_WORK=NONE. إذا كانت UAT live credentials أو owner-only production cutover غير متاحة، ميّزها بوضوح كـ external acceptance فقط دون تحويلها إلى PASS مزيف. أخرج final handoff مختصر: repo/branch/commit/version, CI summary, installer filename/hash, DB schema version, UI parity summary, known external acceptance items, rollback location.",
+      "Enabled": true,
+      "DelaySeconds": 40,
+      "Sent": false
+    }
+  ]
+}
