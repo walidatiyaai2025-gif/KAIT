@@ -1,6 +1,7 @@
 using GSIP.Application.Abstractions;
 using GSIP.Application.Authentication;
 using GSIP.Application.Authorization;
+using GSIP.Application.Execution;
 using GSIP.Application.Identity;
 using GSIP.Application.Metadata;
 using GSIP.Application.Secrets;
@@ -35,6 +36,7 @@ public static class DependencyInjection
         services.AddSingleton<ITokenCache, InMemoryTokenCache>();
         services.AddScoped<ISetupService, SetupService>();
         services.AddScoped<IMetadataCatalogService, MetadataCatalogService>();
+        services.AddScoped<IServiceExecutionSecurityGate, ServiceExecutionSecurityGate>();
         services.AddScoped<DataProtectionSecretVault>();
         services.AddScoped<ISecretVault>(serviceProvider => serviceProvider.GetRequiredService<DataProtectionSecretVault>());
         services.AddScoped<ISecretMaterialResolver>(serviceProvider => serviceProvider.GetRequiredService<DataProtectionSecretVault>());

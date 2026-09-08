@@ -12,11 +12,11 @@ On that corrected exact P06 implementation SHA, all **13/13 exact-main workflow 
 
 P06 acceptance verifies opaque scoped SecretRefs, default Service + Environment isolation, explicit auditable Shared AuthProfile bindings, durable atomic expected-current-reference/generation rotation with rollback, profile/cache generation advancement, centralized redaction/masking, protected metadata/binding lifecycle, server-side authorization/IDOR/CSRF controls, write-only secret administration, masked-only display, Windows/IIS DPAPI protection for persisted Data Protection keys, bilingual Arabic RTL / English LTR responsive browser evidence, independent negative/no-leak security acceptance, and the corrected runtime token-cache contract: exact Service + Environment + AuthProfile + version/generation identity, configurable expiry safety window, single-flight refresh, caller-cancellation isolation, rejection of failed/canceled/near-expiry refresh results, and secret-safe token serialization/diagnostics. P00–P05 contracts remain preserved. No owner-only or external P06 evidence is deferred.
 
-The earlier PR #30 closure record is superseded only as to its P06 evidence baseline; its P07 transition remains the intended next phase. This corrected P07 authority becomes final only after this final closure-reconciliation change is normally integrated to `main` and the resulting exact-main closed-phase regressions remain green.
+The earlier PR #30 closure record is superseded only as to its P06 evidence baseline; its P07 transition remains the intended next phase. The final corrected closure reconciliation was normally integrated through PR #32 at exact `main` SHA `90b3068ea39a342392222ae581e568b94f7f9004`, and all 15 applicable exact-main push workflows on that SHA completed successfully. P07 is therefore the canonical current phase now; this reconciliation does not claim any open P07 implementation unit complete.
 
 ## Legal work now
 
-After this final reconciliation is integrated and exact-main verification is green, P07 only, plus any repair needed to preserve closed P00/P01/P02/P03/P04/P05/P06 baselines and repository controls.
+P07 only, plus any repair needed to preserve closed P00/P01/P02/P03/P04/P05/P06 baselines and repository controls.
 
 P07 scope is the canonical ledger scope: the generic service execution engine must resolve the exact `Service + Environment + AuthProfile` binding and drive the high-fidelity dynamic Service Execution UI without introducing MOJ-specific P08/P09 behavior early.
 
@@ -36,6 +36,8 @@ The per-service/per-environment isolation contract in `docs/SERVICE_ENVIRONMENT_
 - Rotation/redaction/cache PRs: #24 and #27 — normally merged
 - Windows/IIS Data Protection hardening PR: #28 — normally merged
 - Earlier closure reconciliation: PR #30 — superseded only by this corrected P06 evidence baseline
+- Final corrected closure reconciliation: PR #32 — normally merged at exact `main` SHA `90b3068ea39a342392222ae581e568b94f7f9004`
+- Exact-main post-reconciliation workflows on `90b3068ea39a342392222ae581e568b94f7f9004`: **15/15 SUCCESS**
 - Exact-main workflow runs on corrected implementation SHA: **13/13 SUCCESS**
 - P06 Token Cache Runtime: run `34281504875` — **SUCCESS**
 - P06 Security Acceptance and Evidence: run `34281505005` — **SUCCESS**
