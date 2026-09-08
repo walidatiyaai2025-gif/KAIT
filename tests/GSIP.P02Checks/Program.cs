@@ -28,7 +28,7 @@ if (failures.Count > 0)
     return 1;
 }
 
-Console.WriteLine("P02 checks passed: setup gate, protected state, SQL provisioning/migrations, bootstrap administrator and per-service environment placeholders are valid.");
+Console.WriteLine("P02 checks passed: setup gate, regression-bypass isolation, protected/restart-safe state, SQL negative/retry/provisioning paths, bootstrap administrator and per-service environment placeholders are valid.");
 return 0;
 
 static string FindRepositoryRoot()
@@ -51,6 +51,7 @@ static void CheckSourceContract(string root, List<string> failures)
     Expect(program.Contains("ISetupService", StringComparison.Ordinal), "Web pipeline does not enforce ISetupService setup state.", failures);
     Expect(program.Contains("/setup", StringComparison.Ordinal) && program.Contains("Response.Redirect", StringComparison.Ordinal), "First-run redirect to /setup is missing.", failures);
     Expect(program.Contains("Setup:BypassGateForRegression", StringComparison.Ordinal), "Closed-P01 regression bypass is not explicit/configuration-scoped.", failures);
+    Expect(program.Contains("IsEnvironment(\"RegressionTesting\")", StringComparison.Ordinal), "Closed-P01 regression bypass is not restricted to the dedicated RegressionTesting host environment.", failures);
     Expect(program.Contains("PersistKeysToFileSystem", StringComparison.Ordinal), "Data Protection keys are not persisted for restart-safe setup state.", failures);
 
     var setupService = File.ReadAllText(Path.Combine(root, "src", "GSIP.Infrastructure", "Setup", "SetupService.cs"));
@@ -81,7 +82,11 @@ static void CheckSourceContract(string root, List<string> failures)
     Expect(migration.Contains("BootstrapAdministrators", StringComparison.Ordinal) && migration.Contains("ServiceEnvironmentPlaceholders", StringComparison.Ordinal), "Initial EF migration is incomplete.", failures);
 
     var currentPhase = File.ReadAllText(Path.Combine(root, "CURRENT_PHASE.md"));
-    Expect(currentPhase.Contains("P02 — Complete first-run Setup Wizard", StringComparison.Ordinal), "P02 is not the canonical current phase.", failures);
+    var ledger = File.ReadAllText(Path.Combine(root, "docs", "TASK_LEDGER.md"));
+    var p02StillCurrent = currentPhase.Contains("P02 — Complete first-run Setup Wizard", StringComparison.Ordinal);
+    var laterCanonicalPhase = Enumerable.Range(3, 15).Any(number => currentPhase.Contains($"P{number:00} —", StringComparison.Ordinal));
+    var p02Closed = ledger.Contains("| P02 | CLOSED |", StringComparison.Ordinal);
+    Expect(p02StillCurrent || (laterCanonicalPhase && p02Closed), "P02 regression gate requires either active P02 or a later canonical phase with P02 CLOSED in the ledger.", failures);
 }
 
 static async Task CheckRuntimeAsync(string sqlServer, List<string> failures)
@@ -112,7 +117,7 @@ static async Task CheckRuntimeAsync(string sqlServer, List<string> failures)
         Encrypt = false,
         TrustServerCertificate = true,
         TimeoutSeconds = 30,
-        CreateDatabase = true
+        CreateDatabase = false
     };
 
     try
@@ -120,11 +125,66 @@ static async Task CheckRuntimeAsync(string sqlServer, List<string> failures)
         var preflight = await service.RunPreflightAsync();
         Expect(preflight.Success, $"Preflight failed: {preflight.Code}", failures);
 
+        var invalidName = new DatabaseSetupOptions
+        {
+            Server = sqlServer,
+            DatabaseName = "GSIP-P02-invalid-name",
+            UseWindowsAuthentication = true,
+            Encrypt = false,
+            TrustServerCertificate = true,
+            TimeoutSeconds = 30,
+            CreateDatabase = true
+        };
+        var invalidNameResult = await service.TestDatabaseAsync(invalidName);
+        Expect(!invalidNameResult.Success && invalidNameResult.Code == "DATABASE_NAME_INVALID", $"Invalid database-name negative path returned {invalidNameResult.Code}.", failures);
+
+        var missingSqlCredentials = new DatabaseSetupOptions
+        {
+            Server = sqlServer,
+            DatabaseName = databaseName,
+            UseWindowsAuthentication = false,
+            Username = string.Empty,
+            Password = string.Empty,
+            Encrypt = false,
+            TrustServerCertificate = true,
+            TimeoutSeconds = 30,
+            CreateDatabase = true
+        };
+        var credentialsResult = await service.TestDatabaseAsync(missingSqlCredentials);
+        Expect(!credentialsResult.Success && credentialsResult.Code == "SQL_CREDENTIALS_REQUIRED", $"Missing SQL-credentials negative path returned {credentialsResult.Code}.", failures);
+
         var connection = await service.TestDatabaseAsync(database);
         Expect(connection.Success, $"SQL connection test failed: {connection.Code}", failures);
 
+        var missingDatabase = await service.ProvisionDatabaseAsync(database);
+        Expect(!missingDatabase.Success && missingDatabase.Code == "DATABASE_NOT_FOUND", $"Existing-database negative path returned {missingDatabase.Code} instead of DATABASE_NOT_FOUND.", failures);
+
+        database.CreateDatabase = true;
         var provision = await service.ProvisionDatabaseAsync(database);
-        Expect(provision.Success, $"SQL provisioning/migration failed: {provision.Code}", failures);
+        Expect(provision.Success, $"SQL provisioning/migration retry failed: {provision.Code}", failures);
+
+        var weakAdministratorDraft = new SetupDraft
+        {
+            Culture = "en",
+            CurrentStep = SetupStep.Review,
+            Database = database,
+            DatabaseConnectionVerified = true,
+            DatabaseProvisioned = true,
+            Administrator = new AdministratorSetupOptions
+            {
+                DisplayName = "Weak P02 Administrator",
+                Username = "weakadmin",
+                Email = "weakadmin@example.invalid",
+                Password = "weak"
+            },
+            Branding = new BrandingSetupOptions(),
+            Security = new SecuritySetupOptions(),
+            Integration = new IntegrationSetupOptions { DefaultEnvironment = "UAT" },
+            Notifications = new NotificationSetupOptions()
+        };
+        var weakAdministrator = await service.CompleteAsync(weakAdministratorDraft);
+        Expect(!weakAdministrator.Success && weakAdministrator.Code == "ADMIN_PASSWORD_WEAK", $"Weak administrator negative path returned {weakAdministrator.Code}.", failures);
+        Expect(!(await service.GetStatusAsync()).IsCompleted, "A failed Finish attempt incorrectly marked setup complete.", failures);
 
         var draft = new SetupDraft
         {
@@ -156,8 +216,16 @@ static async Task CheckRuntimeAsync(string sqlServer, List<string> failures)
         Expect(completion.Success, $"Finish failed: {completion.Code}", failures);
 
         var status = await service.GetStatusAsync();
-        Expect(status.IsCompleted, "Completed setup state was not restart-readable.", failures);
+        Expect(status.IsCompleted, "Completed setup state was not readable after Finish.", failures);
         Expect(status.Draft.Administrator.Password.Length == 0, "Completed setup status exposed administrator password.", failures);
+
+        var restartedProtection = DataProtectionProvider.Create(new DirectoryInfo(keys), configuration => configuration.SetApplicationName("GSIP-P02-Checks"));
+        var restartedService = new SetupService(restartedProtection, new PasswordHasher<BootstrapAdministrator>(), environment);
+        var restartedStatus = await restartedService.GetStatusAsync();
+        Expect(restartedStatus.IsCompleted, "Completed setup state was not restart-readable with persisted Data Protection keys.", failures);
+
+        var repeatCompletion = await restartedService.CompleteAsync(new SetupDraft());
+        Expect(!repeatCompletion.Success && repeatCompletion.Code == "SETUP_ALREADY_COMPLETED", $"Repeated Finish did not remain locked; result was {repeatCompletion.Code}.", failures);
 
         var targetConnectionString = new SqlConnectionStringBuilder
         {
@@ -193,7 +261,7 @@ static async Task CheckRuntimeAsync(string sqlServer, List<string> failures)
         var locked = false;
         try
         {
-            await service.SaveDraftAsync(new SetupDraft());
+            await restartedService.SaveDraftAsync(new SetupDraft());
         }
         catch (InvalidOperationException)
         {
