@@ -100,7 +100,8 @@ var fixture = SecurityFixture.Create();
 var fakeCatalog = new FakeCatalog(fixture.Snapshot);
 var fakeProfiles = new FakeAuthProfiles(fixture.Profile);
 var fakeVault = new FakeVault(fixture.SecretReference, fixture.ServiceAId, fixture.EnvironmentId, fixture.Profile.Id, fixture.SecretName);
-var controller = new AuthProfilesController(fakeCatalog, fakeProfiles, fakeVault)
+var rotationPersistence = new GSIP.Infrastructure.Secrets.SecretRotationPersistenceAdapter(fakeVault, fakeProfiles);
+var controller = new AuthProfilesController(fakeCatalog, fakeProfiles, fakeVault, rotationPersistence)
 {
     ControllerContext = new ControllerContext
     {
@@ -232,11 +233,7 @@ sealed record SecurityFixture(
             IsCurrent = true,
             EnvironmentConfigs =
             [
-                new ServiceEnvironmentConfig
-                {
-                    Id = Guid.NewGuid(), ServiceId = serviceAId, EnvironmentId = environmentId,
-                    Active = true, AuthProfileId = profileId
-                }
+                new ServiceEnvironmentConfig { Id = Guid.NewGuid(), ServiceId = serviceAId, EnvironmentId = environmentId, Active = true, AuthProfileId = profileId }
             ]
         };
         var serviceB = new CatalogService
@@ -250,19 +247,13 @@ sealed record SecurityFixture(
             IsCurrent = true,
             EnvironmentConfigs =
             [
-                new ServiceEnvironmentConfig
-                {
-                    Id = Guid.NewGuid(), ServiceId = serviceBId, EnvironmentId = environmentId,
-                    Active = true, AuthProfileId = null
-                }
+                new ServiceEnvironmentConfig { Id = Guid.NewGuid(), ServiceId = serviceBId, EnvironmentId = environmentId, Active = true, AuthProfileId = null }
             ]
         };
 
         var snapshot = new MetadataCatalogSnapshot([entityA, entityB], [serviceA, serviceB], [environment]);
-        return new SecurityFixture(
-            entityAId, entityBId, serviceAId, serviceBId, environmentId,
-            $"{entityBId:D}|{serviceBId:D}|{environmentId:D}",
-            secretName, secretReference, profile, snapshot);
+        return new SecurityFixture(entityAId, entityBId, serviceAId, serviceBId, environmentId,
+            $"{entityBId:D}|{serviceBId:D}|{environmentId:D}", secretName, secretReference, profile, snapshot);
     }
 }
 
@@ -292,9 +283,7 @@ sealed class FakeAuthProfiles(AuthProfileDescriptor profile) : IAuthProfileServi
     }
 
     public Task<AuthProfileDescriptor> GetAsync(Guid authProfileId, CancellationToken cancellationToken = default) =>
-        authProfileId == profile.Id
-            ? Task.FromResult(profile)
-            : Task.FromException<AuthProfileDescriptor>(new KeyNotFoundException());
+        authProfileId == profile.Id ? Task.FromResult(profile) : Task.FromException<AuthProfileDescriptor>(new KeyNotFoundException());
 
     public Task<AuthProfileDescriptor?> ResolveAsync(Guid serviceId, Guid environmentId, CancellationToken cancellationToken = default) =>
         Task.FromResult<AuthProfileDescriptor?>(serviceId == profile.OwnerServiceId && environmentId == profile.OwnerEnvironmentId ? profile : null);
@@ -305,21 +294,12 @@ sealed class FakeAuthProfiles(AuthProfileDescriptor profile) : IAuthProfileServi
         return Task.FromResult(profile);
     }
 
-    public Task<AuthProfileDescriptor> SetSecretReferenceAsync(Guid authProfileId, string secretName, SecretRef secretRef, CancellationToken cancellationToken = default) =>
-        Task.FromResult(profile);
+    public Task<AuthProfileDescriptor> SetSecretReferenceAsync(Guid authProfileId, string secretName, SecretRef secretRef, CancellationToken cancellationToken = default) => Task.FromResult(profile);
 
-    public Task<bool> ActivateSecretReferenceAsync(
-        Guid serviceId,
-        Guid environmentId,
-        Guid authProfileId,
-        string secretName,
-        SecretRef expectedCurrentReference,
-        int expectedGeneration,
-        SecretRef stagedReference,
-        CancellationToken cancellationToken = default) => Task.FromResult(false);
+    public Task<bool> ActivateSecretReferenceAsync(Guid serviceId, Guid environmentId, Guid authProfileId, string secretName,
+        SecretRef expectedCurrentReference, int expectedGeneration, SecretRef stagedReference, CancellationToken cancellationToken = default) => Task.FromResult(false);
 
-    public Task<AuthProfileDescriptor> SetEnabledAsync(Guid authProfileId, bool enabled, CancellationToken cancellationToken = default) =>
-        Task.FromResult(profile);
+    public Task<AuthProfileDescriptor> SetEnabledAsync(Guid authProfileId, bool enabled, CancellationToken cancellationToken = default) => Task.FromResult(profile);
 }
 
 sealed class FakeVault(SecretRef reference, Guid serviceId, Guid environmentId, Guid profileId, string secretName) : ISecretVault
@@ -332,51 +312,28 @@ sealed class FakeVault(SecretRef reference, Guid serviceId, Guid environmentId, 
         new(value, state, generation, serviceId, environmentId, profileId, secretName, DateTimeOffset.UtcNow,
             state == SecretLifecycleState.Revoked ? DateTimeOffset.UtcNow : null);
 
-    public Task<SecretDescriptor> CreateActiveAsync(
-        Guid requestedServiceId,
-        Guid requestedEnvironmentId,
-        Guid? authProfileId,
-        string requestedSecretName,
-        ReadOnlyMemory<byte> secretMaterial,
-        CancellationToken cancellationToken = default)
+    public Task<SecretDescriptor> CreateActiveAsync(Guid requestedServiceId, Guid requestedEnvironmentId, Guid? authProfileId,
+        string requestedSecretName, ReadOnlyMemory<byte> secretMaterial, CancellationToken cancellationToken = default)
     {
         CreateCalls++;
         return Task.FromResult(Descriptor(reference));
     }
 
-    public Task<SecretDescriptor> CreateStagedAsync(
-        Guid requestedServiceId,
-        Guid requestedEnvironmentId,
-        Guid authProfileId,
-        string requestedSecretName,
-        int generation,
-        ReadOnlyMemory<byte> secretMaterial,
-        CancellationToken cancellationToken = default)
+    public Task<SecretDescriptor> CreateStagedAsync(Guid requestedServiceId, Guid requestedEnvironmentId, Guid authProfileId,
+        string requestedSecretName, int generation, ReadOnlyMemory<byte> secretMaterial, CancellationToken cancellationToken = default)
     {
         StagedCalls++;
         return Task.FromResult(Descriptor(reference, SecretLifecycleState.Staged, generation));
     }
 
-    public Task<SecretDescriptor> ClaimAsync(
-        Guid requestedServiceId,
-        Guid requestedEnvironmentId,
-        Guid authProfileId,
-        string requestedSecretName,
-        SecretRef secretRef,
-        CancellationToken cancellationToken = default) => Task.FromResult(Descriptor(secretRef));
+    public Task<SecretDescriptor> ClaimAsync(Guid requestedServiceId, Guid requestedEnvironmentId, Guid authProfileId,
+        string requestedSecretName, SecretRef secretRef, CancellationToken cancellationToken = default) => Task.FromResult(Descriptor(secretRef));
 
-    public Task<SecretDescriptor> GetDescriptorAsync(SecretRef secretRef, CancellationToken cancellationToken = default) =>
-        Task.FromResult(Descriptor(secretRef));
-
+    public Task<SecretDescriptor> GetDescriptorAsync(SecretRef secretRef, CancellationToken cancellationToken = default) => Task.FromResult(Descriptor(secretRef));
     public Task DiscardStagedAsync(SecretRef secretRef, CancellationToken cancellationToken = default) => Task.CompletedTask;
 
-    public Task<SecretDescriptor> RevokeAsync(
-        Guid requestedServiceId,
-        Guid requestedEnvironmentId,
-        Guid authProfileId,
-        string requestedSecretName,
-        SecretRef secretRef,
-        CancellationToken cancellationToken = default)
+    public Task<SecretDescriptor> RevokeAsync(Guid requestedServiceId, Guid requestedEnvironmentId, Guid authProfileId,
+        string requestedSecretName, SecretRef secretRef, CancellationToken cancellationToken = default)
     {
         RevokeCalls++;
         return Task.FromResult(Descriptor(secretRef, SecretLifecycleState.Revoked));
