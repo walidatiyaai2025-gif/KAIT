@@ -1,5 +1,6 @@
 using GSIP.Application.Abstractions;
 using GSIP.Domain.Metadata;
+using GSIP.Domain.Secrets;
 using GSIP.Infrastructure.Authorization;
 using GSIP.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
@@ -23,6 +24,10 @@ public sealed class GsipDbContext(DbContextOptions<GsipDbContext> options)
     public DbSet<ServiceEnvironmentConfig> ServiceEnvironmentConfigs => Set<ServiceEnvironmentConfig>();
     public DbSet<ServiceFieldDefinition> ServiceFieldDefinitions => Set<ServiceFieldDefinition>();
     public DbSet<ResultMappingDefinition> ResultMappingDefinitions => Set<ResultMappingDefinition>();
+    public DbSet<SecretVaultEntry> SecretVaultEntries => Set<SecretVaultEntry>();
+    public DbSet<AuthProfile> AuthProfiles => Set<AuthProfile>();
+    public DbSet<AuthProfileBinding> AuthProfileBindings => Set<AuthProfileBinding>();
+    public DbSet<AuthProfileSecret> AuthProfileSecrets => Set<AuthProfileSecret>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -125,6 +130,10 @@ public sealed class GsipDbContext(DbContextOptions<GsipDbContext> options)
             entity.Property(x => x.HealthMethod).HasMaxLength(16).IsRequired(); entity.Property(x => x.LastTestStatus).HasMaxLength(80).IsRequired();
             entity.HasOne(x => x.Service).WithMany(x => x.EnvironmentConfigs).HasForeignKey(x => x.ServiceId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne(x => x.Environment).WithMany(x => x.ServiceConfigurations).HasForeignKey(x => x.EnvironmentId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<AuthProfileBinding>().WithOne()
+                .HasForeignKey<ServiceEnvironmentConfig>(x => new { x.ServiceId, x.EnvironmentId, x.AuthProfileId })
+                .HasPrincipalKey<AuthProfileBinding>(x => new { x.ServiceId, x.EnvironmentId, x.AuthProfileId })
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<ServiceFieldDefinition>(entity =>
@@ -145,6 +154,47 @@ public sealed class GsipDbContext(DbContextOptions<GsipDbContext> options)
             entity.Property(x => x.LabelEn).HasMaxLength(200).IsRequired(); entity.Property(x => x.ResultType).HasMaxLength(40).IsRequired();
             entity.Property(x => x.Formatter).HasMaxLength(200).IsRequired();
             entity.HasOne(x => x.Service).WithMany(x => x.ResultMappings).HasForeignKey(x => x.ServiceId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SecretVaultEntry>(entity =>
+        {
+            entity.ToTable("SecretVaultEntries"); entity.HasKey(x => x.Reference);
+            entity.Property(x => x.Reference).HasMaxLength(SecretRef.MaxLength).IsRequired();
+            entity.Property(x => x.ProtectedPayload).HasColumnType("varbinary(max)").IsRequired();
+            entity.Property(x => x.State).HasConversion<string>().HasMaxLength(20).IsRequired();
+            entity.Property(x => x.Generation).IsRequired();
+        });
+
+        modelBuilder.Entity<AuthProfile>(entity =>
+        {
+            entity.ToTable("AuthProfiles"); entity.HasKey(x => x.Id);
+            entity.HasIndex(x => new { x.OwnerServiceId, x.OwnerEnvironmentId, x.Name }).IsUnique();
+            entity.Property(x => x.Name).HasMaxLength(160).IsRequired();
+            entity.Property(x => x.AuthType).HasConversion<string>().HasMaxLength(40).IsRequired();
+            entity.Property(x => x.CreatedBy).HasMaxLength(160).IsRequired();
+            entity.HasOne<CatalogService>().WithMany().HasForeignKey(x => x.OwnerServiceId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<CatalogEnvironment>().WithMany().HasForeignKey(x => x.OwnerEnvironmentId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<AuthProfileBinding>(entity =>
+        {
+            entity.ToTable("AuthProfileBindings"); entity.HasKey(x => x.Id);
+            entity.HasIndex(x => new { x.ServiceId, x.EnvironmentId }).IsUnique();
+            entity.HasAlternateKey(x => new { x.ServiceId, x.EnvironmentId, x.AuthProfileId });
+            entity.Property(x => x.DecisionBy).HasMaxLength(160).IsRequired();
+            entity.Property(x => x.DecisionReason).HasMaxLength(500).IsRequired();
+            entity.HasOne(x => x.AuthProfile).WithMany(x => x.Bindings).HasForeignKey(x => x.AuthProfileId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<CatalogService>().WithMany().HasForeignKey(x => x.ServiceId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<CatalogEnvironment>().WithMany().HasForeignKey(x => x.EnvironmentId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<AuthProfileSecret>(entity =>
+        {
+            entity.ToTable("AuthProfileSecrets"); entity.HasKey(x => new { x.AuthProfileId, x.SecretName });
+            entity.Property(x => x.SecretName).HasMaxLength(80).IsRequired();
+            entity.Property(x => x.SecretReference).HasMaxLength(SecretRef.MaxLength).IsRequired();
+            entity.HasOne(x => x.AuthProfile).WithMany(x => x.Secrets).HasForeignKey(x => x.AuthProfileId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<SecretVaultEntry>().WithMany().HasForeignKey(x => x.SecretReference).OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

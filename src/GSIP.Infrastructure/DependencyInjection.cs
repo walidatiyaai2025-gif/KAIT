@@ -2,10 +2,12 @@ using GSIP.Application.Abstractions;
 using GSIP.Application.Authorization;
 using GSIP.Application.Identity;
 using GSIP.Application.Metadata;
+using GSIP.Application.Secrets;
 using GSIP.Application.Setup;
 using GSIP.Infrastructure.Authorization;
 using GSIP.Infrastructure.Identity;
 using GSIP.Infrastructure.Metadata;
+using GSIP.Infrastructure.Secrets;
 using GSIP.Infrastructure.Setup;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -29,6 +31,11 @@ public static class DependencyInjection
         services.AddSingleton<ISystemClock, SystemClock>();
         services.AddScoped<ISetupService, SetupService>();
         services.AddScoped<IMetadataCatalogService, MetadataCatalogService>();
+        services.AddScoped<DataProtectionSecretVault>();
+        services.AddScoped<ISecretVault>(serviceProvider => serviceProvider.GetRequiredService<DataProtectionSecretVault>());
+        services.AddScoped<ISecretMaterialResolver>(serviceProvider => serviceProvider.GetRequiredService<DataProtectionSecretVault>());
+        services.AddScoped<IAuthProfileService, AuthProfileService>();
+        services.AddScoped<SecretRotationPersistenceAdapter>();
         services.AddScoped<IPasswordHasher<BootstrapAdministrator>, PasswordHasher<BootstrapAdministrator>>();
         services.Configure<IdentitySecurityOptions>(configuration.GetSection(IdentitySecurityOptions.SectionName));
         services.AddSingleton<IRuntimeDatabaseConnection>(serviceProvider => new RuntimeDatabaseConnection(
