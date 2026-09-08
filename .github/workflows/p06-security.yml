@@ -1,0 +1,208 @@
+name: P06 Security Acceptance and Evidence
+
+on:
+  push:
+    branches:
+      - main
+      - 'worker/p06-*'
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  security-acceptance:
+    runs-on: windows-latest
+    timeout-minutes: 50
+    env:
+      GSIP_P04_SQL: 'Server=(localdb)\MSSQLLocalDB;Database=GSIP_P06_P04_${{ github.run_id }}_${{ github.run_attempt }};Integrated Security=true;TrustServerCertificate=true;MultipleActiveResultSets=true'
+      GSIP_P04_AUTHZ_SQL: 'Server=(localdb)\MSSQLLocalDB;Database=GSIP_P06_P04_AUTHZ_${{ github.run_id }}_${{ github.run_attempt }};Integrated Security=true;TrustServerCertificate=true;MultipleActiveResultSets=true'
+      GSIP_P05_SQL: 'Server=(localdb)\MSSQLLocalDB;Database=GSIP_P06_P05_${{ github.run_id }}_${{ github.run_attempt }};Integrated Security=true;TrustServerCertificate=true;MultipleActiveResultSets=true'
+      GSIP_P06_SQL: 'Server=(localdb)\MSSQLLocalDB;Database=GSIP_P06_SECURITY_${{ github.run_id }}_${{ github.run_attempt }};Integrated Security=true;TrustServerCertificate=true;MultipleActiveResultSets=true'
+      GSIP_P06_SECURITY_SQL: 'Server=(localdb)\MSSQLLocalDB;Database=GSIP_P06_SECURITY_${{ github.run_id }}_${{ github.run_attempt }};Integrated Security=true;TrustServerCertificate=true;MultipleActiveResultSets=true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pinned .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Verify SDK selection
+        shell: pwsh
+        run: |
+          $version = dotnet --version
+          if ($version -ne '10.0.400') { throw "Expected .NET SDK 10.0.400 but resolved $version" }
+
+      - name: Create masked synthetic secret sentinel
+        shell: pwsh
+        run: |
+          $sentinel = 'GSIP-P06-SYNTH-' + [Guid]::NewGuid().ToString('N') + '-Aa9!'
+          Write-Output "::add-mask::$sentinel"
+          "GSIP_P06_SECRET_SENTINEL=$sentinel" >> $env:GITHUB_ENV
+          New-Item -ItemType Directory -Path 'artifacts/p06-security-evidence' -Force | Out-Null
+
+      - name: Restore solution and focused acceptance projects
+        run: |
+          dotnet restore GSIP.sln
+          dotnet restore tests/GSIP.P03SecurityChecks/GSIP.P03SecurityChecks.csproj
+          dotnet restore tests/GSIP.P04AuthorizationChecks/GSIP.P04AuthorizationChecks.csproj
+          dotnet restore tests/GSIP.P05Checks/GSIP.P05Checks.csproj
+          dotnet restore tests/GSIP.P06SecurityChecks/GSIP.P06SecurityChecks.csproj
+
+      - name: Build solution and focused acceptance projects Release
+        run: |
+          dotnet build GSIP.sln -c Release --no-restore
+          dotnet build tests/GSIP.P03SecurityChecks/GSIP.P03SecurityChecks.csproj -c Release --no-restore
+          dotnet build tests/GSIP.P04AuthorizationChecks/GSIP.P04AuthorizationChecks.csproj -c Release --no-restore
+          dotnet build tests/GSIP.P05Checks/GSIP.P05Checks.csproj -c Release --no-restore
+          dotnet build tests/GSIP.P06SecurityChecks/GSIP.P06SecurityChecks.csproj -c Release --no-restore
+
+      - name: Start SQL Server LocalDB
+        shell: pwsh
+        run: |
+          sqllocaldb start MSSQLLocalDB
+          sqllocaldb info MSSQLLocalDB
+
+      - name: Preserve P00-P01 contracts
+        run: |
+          dotnet run --project tests/GSIP.BaselineChecks/GSIP.BaselineChecks.csproj -c Release --no-build
+          dotnet run --project tests/GSIP.P01Checks/GSIP.P01Checks.csproj -c Release --no-build
+
+      - name: Preserve P02 setup contracts
+        shell: pwsh
+        env:
+          GSIP_P02_SQL_SERVER: '(localdb)\MSSQLLocalDB'
+        run: dotnet run --project tests/GSIP.P02Checks/GSIP.P02Checks.csproj -c Release --no-build
+
+      - name: Preserve P03 identity and web-security contracts
+        shell: pwsh
+        env:
+          GSIP_P03_SQL_SERVER: '(localdb)\MSSQLLocalDB'
+        run: |
+          dotnet run --project tests/GSIP.P03Checks/GSIP.P03Checks.csproj -c Release --no-build
+          dotnet run --project tests/GSIP.P03SecurityChecks/GSIP.P03SecurityChecks.csproj -c Release --no-build
+
+      - name: Preserve P04 authorization and Default Deny contracts
+        shell: pwsh
+        run: |
+          dotnet run --project tests/GSIP.P04Checks/GSIP.P04Checks.csproj -c Release --no-build
+          dotnet run --project tests/GSIP.P04AuthorizationChecks/GSIP.P04AuthorizationChecks.csproj -c Release --no-build
+          "GSIP_P06_DEFAULT_DENY_VERIFIED=true" >> $env:GITHUB_ENV
+
+      - name: Preserve P05 metadata and isolation contracts
+        shell: pwsh
+        run: dotnet run --project tests/GSIP.P05Checks/GSIP.P05Checks.csproj -c Release --no-build
+
+      - name: Preserve P05 protected bilingual browser acceptance
+        shell: pwsh
+        run: |
+          $sourcePath = 'scripts/verify-p05-metadata-ui.ps1'
+          $candidatePath = 'scripts/verify-p05-metadata-ui.p06-ci.ps1'
+          $script = Get-Content $sourcePath -Raw
+          $staleAssertion = "Assert-Contains `$layout '<strong>P05</strong>' 'Shell phase marker was not advanced to P05.'"
+          $phaseMonotonicAssertion = "if (`$layout -notmatch '<strong>P(?:0[5-9]|1[0-7])</strong>') { throw 'Shell phase marker is missing or predates closed P05.' }"
+          if (-not $script.Contains($staleAssertion, [System.StringComparison]::Ordinal)) {
+            throw 'Expected legacy P05 shell phase assertion was not found; reconcile the regression script explicitly.'
+          }
+          $script.Replace($staleAssertion, $phaseMonotonicAssertion) | Set-Content $candidatePath -Encoding utf8
+          & ./$candidatePath
+
+      - name: Run canonical P06 core checks and migrations when integrated
+        shell: pwsh
+        run: |
+          $project = 'tests/GSIP.P06CoreChecks/GSIP.P06CoreChecks.csproj'
+          if (Test-Path $project) {
+            dotnet restore $project
+            dotnet build $project -c Release --no-restore
+            dotnet run --project $project -c Release --no-build 2>&1 | Tee-Object 'artifacts/p06-security-evidence/core-migration-tests.log'
+            if ($LASTEXITCODE -ne 0) { throw "Canonical P06 core checks failed with exit code $LASTEXITCODE." }
+            "GSIP_P06_CORE_VERIFIED=true" >> $env:GITHUB_ENV
+          }
+          else {
+            Write-Host 'Canonical P06 core dependency is not integrated; independent acceptance will record BLOCKED_DEPENDENCY and fail closed.'
+          }
+
+      - name: Run P06 rotation redaction and cache checks when integrated
+        shell: pwsh
+        run: |
+          $redaction = 'tests/GSIP.P06RotationRedactionChecks/GSIP.P06RotationRedactionChecks.csproj'
+          $rotation = 'tests/GSIP.P06RotationRedactionChecks/RotationSafety/GSIP.P06RotationSafetyChecks.csproj'
+          if ((Test-Path $redaction) -and (Test-Path $rotation)) {
+            dotnet restore $redaction
+            dotnet build $redaction -c Release --no-restore
+            dotnet run --project $redaction -c Release --no-build 2>&1 | Tee-Object 'artifacts/p06-security-evidence/rotation-redaction-cache-tests.log'
+            if ($LASTEXITCODE -ne 0) { throw "P06 rotation/redaction/cache checks failed with exit code $LASTEXITCODE." }
+            dotnet restore $rotation
+            dotnet build $rotation -c Release --no-restore
+            dotnet run --project $rotation -c Release --no-build 2>&1 | Tee-Object -Append 'artifacts/p06-security-evidence/rotation-redaction-cache-tests.log'
+            if ($LASTEXITCODE -ne 0) { throw "P06 rotation safety checks failed with exit code $LASTEXITCODE." }
+            "GSIP_P06_ROTATION_VERIFIED=true" >> $env:GITHUB_ENV
+          }
+          else {
+            Write-Host 'P06 rotation/redaction/cache specialist checks are not fully integrated; independent acceptance will fail closed.'
+          }
+
+      - name: Run P06 AuthProfile authorization and browser checks when integrated
+        shell: pwsh
+        run: |
+          $adminProject = 'tests/GSIP.P06AdminChecks/GSIP.P06AdminChecks.csproj'
+          $browserScript = 'scripts/verify-p06-authprofile-ui.ps1'
+          if ((Test-Path $adminProject) -and (Test-Path $browserScript)) {
+            dotnet restore $adminProject
+            dotnet build $adminProject -c Release --no-restore
+            dotnet run --project $adminProject -c Release --no-build 2>&1 | Tee-Object 'artifacts/p06-security-evidence/authorization-idor-tests.log'
+            if ($LASTEXITCODE -ne 0) { throw "P06 admin authorization checks failed with exit code $LASTEXITCODE." }
+            & ./$browserScript 2>&1 | Tee-Object 'artifacts/p06-security-evidence/browser-checks.log'
+            if ($LASTEXITCODE -ne 0) { throw "P06 AuthProfile browser checks failed with exit code $LASTEXITCODE." }
+            "GSIP_P06_ADMIN_VERIFIED=true" >> $env:GITHUB_ENV
+          }
+          else {
+            Write-Host 'P06 AuthProfile admin/browser acceptance is not fully integrated; independent acceptance will record BLOCKED_DEPENDENCY.'
+          }
+
+      - name: Run P06 independent security and negative acceptance
+        shell: pwsh
+        run: |
+          dotnet run --project tests/GSIP.P06SecurityChecks/GSIP.P06SecurityChecks.csproj -c Release --no-build 2>&1 | Tee-Object 'artifacts/p06-security-evidence/independent-security-tests.log'
+          if ($LASTEXITCODE -ne 0) { throw "Independent P06 security acceptance failed with exit code $LASTEXITCODE." }
+
+      - name: Validate execution plan and governance
+        run: python scripts/validate_execution_plan.py
+
+      - name: Record CI context
+        if: always()
+        shell: pwsh
+        run: |
+          $dir = 'artifacts/p06-security-evidence'
+          New-Item -ItemType Directory -Path $dir -Force | Out-Null
+          [ordered]@{
+            project = 'GSIP'
+            phase = 'P06'
+            unit = 'P06::security-ci-evidence'
+            commit = $env:GITHUB_SHA
+            sdk = (dotnet --version)
+            configuration = 'Release'
+            database = 'SQL Server LocalDB; migrations exercised by canonical P06 core checks when integrated'
+            syntheticOnly = $true
+            defaultDenyVerified = ($env:GSIP_P06_DEFAULT_DENY_VERIFIED -eq 'true')
+            coreVerified = ($env:GSIP_P06_CORE_VERIFIED -eq 'true')
+            rotationVerified = ($env:GSIP_P06_ROTATION_VERIFIED -eq 'true')
+            adminVerified = ($env:GSIP_P06_ADMIN_VERIFIED -eq 'true')
+          } | ConvertTo-Json | Set-Content "$dir/ci-context.json" -Encoding utf8
+
+      - name: Verify no-leak evidence and build manifest
+        if: always()
+        shell: pwsh
+        run: ./scripts/verify-p06-security-evidence.ps1
+
+      - name: Upload P06 security evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: P06-Security-Evidence-${{ github.sha }}
+          path: artifacts/p06-security-evidence/
+          if-no-files-found: error
+          retention-days: 30
