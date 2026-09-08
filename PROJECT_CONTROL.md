@@ -6,7 +6,7 @@
 - Repository: `walidatiyaai2025-gif/KAIT`
 - Default branch: `main`
 - Delivery model: phase-gated autonomous implementation
-- Current planned product state: P01 CLOSED; P02 complete first-run Setup Wizard is the next legal phase after transition exact-main verification
+- Current planned product state: P02 CLOSED; P03 Identity, MFA, sessions and account security is the next legal phase after transition exact-main verification
 - Initial executable version: `0.1.0`
 - Pinned SDK / target framework: .NET SDK `10.0.400` / `net10.0`
 - Initial entity: Ministry of Justice (MOJ), Kuwait
@@ -16,17 +16,17 @@
 
 ## Last closed phase evidence
 
-P01 was closed from exact integrated `main` SHA `34c665b12e910b6dfcb735f4978be6649e03d5c3` after:
+P02 was closed from exact integrated `main` SHA `efa56808db13fa45f803131f7bcf2d65c485a66d` after:
 
-- normal integration through PR #4;
-- Planning Integrity run `34213985141`: SUCCESS;
-- P00 Build Baseline regression run `34213985591`: SUCCESS;
-- P01 Architecture and UI Shell run `34213985167`: SUCCESS;
-- Release build, P00 contracts, P01 architecture/design checks, runtime bilingual verification and browser screenshot capture all succeeded;
-- exact-main artifact `P01-UI-Evidence-34c665b12e910b6dfcb735f4978be6649e03d5c3` was produced;
-- workflow artifact digest: `sha256:11492dc4afa4d2257f410540cf757a40be91926e89a61611896bc3f30b06d09c`;
-- the evidence manifest contains English/Arabic Dashboard and Login screenshot hashes;
-- no owner-only or external evidence was deferred.
+- the P02 implementation lineage was normally integrated through PRs #6, #7, #8 and #9, with PR #9 closing the final Review/Health Check critical-failure gap;
+- Planning Integrity run `34228695674`: SUCCESS;
+- P00 Build Baseline regression run `34228695950`: SUCCESS;
+- P01 Architecture and UI Shell regression run `34228695746`: SUCCESS;
+- P02 First-run Setup Wizard run `34228695995`: SUCCESS;
+- Release build, SQL/setup/security checks, wrong-credential handling, migration failure/retry, protected/restart-safe setup state, post-Finish lock and bilingual browser verification all succeeded;
+- exact-main artifact `P02-Setup-Evidence-efa56808db13fa45f803131f7bcf2d65c485a66d` was produced at 390,868 bytes;
+- workflow artifact digest: `sha256:f03ad21356d2ba92308b2cff015d934d0ef23b9e78b02a4f0eb26c9cd06f8961`;
+- no owner-only or external evidence was deferred for P02.
 
 ## Authoritative documents
 
@@ -48,7 +48,7 @@ No old prompt, screenshot caption, branch description, or stale ledger overrides
 ## Phase policy
 
 - Exactly one canonical current phase exists at a time.
-- P00 and P01 are closed; P02 is the next phase after this transition is integrated and exact-main verified.
+- P00, P01 and P02 are closed; P03 is the next phase after this transition is integrated and exact-main verified.
 - Future phases remain locked until the current phase is formally CLOSED.
 - Phase exit requires implementation + tests + evidence + documentation reconciliation + pushed commit + required CI + exact-main recheck.
 - Integration recovery and exact-main regressions take priority over new feature work.
@@ -69,7 +69,7 @@ P00 pinned .NET 10 LTS / `net10.0`, SDK `10.0.400`, initial version `0.1.0` and 
 
 ## Setup contract
 
-Normal Login is illegal before first-run setup completes. Setup must cover database connectivity, migrations, initial administrator, security baseline, organization/branding, integration environment, secrets placeholders, health review and Finish. Successful setup must persist a protected completed state and prevent accidental rerun.
+P02 established the protected first-run Setup boundary. Normal Login is illegal before first-run setup completes. Setup covers database connectivity, migrations, initial administrator, security baseline, organization/branding, integration environment, secrets placeholders, health review and Finish. Successful setup persists a protected completed state and prevents accidental public rerun.
 
 ## Service environment / Go-Live control
 

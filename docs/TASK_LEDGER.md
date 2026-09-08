@@ -6,8 +6,8 @@ This ledger is evidence-driven. Never mark a phase CLOSED because a prompt says 
 |---|---|---|
 | P00 | CLOSED | Closed from exact-main SHA `8156c46ce8ce366424d955a6194d677c2da5055f`; Planning Integrity `34210899288` SUCCESS; P00 Build Baseline `34210899267` SUCCESS; exact-main baseline artifact produced and hashed |
 | P01 | CLOSED | Closed from exact-main SHA `34c665b12e910b6dfcb735f4978be6649e03d5c3`; Planning `34213985141`, P00 regression `34213985591`, P01 runtime/browser `34213985167` SUCCESS; exact-main bilingual UI evidence produced and hashed |
-| P02 | OPEN | Complete first-run Setup Wizard before Login, SQL Server test/create/use/migrations/admin/security/review/finish; create service/environment placeholders only, never source-coded live credentials |
-| P03 | LOCKED | Identity, MFA, sessions, lockout/rate limiting, account security and auth audit |
+| P02 | CLOSED | Closed from exact-main SHA `efa56808db13fa45f803131f7bcf2d65c485a66d`; Planning `34228695674`, P00 `34228695950`, P01 `34228695746`, P02 `34228695995` SUCCESS; protected first-run Setup, SQL negative/retry, Review/Health critical gate and bilingual browser evidence verified; exact-main artifact produced and hashed |
+| P03 | OPEN | Identity, MFA, sessions, lockout/rate limiting, account security and auth audit |
 | P04 | LOCKED | RBAC, server-side authorization, per-service permissions, high-fidelity permissions UI |
 | P05 | LOCKED | Metadata-driven entities/services/fields/result mappings plus independent `ServiceEnvironmentConfig` per Service + UAT/Production environment; admin/versioning/import-export |
 | P06 | LOCKED | Secret vault, isolated authentication profiles/SecretRefs, explicit Shared AuthProfile support, rotation/redaction, cross-service-safe token cache keys |
@@ -30,6 +30,10 @@ P00 implementation was integrated by PR #2. The exact integrated `main` SHA `815
 ## P01 closure record
 
 P01 implementation was integrated by PR #4 at exact `main` SHA `34c665b12e910b6dfcb735f4978be6649e03d5c3`. Planning Integrity run `34213985141`, P00 Build Baseline regression run `34213985591`, and P01 Architecture and UI Shell run `34213985167` all succeeded on that SHA. The exact-main UI artifact `P01-UI-Evidence-34c665b12e910b6dfcb735f4978be6649e03d5c3` has workflow digest `sha256:11492dc4afa4d2257f410540cf757a40be91926e89a61611896bc3f30b06d09c`. It contains English/Arabic Dashboard and Login browser captures plus manifest hashes. No owner-only evidence was deferred for P01.
+
+## P02 closure record
+
+P02 implementation was integrated through PRs #6, #7, #8 and #9, culminating at exact `main` SHA `efa56808db13fa45f803131f7bcf2d65c485a66d`. Planning Integrity run `34228695674`, P00 Build Baseline regression run `34228695950`, P01 Architecture and UI Shell regression run `34228695746`, and P02 First-run Setup Wizard run `34228695995` all succeeded on that SHA. The exact-main artifact `P02-Setup-Evidence-efa56808db13fa45f803131f7bcf2d65c485a66d` is 390,868 bytes with workflow digest `sha256:f03ad21356d2ba92308b2cff015d934d0ef23b9e78b02a4f0eb26c9cd06f8961`. Acceptance includes pre-Login setup gating, protected restart-safe state, SQL Windows/SQL-auth paths, wrong credentials, create/use DB, migration failure/retry, bootstrap administrator, isolated inactive MOJ UAT/Production placeholders, critical Review/Health blocking, post-Finish lock and bilingual browser evidence. No owner-only evidence was deferred for P02.
 
 ## Cross-phase gates
 

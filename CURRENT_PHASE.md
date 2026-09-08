@@ -2,49 +2,58 @@
 
 ## Canonical current phase
 
-**P02 — Complete first-run Setup Wizard**
+**P03 — Identity, MFA, sessions and account security**
 
 Status: **OPEN / READY**
 
-P01 is CLOSED from integrated exact-main evidence. The P01 implementation was normally merged by PR #4 at `34c665b12e910b6dfcb735f4978be6649e03d5c3`. On that exact SHA, Planning Integrity run `34213985141`, P00 Build Baseline run `34213985591`, and P01 Architecture and UI Shell run `34213985167` all succeeded. The P01 run performed Release build, preserved P00 contracts, passed P01 architecture/design checks, executed bilingual runtime/browser verification, and uploaded exact-main UI evidence.
+P02 is CLOSED from integrated exact-main evidence. The final P02 implementation gap was normally merged by PR #9 at `efa56808db13fa45f803131f7bcf2d65c485a66d`. On that exact SHA, Planning Integrity run `34228695674`, P00 Build Baseline run `34228695950`, P01 Architecture and UI Shell run `34228695746`, and P02 First-run Setup Wizard run `34228695995` all succeeded. The P02 run performed Release build, preserved P00/P01 contracts, exercised SQL/setup/security checks including wrong SQL credentials and migration failure/retry, executed bilingual browser evidence, verified the Review/Health Check critical-failure gate, and uploaded exact-main evidence.
 
-The exact-main P01 artifact is `P01-UI-Evidence-34c665b12e910b6dfcb735f4978be6649e03d5c3` with workflow digest `sha256:11492dc4afa4d2257f410540cf757a40be91926e89a61611896bc3f30b06d09c`.
+The exact-main P02 artifact is `P02-Setup-Evidence-efa56808db13fa45f803131f7bcf2d65c485a66d` (390,868 bytes) with workflow digest `sha256:f03ad21356d2ba92308b2cff015d934d0ef23b9e78b02a4f0eb26c9cd06f8961`.
 
-This P02 transition becomes authoritative only after this closure change is normally integrated to `main` and the resulting exact-main P00/P01/Planning gates remain green. Do not begin P02 implementation from an unmerged transition branch.
+This P03 transition becomes authoritative only after this closure change is normally integrated to `main` and the resulting exact-main Planning/P00/P01/P02 gates remain green. Do not begin P03 implementation from an unmerged transition branch.
 
 ## Legal work now
 
-After this transition is integrated and exact-main verification is green, P02 only, plus any repair needed to preserve closed P00/P01 baselines and repository controls.
+After this transition is integrated and exact-main verification is green, P03 only, plus any repair needed to preserve closed P00/P01/P02 baselines and repository controls.
 
-P02 must implement the complete first-run Setup Wizard before normal Login:
+P03 must implement identity and account security before detailed RBAC:
 
-- redirect to `/setup` whenever protected setup-completed state is absent; normal Login must not be usable before Finish;
-- Welcome + language, preflight, database configuration, Test Connection, create/use existing database, EF Core migrations, initial System Administrator, organization/branding, security baseline, integration environment, secret placeholders, optional notifications, review/health check and Finish;
-- SQL Server inputs for Server/Instance, Database Name, Windows or SQL authentication, username/password when required, Encrypt, TrustServerCertificate and timeout;
-- secure handling of connection credentials without source, JSON, log, audit or evidence leakage;
-- restart/resume behavior, critical-failure blocking, migration failure/retry, server-side protection against unauthorized setup rerun after completion;
-- service/environment placeholders only where required by setup; no real Go-Live credentials and no future-phase service execution/auth implementation;
-- automated unit/integration/browser tests covering successful setup and negative/retry paths;
-- build/test/repair/retest, normal PR/merge and exact-main verification before closure.
+- ASP.NET Core Identity or a mature equivalent with login/logout and secure account lifecycle;
+- configurable password policy, lockout/rate limiting, session timeout and remember-me policy;
+- account enable/disable, last-login tracking and forced password change;
+- MFA enrollment and verification, with MFA required for privileged accounts according to configuration;
+- production HTTPS/HSTS settings and Secure/HttpOnly/SameSite cookies;
+- CSRF protection, CSP/security headers and server-side controls against authentication bypass;
+- audit events for login success/failure, logout, MFA and lockout without storing passwords, tokens or secrets;
+- positive and negative tests, including lockout/rate-limit and bypass paths;
+- build/test/repair/retest, normal PR/merge, evidence and exact-main verification before closure.
+
+Detailed RBAC/service-level permission implementation remains P04 work and must not begin before P03 is CLOSED.
 
 ## Locked future work
 
-P03–P17 remain locked. Do not implement Identity/MFA, detailed RBAC, metadata administration, Secret Vault/auth profiles, generic execution, MOJ authentication/services, history/audit, operational administration, installer or release acceptance before their phase is current.
+P04–P17 remain locked. Do not implement RBAC, metadata administration, Secret Vault/auth profiles, generic execution, MOJ authentication/services, history/audit, operational administration, installer or release acceptance before their phase is current.
 
-The per-service/per-environment isolation contract in `docs/SERVICE_ENVIRONMENT_CONFIGURATION_CONTRACT.md` remains binding. Setup may create placeholders, but every future Service + Environment binding and AuthProfile remains isolated by default and no secret may be copied between services automatically.
+The per-service/per-environment isolation contract in `docs/SERVICE_ENVIRONMENT_CONFIGURATION_CONTRACT.md` remains binding. Every future Service + Environment binding and AuthProfile remains isolated by default and no secret or token may cross service boundaries automatically.
 
-## P01 closure evidence
+## P02 closure evidence
 
-- Integrated implementation SHA: `34c665b12e910b6dfcb735f4978be6649e03d5c3`
-- PR: #4 — normally merged
-- Planning Integrity: run `34213985141` — SUCCESS
-- P00 Build Baseline regression: run `34213985591` — SUCCESS
-- P01 Architecture and UI Shell: run `34213985167` — SUCCESS
-- Exact-main artifact: `P01-UI-Evidence-34c665b12e910b6dfcb735f4978be6649e03d5c3`
-- Artifact workflow digest: `sha256:11492dc4afa4d2257f410540cf757a40be91926e89a61611896bc3f30b06d09c`
-- Browser evidence: English/Arabic Dashboard and Login, true LTR/RTL, visible `v0.1.0`, shell-only Login boundary
-- Owner/external dependency: none
+- Final integrated implementation SHA: `efa56808db13fa45f803131f7bcf2d65c485a66d`
+- Final implementation PR: #9 — normally merged
+- P02 implementation lineage: PRs #6, #7, #8 and #9
+- Planning Integrity: run `34228695674` — SUCCESS
+- P00 Build Baseline regression: run `34228695950` — SUCCESS
+- P01 Architecture and UI Shell regression: run `34228695746` — SUCCESS
+- P02 First-run Setup Wizard: run `34228695995` — SUCCESS
+- Exact-main artifact: `P02-Setup-Evidence-efa56808db13fa45f803131f7bcf2d65c485a66d`
+- Artifact size: 390,868 bytes
+- Artifact workflow digest: `sha256:f03ad21356d2ba92308b2cff015d934d0ef23b9e78b02a4f0eb26c9cd06f8961`
+- Browser evidence: bilingual first-run Setup flow with protected pre-Login gate and Review/Health Check acceptance
+- Security evidence: protected setup state, no live credentials, password redaction/hashing, SQL negative paths, post-Finish setup lock
+- Owner/external dependency: none deferred for P02
 
-## P02 exit condition
+Detailed evidence is recorded in `docs/evidence/P02_SETUP_WIZARD.md`.
 
-P02 may be marked CLOSED only when the complete first-run setup flow, SQL Server/database creation-or-use and migrations, protected setup state, initial administrator bootstrap, security/configuration review, restart/retry behavior, automated tests/browser evidence, CI and exact-main verification are complete and pushed without exposing live secrets.
+## P03 exit condition
+
+P03 may be marked CLOSED only when identity/login/logout, password/session/account controls, privileged-account MFA, lockout/rate limiting, production cookie/transport/security-header controls, authentication audit events, negative/bypass tests, CI/evidence and exact-main verification are complete and pushed without weakening security or exposing secrets.
