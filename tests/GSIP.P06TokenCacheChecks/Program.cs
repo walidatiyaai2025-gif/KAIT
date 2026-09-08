@@ -112,7 +112,10 @@ static async Task CallerCancellationDoesNotPoisonSharedRefreshAsync()
     var canceledWaiter = cache.GetOrRefreshAsync(identity, Refresh, callerCancellation.Token);
     await started.Task;
     callerCancellation.Cancel();
-    await ExpectThrowsAsync<OperationCanceledException>(async () => await canceledWaiter);
+    await ExpectThrowsAsync<OperationCanceledException>(async () =>
+    {
+        await canceledWaiter;
+    });
 
     var survivingWaiter = cache.GetOrRefreshAsync(identity, Refresh);
     release.TrySetResult();
