@@ -1,6 +1,6 @@
 namespace GSIP.Web.Models;
 
-public sealed class AuthProfileAdminViewModel
+public sealed record AuthProfileAdminViewModel
 {
     public IReadOnlyList<AuthProfileAdminEntityViewModel> Entities { get; init; } = [];
     public IReadOnlyList<AuthProfileSummaryViewModel> Profiles { get; init; } = [];
