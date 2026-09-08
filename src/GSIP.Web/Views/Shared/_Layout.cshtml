@@ -7,6 +7,8 @@
     var language = isRtl ? "ar" : "en";
     var isSetup = Context.Request.Path.StartsWithSegments("/setup");
     var isPermissions = Context.Request.Path.StartsWithSegments("/permissions");
+    var isMetadata = Context.Request.Path.StartsWithSegments("/metadata");
+    var isHome = !isPermissions && !isMetadata;
 }
 <!doctype html>
 <html lang="@language" dir="@direction" data-culture-name="@CultureInfo.CurrentUICulture.Name">
@@ -19,21 +21,13 @@
     <link rel="stylesheet" href="~/css/identity.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/setup.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/permissions.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/metadata.css" asp-append-version="true" />
 </head>
 <body class="gsip-body @direction @(isSetup ? "setup-active" : string.Empty)">
     <a class="skip-link" href="#main-content">@L["SkipToContent"]</a>
     <header class="topbar">
-        <div class="brand-cluster">
-            <div class="brand-mark" aria-hidden="true"><span>G</span></div>
-            <div>
-                <div class="brand-title">@L["ProductName"]</div>
-                <div class="brand-subtitle">@L["ProductNameEnglish"]</div>
-            </div>
-        </div>
-        <div class="topbar-motto">
-            <strong>@L["Motto"]</strong>
-            <span>@L["MottoEnglish"]</span>
-        </div>
+        <div class="brand-cluster"><div class="brand-mark" aria-hidden="true"><span>G</span></div><div><div class="brand-title">@L["ProductName"]</div><div class="brand-subtitle">@L["ProductNameEnglish"]</div></div></div>
+        <div class="topbar-motto"><strong>@L["Motto"]</strong><span>@L["MottoEnglish"]</span></div>
         <div class="topbar-actions">
             <button class="language-switch" type="button" data-culture="@(isRtl ? "en" : "ar-KW")" aria-label="@L["SwitchLanguage"]">@(isRtl ? "EN" : "AR")</button>
             @if (!isSetup)
@@ -54,15 +48,15 @@
         <aside class="sidebar" aria-label="@L["PrimaryNavigation"]">
             <div class="sidebar-accent"></div>
             <nav>
-                <a class="nav-item @(!isPermissions ? "active" : string.Empty)" href="/?culture=@CultureInfo.CurrentUICulture.Name"><span class="nav-glyph">⌂</span><span>@L["Home"]</span></a>
-                <span class="nav-item disabled" aria-disabled="true"><span class="nav-glyph">◇</span><span>@L["Entities"]</span></span>
-                <span class="nav-item disabled" aria-disabled="true"><span class="nav-glyph">▦</span><span>@L["Services"]</span></span>
+                <a class="nav-item @(isHome ? "active" : string.Empty)" href="/?culture=@CultureInfo.CurrentUICulture.Name"><span class="nav-glyph">⌂</span><span>@L["Home"]</span></a>
+                <a class="nav-item @(isMetadata ? "active" : string.Empty)" href="/metadata?culture=@CultureInfo.CurrentUICulture.Name"><span class="nav-glyph">◇</span><span>@L["Entities"]</span></a>
+                <a class="nav-item @(isMetadata ? "active" : string.Empty)" href="/metadata?culture=@CultureInfo.CurrentUICulture.Name"><span class="nav-glyph">▦</span><span>@L["Services"]</span></a>
                 <span class="nav-item disabled" aria-disabled="true"><span class="nav-glyph">≡</span><span>@L["Requests"]</span></span>
                 <span class="nav-item disabled" aria-disabled="true"><span class="nav-glyph">◴</span><span>@L["Audit"]</span></span>
                 <a class="nav-item @(isPermissions ? "active" : string.Empty)" href="/permissions?culture=@CultureInfo.CurrentUICulture.Name"><span class="nav-glyph">◈</span><span>@L["Permissions"]</span></a>
                 <span class="nav-item disabled" aria-disabled="true"><span class="nav-glyph">⚙</span><span>@L["Settings"]</span></span>
             </nav>
-            <div class="sidebar-foot"><span class="phase-dot"></span><div><strong>P04</strong><small>@L["Permissions"]</small></div></div>
+            <div class="sidebar-foot"><span class="phase-dot"></span><div><strong>P05</strong><small>@L["Services"]</small></div></div>
         </aside>
     }
     <main id="main-content" class="main-content @(isSetup ? "setup-main" : string.Empty)" tabindex="-1">@RenderBody()</main>
