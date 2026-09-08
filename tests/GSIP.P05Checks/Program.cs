@@ -43,6 +43,25 @@ try
     var exported = await catalog.ExportJsonAsync();
     Assert(exported.Contains("\"schemaVersion\": 1", StringComparison.Ordinal), "Export schema version is missing.");
     Assert(!exported.Contains("Bearer synthetic", StringComparison.OrdinalIgnoreCase), "Export leaked a rejected synthetic secret value.");
+    var exportedPackage = JsonSerializer.Deserialize<MetadataPackage>(exported, new JsonSerializerOptions(JsonSerializerDefaults.Web))
+        ?? throw new InvalidOperationException("Exported metadata package could not be deserialized for round-trip diagnostics.");
+    Console.WriteLine($"P05_EXPORT_DIAGNOSTIC entities={exportedPackage.Entities.Count}");
+    foreach (var exportedEntity in exportedPackage.Entities)
+    {
+        Console.WriteLine($"P05_EXPORT_ENTITY code={exportedEntity.Code} services={exportedEntity.Services.Count}");
+        foreach (var exportedService in exportedEntity.Services)
+        {
+            var environmentCodes = string.Join(",", exportedService.EnvironmentConfigs.Select(x => x.EnvironmentCode));
+            Console.WriteLine($"P05_EXPORT_SERVICE code={exportedService.Code} environments={exportedService.EnvironmentConfigs.Count} [{environmentCodes}] fields={exportedService.Fields.Count} mappings={exportedService.ResultMappings.Count}");
+        }
+    }
+    Assert(exportedPackage.Entities.Count == 1, "Export must contain exactly the synthetic entity.");
+    Assert(exportedPackage.Entities[0].Services.Count == 1, "Export must contain exactly the current synthetic service definition.");
+    Assert(exportedPackage.Entities[0].Services[0].EnvironmentConfigs.Count == 2,
+        "Exported current service must contain exactly two environment bindings before import.");
+    Assert(exportedPackage.Entities[0].Services[0].EnvironmentConfigs.Select(x => x.EnvironmentCode).Distinct(StringComparer.OrdinalIgnoreCase).Count() == 2,
+        "Exported UAT and Production bindings must remain distinct before import.");
+
     var imported = await catalog.ImportJsonAsync(exported);
     Assert(imported.EntitiesProcessed == 1 && imported.ServicesProcessed == 1, "Schema-governed export/import round trip failed.");
 
