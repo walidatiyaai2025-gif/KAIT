@@ -4,6 +4,24 @@
 @{
     ViewData["Title"] = L["PageTitle"];
     var isRtl = CultureInfo.CurrentUICulture.TextInfo.IsRightToLeft;
+    var availableBindings = Model.Entities
+        .SelectMany(entity => entity.Services.SelectMany(service => service.Environments
+            .Where(environment => environment.IsActive && !environment.AuthProfileId.HasValue)
+            .Select(environment => new
+            {
+                EntityId = entity.Id,
+                EntityCode = entity.Code,
+                EntityName = isRtl ? entity.NameAr : entity.NameEn,
+                ServiceId = service.Id,
+                ServiceCode = service.Code,
+                ServiceName = isRtl ? service.NameAr : service.NameEn,
+                EnvironmentId = environment.Id,
+                EnvironmentCode = environment.Code
+            })))
+        .OrderBy(target => target.EntityCode, StringComparer.OrdinalIgnoreCase)
+        .ThenBy(target => target.ServiceCode, StringComparer.OrdinalIgnoreCase)
+        .ThenBy(target => target.EnvironmentCode, StringComparer.OrdinalIgnoreCase)
+        .ToList();
 }
 <link rel="stylesheet" href="~/css/auth-profiles.css" asp-append-version="true" />
 <section class="auth-admin" aria-labelledby="auth-admin-title">
@@ -38,7 +56,7 @@
     <div class="auth-workspace">
         <section class="auth-panel create-panel" aria-labelledby="create-profile-title">
             <div class="panel-heading">
-                <div><h2 id="create-profile-title">@L["CreateProfile"]</h2><p>@L["SharedWarning"]</p></div>
+                <div><h2 id="create-profile-title">@L["CreateProfile"]</h2><p>@L["OwnerBindingHelp"]</p></div>
                 <span class="isolation-badge isolated">@L["Isolated"]</span>
             </div>
             <form method="post" action="/auth-profiles" class="auth-form">
@@ -46,18 +64,24 @@
                 <label>@L["ProfileName"]<input name="name" maxlength="160" required autocomplete="off" /></label>
                 <label>@L["AuthenticationType"]
                     <select name="authenticationType" required>
-                        <option value="ApiKey">API Key</option>
-                        <option value="BearerToken">Bearer Token</option>
-                        <option value="UsernamePassword">Username / Password</option>
-                        <option value="ClientCredentials">Client Credentials</option>
+                        <option value="ApiKeyHeader">API Key Header</option>
+                        <option value="StaticBearer">Static Bearer</option>
+                        <option value="TokenEndpoint">Token Endpoint</option>
+                        <option value="ApiKeyPlusBearer">API Key + Bearer</option>
+                        <option value="CustomHeaders">Custom Headers</option>
                     </select>
                 </label>
-                <fieldset class="sharing-fieldset">
-                    <legend>@L["IsolationMode"]</legend>
-                    <label class="choice"><input type="radio" name="sharingMode" value="Isolated" checked /> @L["Isolated"]</label>
-                    <label class="choice"><input type="radio" name="sharingMode" value="Shared" /> @L["Shared"]</label>
-                    <label class="confirm-share"><input type="checkbox" name="confirmShared" value="true" /> @L["ConfirmShared"]</label>
-                </fieldset>
+                <label>@L["OwnerBinding"]
+                    <select name="ownerBinding" required>
+                        <option value="">@L["SelectOwnerBinding"]</option>
+                        @foreach (var target in availableBindings)
+                        {
+                            var targetValue = $"{target.EntityId:D}|{target.ServiceId:D}|{target.EnvironmentId:D}";
+                            <option value="@targetValue">@target.EntityName / @target.ServiceName / @target.EnvironmentCode</option>
+                        }
+                    </select>
+                </label>
+                <small>@L["OwnerBindingHelp"]</small>
                 <button class="auth-button" type="submit">@L["Create"]</button>
             </form>
         </section>
@@ -83,10 +107,6 @@
                                 <div class="environment-grid">
                                 @foreach (var environment in service.Environments.OrderBy(environment => environment.Code, StringComparer.OrdinalIgnoreCase))
                                 {
-                                    var permittedProfiles = Model.Profiles
-                                        .Where(profile => profile.IsActive && (profile.IsShared || profile.BindingCount == 0 || profile.Id == environment.AuthProfileId))
-                                        .OrderBy(profile => profile.Name, StringComparer.OrdinalIgnoreCase)
-                                        .ToList();
                                     <article class="environment-card">
                                         <div class="environment-head">
                                             <div><span>@L["Environment"]</span><strong>@environment.Code</strong></div>
@@ -103,22 +123,6 @@
                                                 <span class="muted">@L["NoBinding"]</span>
                                             }
                                         </div>
-                                        <form method="post" action="/auth-profiles/bindings" class="binding-form">
-                                            @Html.AntiForgeryToken()
-                                            <input type="hidden" name="entityId" value="@entity.Id" />
-                                            <input type="hidden" name="serviceId" value="@service.Id" />
-                                            <input type="hidden" name="environmentId" value="@environment.Id" />
-                                            <label>@L["BindProfile"]
-                                                <select name="authProfileId">
-                                                    <option value="">@L["NoBinding"]</option>
-                                                    @foreach (var profile in permittedProfiles)
-                                                    {
-                                                        <option value="@profile.Id" selected="@(profile.Id == environment.AuthProfileId)">@profile.Name · @(profile.IsShared ? L["Shared"] : L["Isolated"])</option>
-                                                    }
-                                                </select>
-                                            </label>
-                                            <button class="auth-button secondary" type="submit">@L["SaveBinding"]</button>
-                                        </form>
                                     </article>
                                 }
                                 </div>
@@ -152,6 +156,22 @@
                     </div>
                 </header>
 
+                <div class="binding-ledger" aria-label="@L["Bindings"]">
+                    @foreach (var entity in Model.Entities)
+                    {
+                        @foreach (var service in entity.Services)
+                        {
+                            @foreach (var environment in service.Environments.Where(environment => environment.AuthProfileId == profile.Id))
+                            {
+                                <div class="binding-chip">
+                                    <span class="isolation-badge @(environment.IsSharedProfile ? "shared" : "isolated")">@(environment.IsSharedProfile ? L["Shared"] : L["Isolated"])</span>
+                                    <span>@(isRtl ? entity.NameAr : entity.NameEn) / @(isRtl ? service.NameAr : service.NameEn) / @environment.Code</span>
+                                </div>
+                            }
+                        }
+                    }
+                </div>
+
                 <details class="secure-details profile-settings">
                     <summary>@L["EditMetadata"]</summary>
                     <form method="post" action="/auth-profiles/@profile.Id" class="auth-form metadata-edit-form">
@@ -159,19 +179,35 @@
                         <label>@L["ProfileName"]<input name="name" value="@profile.Name" maxlength="160" required autocomplete="off" /></label>
                         <label>@L["AuthenticationType"]
                             <select name="authenticationType" required>
-                                <option value="ApiKey" selected="@(profile.AuthenticationType == "ApiKey")">API Key</option>
-                                <option value="BearerToken" selected="@(profile.AuthenticationType == "BearerToken")">Bearer Token</option>
-                                <option value="UsernamePassword" selected="@(profile.AuthenticationType == "UsernamePassword")">Username / Password</option>
-                                <option value="ClientCredentials" selected="@(profile.AuthenticationType == "ClientCredentials")">Client Credentials</option>
+                                <option value="ApiKeyHeader" selected="@(profile.AuthenticationType == "ApiKeyHeader")">API Key Header</option>
+                                <option value="StaticBearer" selected="@(profile.AuthenticationType == "StaticBearer")">Static Bearer</option>
+                                <option value="TokenEndpoint" selected="@(profile.AuthenticationType == "TokenEndpoint")">Token Endpoint</option>
+                                <option value="ApiKeyPlusBearer" selected="@(profile.AuthenticationType == "ApiKeyPlusBearer")">API Key + Bearer</option>
+                                <option value="CustomHeaders" selected="@(profile.AuthenticationType == "CustomHeaders")">Custom Headers</option>
                             </select>
                         </label>
-                        <fieldset class="sharing-fieldset">
-                            <legend>@L["IsolationMode"]</legend>
-                            <label class="choice"><input type="radio" name="sharingMode" value="Isolated" checked="@(!profile.IsShared)" /> @L["Isolated"]</label>
-                            <label class="choice"><input type="radio" name="sharingMode" value="Shared" checked="@profile.IsShared" /> @L["Shared"]</label>
-                            <label class="confirm-share"><input type="checkbox" name="confirmShared" value="true" checked="@profile.IsShared" /> @L["ConfirmShared"]</label>
-                        </fieldset>
                         <button class="auth-button secondary" type="submit">@L["Save"]</button>
+                    </form>
+                </details>
+
+                <details class="secure-details sharing-details">
+                    <summary>@L["ShareProfile"]</summary>
+                    <form method="post" action="/auth-profiles/@profile.Id/share" class="auth-form sharing-form">
+                        @Html.AntiForgeryToken()
+                        <label>@L["TargetBinding"]
+                            <select name="targetBinding" required>
+                                <option value="">@L["SelectTargetBinding"]</option>
+                                @foreach (var target in availableBindings)
+                                {
+                                    var targetValue = $"{target.EntityId:D}|{target.ServiceId:D}|{target.EnvironmentId:D}";
+                                    <option value="@targetValue">@target.EntityName / @target.ServiceName / @target.EnvironmentCode</option>
+                                }
+                            </select>
+                        </label>
+                        <label>@L["SharingReason"]<input name="reason" maxlength="500" required autocomplete="off" /></label>
+                        <label class="confirm-share"><input type="checkbox" name="confirmShare" value="true" required /> @L["ConfirmShared"]</label>
+                        <small>@L["SharedWarning"]</small>
+                        <button class="auth-button secondary" type="submit">@L["ShareAction"]</button>
                     </form>
                 </details>
 
@@ -207,7 +243,7 @@
                         <h4>@L["SetSecret"]</h4>
                         <form method="post" action="/auth-profiles/@profile.Id/secrets" class="auth-form">
                             @Html.AntiForgeryToken()
-                            <label>@L["SecretLabel"]<input name="label" maxlength="120" required autocomplete="off" /></label>
+                            <label>@L["SecretLabel"]<input name="label" maxlength="80" required autocomplete="off" /></label>
                             <label>@L["SecretValue"]<input name="secretValue" type="password" required minlength="8" maxlength="4096" autocomplete="new-password" spellcheck="false" /></label>
                             <small>@L["SecretWriteOnlyHelp"]</small>
                             <button class="auth-button" type="submit">@L["SetSecret"]</button>
