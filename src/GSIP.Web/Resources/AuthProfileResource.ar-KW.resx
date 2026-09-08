@@ -8,6 +8,9 @@
   <data name="Subtitle" xml:space="preserve"><value>إدارة ربط المصادقة المعزول لكل خدمة وبيئة. قيم الأسرار للكتابة فقط ولا يتم عرضها مرة أخرى.</value></data>
   <data name="SecurityKicker" xml:space="preserve"><value>P06 · إدارة محمية</value></data>
   <data name="CreateProfile" xml:space="preserve"><value>إنشاء ملف مصادقة</value></data>
+  <data name="EditMetadata" xml:space="preserve"><value>تعديل بيانات ملف المصادقة</value></data>
+  <data name="ProfileSettings" xml:space="preserve"><value>إعدادات الملف</value></data>
+  <data name="Save" xml:space="preserve"><value>حفظ التغييرات</value></data>
   <data name="ProfileName" xml:space="preserve"><value>اسم ملف المصادقة</value></data>
   <data name="AuthenticationType" xml:space="preserve"><value>نوع المصادقة</value></data>
   <data name="IsolationMode" xml:space="preserve"><value>نمط العزل</value></data>
