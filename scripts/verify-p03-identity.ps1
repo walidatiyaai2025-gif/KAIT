@@ -60,10 +60,10 @@ try {
         $locationPath = if ($null -eq $location) { '' } elseif ($location.IsAbsoluteUri) { $location.AbsolutePath } else { $location.OriginalString.Split('?')[0] }
         if (-not $locationPath.StartsWith('/login', [System.StringComparison]::OrdinalIgnoreCase)) { throw "Unauthenticated dashboard did not redirect to login. Location: $location" }
 
-        $body = [System.Net.Http.FormUrlEncodedContent]::new([System.Collections.Generic.Dictionary[string,string]]@{
-            Username = 'synthetic-csrf-user'
-            Password = 'SyntheticPasswordNotSubmittedToService1!'
-        })
+        $pairs = [System.Collections.Generic.List[System.Collections.Generic.KeyValuePair[string,string]]]::new()
+        $pairs.Add([System.Collections.Generic.KeyValuePair[string,string]]::new('Username', 'synthetic-csrf-user'))
+        $pairs.Add([System.Collections.Generic.KeyValuePair[string,string]]::new('Password', 'SyntheticPasswordNotSubmittedToService1!'))
+        $body = [System.Net.Http.FormUrlEncodedContent]::new($pairs)
         $csrf = $client.PostAsync("$baseUrl/login", $body).GetAwaiter().GetResult()
         if ([int]$csrf.StatusCode -ne 400) { throw "Login POST without antiforgery token was not rejected with HTTP 400. Status: $([int]$csrf.StatusCode)" }
     }
