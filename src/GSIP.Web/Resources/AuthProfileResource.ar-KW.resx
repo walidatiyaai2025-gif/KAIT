@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="PageTitle" xml:space="preserve"><value>ملفات المصادقة والأسرار</value></data>
+  <data name="Subtitle" xml:space="preserve"><value>إدارة ربط المصادقة المعزول لكل خدمة وبيئة. قيم الأسرار للكتابة فقط ولا يتم عرضها مرة أخرى.</value></data>
+  <data name="SecurityKicker" xml:space="preserve"><value>P06 · إدارة محمية</value></data>
+  <data name="CreateProfile" xml:space="preserve"><value>إنشاء ملف مصادقة</value></data>
+  <data name="ProfileName" xml:space="preserve"><value>اسم ملف المصادقة</value></data>
+  <data name="AuthenticationType" xml:space="preserve"><value>نوع المصادقة</value></data>
+  <data name="IsolationMode" xml:space="preserve"><value>نمط العزل</value></data>
+  <data name="Isolated" xml:space="preserve"><value>معزول</value></data>
+  <data name="Shared" xml:space="preserve"><value>مشترك</value></data>
+  <data name="SharedWarning" xml:space="preserve"><value>ملفات المصادقة المشتركة استثناء. لا يجوز ربطها بأكثر من خدمة وبيئة إلا بتفويض صريح وبعد التحقق من العلاقة.</value></data>
+  <data name="ConfirmShared" xml:space="preserve"><value>أؤكد صراحة السماح بمشاركة هذا الملف فقط حيث تسمح السياسة.</value></data>
+  <data name="Create" xml:space="preserve"><value>إنشاء</value></data>
+  <data name="Profiles" xml:space="preserve"><value>ملفات المصادقة</value></data>
+  <data name="Bindings" xml:space="preserve"><value>عمليات الربط</value></data>
+  <data name="Secrets" xml:space="preserve"><value>مراجع الأسرار</value></data>
+  <data name="Active" xml:space="preserve"><value>نشط</value></data>
+  <data name="Disabled" xml:space="preserve"><value>معطل</value></data>
+  <data name="Entity" xml:space="preserve"><value>الجهة</value></data>
+  <data name="Service" xml:space="preserve"><value>الخدمة</value></data>
+  <data name="Environment" xml:space="preserve"><value>البيئة</value></data>
+  <data name="BindingHierarchy" xml:space="preserve"><value>الجهة ← الخدمة ← البيئة ← ملف المصادقة</value></data>
+  <data name="NoBinding" xml:space="preserve"><value>لا يوجد ملف مصادقة مربوط</value></data>
+  <data name="BindProfile" xml:space="preserve"><value>ربط ملف مصادقة</value></data>
+  <data name="SelectProfile" xml:space="preserve"><value>اختر ملفًا مسموحًا</value></data>
+  <data name="SaveBinding" xml:space="preserve"><value>حفظ الربط المحدد</value></data>
+  <data name="SecretLabel" xml:space="preserve"><value>اسم السر</value></data>
+  <data name="SecretValue" xml:space="preserve"><value>قيمة السر الجديدة</value></data>
+  <data name="SecretWriteOnlyHelp" xml:space="preserve"><value>حقل للكتابة فقط. تُرسل القيمة مباشرة إلى الخزنة ولا يتم إعادة عرضها.</value></data>
+  <data name="SetSecret" xml:space="preserve"><value>إنشاء / استبدال السر</value></data>
+  <data name="MaskedState" xml:space="preserve"><value>الحالة المحجوبة</value></data>
+  <data name="Generation" xml:space="preserve"><value>الجيل</value></data>
+  <data name="Rotate" xml:space="preserve"><value>تدوير السر</value></data>
+  <data name="RotateConfirm" xml:space="preserve"><value>أفهم أن نجاح التدوير يجعل جيل السر السابق غير صالح للاستخدام الجديد.</value></data>
+  <data name="RotateAction" xml:space="preserve"><value>تأكيد التدوير</value></data>
+  <data name="Enable" xml:space="preserve"><value>تفعيل</value></data>
+  <data name="Disable" xml:space="preserve"><value>تعطيل</value></data>
+  <data name="Delete" xml:space="preserve"><value>حذف</value></data>
+  <data name="DeleteSafety" xml:space="preserve"><value>يُرفض الحذف أثناء استخدام الربط أو إذا كان الحذف سيجعل العلاقة غير آمنة.</value></data>
+  <data name="NoProfiles" xml:space="preserve"><value>لم يتم إنشاء ملفات مصادقة بعد.</value></data>
+  <data name="NoEntities" xml:space="preserve"><value>لا يوجد تسلسل جهة / خدمة / بيئة نشط متاح.</value></data>
+  <data name="Error" xml:space="preserve"><value>تم رفض العملية المطلوبة.</value></data>
+  <data name="Success" xml:space="preserve"><value>تم تنفيذ العملية المطلوبة.</value></data>
+  <data name="LastRotated" xml:space="preserve"><value>آخر تدوير</value></data>
+  <data name="Never" xml:space="preserve"><value>لم يتم</value></data>
+  <data name="BoundCount" xml:space="preserve"><value>عمليات ربط</value></data>
+  <data name="SecretPlaintextNeverShown" xml:space="preserve"><value>لا يتم عرض النص الصريح أو استرجاعه أو تسجيله أو إدراجه في أدلة المتصفح.</value></data>
+</root>
