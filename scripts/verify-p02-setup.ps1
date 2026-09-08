@@ -25,15 +25,22 @@ try {
     }
     if (-not $healthy) { throw "GSIP.Web did not become healthy. See $stderr" }
 
-    $loginResponse = Invoke-WebRequest "$baseUrl/login?culture=en" -UseBasicParsing
-    $redirectPath = $loginResponse.BaseResponse.ResponseUri.AbsolutePath.TrimEnd('/')
-    if (-not $redirectPath.StartsWith('/setup', [System.StringComparison]::OrdinalIgnoreCase)) { throw "Login was not gated to /setup before setup completion. Final path: $redirectPath" }
-    if ($loginResponse.Content -notmatch 'data-setup-step="Welcome"') { throw 'First-run Welcome screen was not returned after login gate.' }
+    $gate = Invoke-WebRequest "$baseUrl/login?culture=en" -UseBasicParsing -MaximumRedirection 0 -SkipHttpErrorCheck
+    if ($gate.StatusCode -notin @(301,302,303,307,308)) { throw "Login did not return a redirect before setup completion. Status: $($gate.StatusCode)" }
+    $location = [string]$gate.Headers.Location
+    if ([string]::IsNullOrWhiteSpace($location) -or -not $location.StartsWith('/setup', [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "Login redirect did not target /setup before setup completion. Location: $location"
+    }
+
+    $gatedWelcome = Invoke-WebRequest "$baseUrl$location" -UseBasicParsing
+    if ($gatedWelcome.Content -notmatch 'data-setup-step="Welcome"') { throw 'First-run Welcome screen was not returned after following the setup gate.' }
 
     $en = Invoke-WebRequest "$baseUrl/setup?culture=en" -UseBasicParsing
     $ar = Invoke-WebRequest "$baseUrl/setup?culture=ar-KW" -UseBasicParsing
+    $database = Invoke-WebRequest "$baseUrl/setup?step=Database&culture=en" -UseBasicParsing
     $en.Content | Set-Content (Join-Path $artifactDir 'setup-welcome-en.html') -Encoding utf8
     $ar.Content | Set-Content (Join-Path $artifactDir 'setup-welcome-ar.html') -Encoding utf8
+    $database.Content | Set-Content (Join-Path $artifactDir 'setup-database-en.html') -Encoding utf8
 
     if ($en.Content -notmatch '<html lang="en" dir="ltr" data-culture-name="en">') { throw 'English setup direction/culture is incorrect.' }
     if ($ar.Content -notmatch '<html lang="ar" dir="rtl" data-culture-name="ar-KW">') { throw 'Arabic setup direction/culture is incorrect.' }
@@ -41,6 +48,8 @@ try {
     $arDecoded = [System.Net.WebUtility]::HtmlDecode($ar.Content)
     if ($arDecoded -notmatch 'معالج إعداد بوابة GSIP') { throw 'Arabic setup wizard title is missing.' }
     if ($en.Content -notmatch 'data-setup-step="Welcome"' -or $ar.Content -notmatch 'data-setup-step="Welcome"') { throw 'Setup step marker is missing.' }
+    if ($database.Content -notmatch 'Test Connection' -or $database.Content -notmatch 'SQL Authentication') { throw 'Database setup controls are missing from runtime output.' }
+    if ($database.Content -match 'name="Password"[^>]+value="[^"\s]+"') { throw 'Database password field rendered a value back to the client.' }
 
     $browserCandidates = @(
         (Join-Path $env:ProgramFiles 'Google/Chrome/Application/chrome.exe'),
@@ -52,7 +61,9 @@ try {
 
     $captures = @(
         @{ Name = 'p02-setup-welcome-en.png'; Url = "$baseUrl/setup?culture=en" },
-        @{ Name = 'p02-setup-welcome-ar.png'; Url = "$baseUrl/setup?culture=ar-KW" }
+        @{ Name = 'p02-setup-welcome-ar.png'; Url = "$baseUrl/setup?culture=ar-KW" },
+        @{ Name = 'p02-setup-database-en.png'; Url = "$baseUrl/setup?step=Database&culture=en" },
+        @{ Name = 'p02-setup-database-ar.png'; Url = "$baseUrl/setup?step=Database&culture=ar-KW" }
     )
     foreach ($capture in $captures) {
         $path = Join-Path $artifactDir $capture.Name
