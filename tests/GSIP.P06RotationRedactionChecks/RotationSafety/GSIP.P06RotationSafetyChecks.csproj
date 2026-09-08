@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>GSIP.P06RotationSafetyChecks</AssemblyName>
+    <RootNamespace>GSIP.P06RotationSafetyChecks</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\GSIP.Application\GSIP.Application.csproj" />
+  </ItemGroup>
+</Project>
