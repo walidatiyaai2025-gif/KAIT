@@ -60,15 +60,17 @@ public sealed class RbacFoundation : Migration
             table: "RoleServicePermissions",
             columns: new[] { "ServiceCode", "PermissionKey" });
 
+        // These are fixed product seed values, not runtime/user input. Raw SQL is used here because
+        // the repository keeps hand-written migrations without generated designer target models;
+        // EF InsertData requires that target model and fails before executing the migration.
         foreach (var role in GsipRoles.SeedRoles)
         {
-            migrationBuilder.InsertData(
-                table: "AspNetRoles",
-                columns: new[] { "Id", "Name", "NormalizedName", "ConcurrencyStamp" },
-                values: new object?[] { role.Id, role.Name, role.Name.ToUpperInvariant(), null });
+            var escapedName = role.Name.Replace("'", "''", StringComparison.Ordinal);
+            migrationBuilder.Sql(
+                $"INSERT INTO [AspNetRoles] ([Id], [Name], [NormalizedName], [ConcurrencyStamp]) VALUES ('{role.Id:D}', N'{escapedName}', N'{escapedName.ToUpperInvariant()}', NULL);");
         }
 
-        var seededAt = new DateTimeOffset(2026, 9, 8, 15, 10, 0, TimeSpan.Zero);
+        const string seededAt = "2026-09-08T15:10:00+00:00";
         var seededPermissions = new Dictionary<Guid, IReadOnlyList<string>>
         {
             [Guid.Parse(GsipRoles.SystemAdministratorId)] = GsipPermissions.All,
@@ -118,10 +120,9 @@ public sealed class RbacFoundation : Migration
         {
             foreach (var permission in role.Value)
             {
-                migrationBuilder.InsertData(
-                    table: "RolePermissions",
-                    columns: new[] { "RoleId", "PermissionKey", "IsAllowed", "UpdatedAtUtc" },
-                    values: new object[] { role.Key, permission, true, seededAt });
+                var escapedPermission = permission.Replace("'", "''", StringComparison.Ordinal);
+                migrationBuilder.Sql(
+                    $"INSERT INTO [RolePermissions] ([RoleId], [PermissionKey], [IsAllowed], [UpdatedAtUtc]) VALUES ('{role.Key:D}', N'{escapedPermission}', 1, '{seededAt}');");
             }
         }
     }
@@ -133,10 +134,7 @@ public sealed class RbacFoundation : Migration
 
         foreach (var role in GsipRoles.SeedRoles)
         {
-            migrationBuilder.DeleteData(
-                table: "AspNetRoles",
-                keyColumn: "Id",
-                keyValue: role.Id);
+            migrationBuilder.Sql($"DELETE FROM [AspNetRoles] WHERE [Id] = '{role.Id:D}';");
         }
     }
 }
