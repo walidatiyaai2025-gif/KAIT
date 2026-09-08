@@ -6,21 +6,21 @@ This ledger is evidence-driven. Never mark a phase CLOSED because a prompt says 
 |---|---|---|
 | P00 | OPEN | Live-state baseline, platform/toolchain pinning, repo structure, version policy, build/test/CI baseline, control-doc reconciliation |
 | P01 | LOCKED | Solution architecture and bilingual shell; mandatory design-system baseline |
-| P02 | LOCKED | Complete first-run Setup Wizard before Login, SQL Server test/create/use/migrations/admin/security/review/finish |
+| P02 | LOCKED | Complete first-run Setup Wizard before Login, SQL Server test/create/use/migrations/admin/security/review/finish; create service/environment placeholders only, never source-coded live credentials |
 | P03 | LOCKED | Identity, MFA, sessions, lockout/rate limiting, account security and auth audit |
 | P04 | LOCKED | RBAC, server-side authorization, per-service permissions, high-fidelity permissions UI |
-| P05 | LOCKED | Metadata-driven entities/services/fields/result mappings/admin/versioning/import-export |
-| P06 | LOCKED | Secret vault, authentication profiles, rotation, token cache, redaction |
-| P07 | LOCKED | Generic service execution engine and high-fidelity dynamic Service Execution UI |
-| P08 | LOCKED | MOJ x-api-key + `/genToken` + Bearer flow based on official docs/fixtures |
-| P09 | LOCKED | MOJ entity + five services, exact official request/response contracts, tests and authorized UAT smoke if available |
+| P05 | LOCKED | Metadata-driven entities/services/fields/result mappings plus independent `ServiceEnvironmentConfig` per Service + UAT/Production environment; admin/versioning/import-export |
+| P06 | LOCKED | Secret vault, isolated authentication profiles/SecretRefs, explicit Shared AuthProfile support, rotation/redaction, cross-service-safe token cache keys |
+| P07 | LOCKED | Generic service execution engine resolving the exact Service + Environment + AuthProfile binding; high-fidelity dynamic Service Execution UI |
+| P08 | LOCKED | MOJ x-api-key + `/genToken` + Bearer flow based on official docs/fixtures without assuming credentials are shared between MOJ services |
+| P09 | LOCKED | MOJ entity + five services, exact official request/response contracts, independent endpoint/auth bindings, tests and authorized UAT smoke if available |
 | P10 | LOCKED | Request/result history, masking, scoped access and permissioned exports |
 | P11 | LOCKED | Tamper-evident audit trail, monitoring, high-fidelity Audit dashboard and evidence |
-| P12 | LOCKED | Admin operations, environments, health, diagnostics, secret rotation workflow and operational alerts |
+| P12 | LOCKED | Admin operations for Entity -> Service -> Environments -> UAT/Production, Edit/Test Connection/Test Authentication/Activate/Disable/Rotate Secret, health/diagnostics and operational alerts |
 | P13 | LOCKED | Full Arabic/English RTL/LTR UX convergence + UI DESIGN PARITY GATE for all four reference screens |
-| P14 | LOCKED | Security hardening, resilience, authorization/IDOR/CSRF/XSS/rate-limit/fuzz/dependency checks |
+| P14 | LOCKED | Security hardening, resilience, authorization/IDOR/CSRF/XSS/rate-limit/fuzz/dependency checks including cross-service endpoint/secret/token isolation |
 | P15 | LOCKED | Professional Windows/IIS installer, upgrade/repair/uninstall path, versioned artifact + SHA-256 |
-| P16 | LOCKED | Full automated acceptance on exact release candidate including setup→login→RBAC→MOJ→history→audit→installer + UI parity |
+| P16 | LOCKED | Full automated acceptance on exact release candidate including setup→login→RBAC→MOJ→history→audit→installer + UI parity + service/environment isolation |
 | P17 | LOCKED | Final convergence, exact-main regression repair, stale integration recovery, ledger/evidence reconciliation and final release closure |
 
 ## Cross-phase gates
@@ -32,6 +32,7 @@ The following apply to every phase:
 - **NO FUTURE PHASE WORK:** current-phase closure controls progression.
 - **TEST/REPAIR/RETEST:** failed required tests or exact-main regressions have priority.
 - **NO SECRET LEAKAGE:** secrets and personal data must not enter Git/logs/evidence.
+- **SERVICE ISOLATION:** endpoint/auth/secret/token configuration defaults to independent Service + Environment bindings; sharing requires an explicit Shared AuthProfile.
 - **UI PARITY:** any phase touching one of the four reference screens must preserve the mandatory baseline and capture evidence.
 - **OWNER-LAST:** finish all autonomous portions before deferring an external/owner-only check.
 - **PUSHED EVIDENCE:** no phase closure from unpushed local work.

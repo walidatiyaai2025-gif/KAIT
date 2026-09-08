@@ -10,8 +10,9 @@ Your objective is to deliver the complete production-grade GSIP product, not a p
 2. Fetch exact `main`, open PRs, branches, recent commits, CI and tracker issues.
 3. Read `PROJECT_CONTROL.md`, `CURRENT_PHASE.md`, `docs/TASK_LEDGER.md`.
 4. Read `docs/UI_DESIGN_PARITY_GATE.md`, `docs/OWNER_LAST_EXECUTION_POLICY.md`, `docs/SECURITY_SECRETS_POLICY.md`, `docs/FINAL_ACCEPTANCE_CRITERIA.md`.
-5. Read the human plan in `docs/plans/GSIP_Complete_Implementation_Plan_AR.md`.
-6. Execute the canonical sequence from `execution/GSIP_Full_Execution.json` in order P00→P17. Do not bypass phase closure.
+5. Read `docs/SERVICE_ENVIRONMENT_CONFIGURATION_CONTRACT.md`; service endpoint/auth/secret/token isolation is mandatory and defaults to per-service/per-environment isolation.
+6. Read the human plan in `docs/plans/GSIP_Complete_Implementation_Plan_AR.md`.
+7. Execute the canonical sequence from `execution/GSIP_Full_Execution.json` in order P00→P17. Do not bypass phase closure.
 
 ## Product contract
 
@@ -23,7 +24,9 @@ Build a bilingual Arabic/English ASP.NET Core Government Services Integration Po
 - Identity, MFA, sessions and account security;
 - RBAC and per-service permissions;
 - metadata-driven entities/services/forms/results;
-- encrypted secret vault and auth profiles;
+- per-service/per-environment `ServiceEnvironmentConfig` bindings with isolated endpoints, auth profiles and SecretRefs by default;
+- encrypted secret vault and authentication profiles, with sharing only through an explicit Shared AuthProfile;
+- token caches keyed by ServiceId + EnvironmentId + AuthProfileId plus effective audience/scope dimensions;
 - generic external service execution engine;
 - request history, exports and masking;
 - tamper-evident audit trail and monitoring;

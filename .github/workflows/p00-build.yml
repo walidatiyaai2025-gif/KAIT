@@ -1,0 +1,66 @@
+name: P00 Build Baseline
+
+on:
+  push:
+    branches:
+      - main
+      - 'worker/**'
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-test-package:
+    runs-on: windows-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pinned .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Verify SDK selection
+        shell: pwsh
+        run: |
+          $version = dotnet --version
+          if ($version -ne '10.0.400') {
+            throw "Expected .NET SDK 10.0.400 but resolved $version"
+          }
+
+      - name: Restore
+        run: dotnet restore GSIP.sln
+
+      - name: Build
+        run: dotnet build GSIP.sln --configuration Release --no-restore
+
+      - name: Run P00 contract checks
+        run: dotnet run --project tests/GSIP.BaselineChecks/GSIP.BaselineChecks.csproj --configuration Release --no-build
+
+      - name: Publish framework-dependent baseline
+        run: dotnet publish src/GSIP.Web/GSIP.Web.csproj --configuration Release --no-restore --output artifacts/p00-publish
+
+      - name: Package and hash baseline artifact
+        id: package
+        shell: pwsh
+        run: |
+          $shortSha = $env:GITHUB_SHA.Substring(0, 12)
+          $artifact = "GSIP-P00-Baseline-0.1.0-$shortSha.zip"
+          Compress-Archive -Path artifacts/p00-publish/* -DestinationPath "artifacts/$artifact" -Force
+          $hash = (Get-FileHash "artifacts/$artifact" -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $artifact" | Set-Content "artifacts/$artifact.sha256"
+          "artifact=$artifact" >> $env:GITHUB_OUTPUT
+
+      - name: Upload P00 build evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.package.outputs.artifact }}
+          path: |
+            artifacts/${{ steps.package.outputs.artifact }}
+            artifacts/${{ steps.package.outputs.artifact }}.sha256
+          if-no-files-found: error
+          retention-days: 14

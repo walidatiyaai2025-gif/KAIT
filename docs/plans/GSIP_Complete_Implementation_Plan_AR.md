@@ -17,6 +17,8 @@ Architecture • Setup Wizard • RBAC • Audit • API Integration • Arabic/
 
 البنية يجب أن تكون **Metadata-Driven**: إضافة جهة أو خدمة عادية لا تتطلب Controller/View مخصصاً؛ تعريف الخدمة يحدد الحقول، validation، endpoint، method، content type، auth profile، result mapping، permissions، masking، timeout وسياسات التخزين.
 
+عقد العزل التشغيلي في `docs/SERVICE_ENVIRONMENT_CONFIGURATION_CONTRACT.md` إلزامي: الجهة ليست boundary للـendpoint أو credentials. لكل Service ولكل Environment إعداد مستقل افتراضياً، والمشاركة لا تتم إلا عبر Shared AuthProfile يربطه المسؤول صراحة.
+
 ## 2. التقنية المستهدفة
 
 القرار المرجعي: ASP.NET Core **.NET 10 LTS** + MVC/Razor + EF Core + SQL Server 2022 أو أحدث، مع تثبيت النسخ فعلياً في P00 وفق بيئة البناء/Windows Server المدعومة. الحل يقسم على الأقل إلى:
@@ -58,8 +60,8 @@ Architecture • Setup Wizard • RBAC • Audit • API Integration • Arabic/
 6. System Administrator — الاسم، username، البريد، password policy، MFA enrollment/policy.
 7. Organization & Branding — اسم عربي/إنجليزي، شعار، ألوان، timezone Kuwait (+03:00)، صيغة Request IDs.
 8. Security Baseline — session timeout، lockout، password policy، MFA policy، masking/retention defaults.
-9. Integration Environment — UAT/Production، base URL، proxy إن وجد، TLS، timeout، correlation headers.
-10. MOJ Authentication placeholders — إدخال `x-api-key` وToken credentials داخل Secret Vault مع Test؛ لا secrets في source/logs.
+9. Integration Environment — إنشاء placeholders مستقلة UAT/Production لكل Service مع endpoint/proxy/TLS/timeout/correlation settings القابلة للضبط لاحقاً.
+10. MOJ Authentication placeholders — SecretRefs مستقلة لكل Service + Environment افتراضياً مع Test؛ لا secrets في source/logs، ولا مشاركة تلقائية للـAPI keys أو token credentials.
 11. MOJ Services — تحميل تعريفات الخدمات الخمس واختبار config دون بيانات حقيقية غير مصرح بها.
 12. Notifications — SMTP اختياري مع Test.
 13. Review & Health Check — Pass/Warning/Fail ومنع Finish عند critical failures.
@@ -106,11 +108,17 @@ Permissions على الأقل:
 
 ### Environment
 
-UAT/Production، `BaseUrl`, proxy/TLS/timeout/health settings.
+تعريف بيئة منطقي مثل UAT/Production. لا يحمل BaseUrl موحداً للجهة لأن الربط الفعلي يجب أن يكون per-service.
 
 ### Service
 
-`Code`, bilingual names/descriptions, HTTP method, relative path, content type, auth profile, active/version.
+`Code`, bilingual names/descriptions, active/version والربط بتعريفات الحقول والنتائج. إعداد الاتصال الفعلي يوجد في `ServiceEnvironmentConfig`.
+
+### ServiceEnvironmentConfig
+
+لكل `ServiceId + EnvironmentId` سجل مستقل يحتوي على الأقل: `BaseUrl` / Production Endpoint Prefix(FQDN)، `RelativePath`, HTTP Method, ContentType, non-secret Headers/header names, Timeout, TLS/certificate options, Proxy, Health/Test settings, Active, LastTestedAt, LastTestStatus و`AuthProfileId`.
+
+UAT وProduction مستقلتان، وكذلك كل خدمة عن الخدمات الأخرى داخل نفس الجهة.
 
 ### ServiceField
 
@@ -135,9 +143,11 @@ Auth profiles:
 - ApiKeyPlusBearer
 - CustomHeaders
 
+كل Service + Environment يملك AuthProfile وSecretRefs مستقلة افتراضياً. لا تنسخ secrets بين الخدمات تلقائياً. يسمح بالمشاركة فقط عندما يختار المسؤول Shared AuthProfile صراحة، ويجب أن تكون المشاركة قابلة للتدقيق.
+
 UI يعرض masked state فقط بعد الحفظ مع Test / Rotate / Revoke وLastRotatedAt. logs/exceptions/request dumps لا تحتوي Authorization، `x-api-key`، password، DB password أو token response.
 
-Token cache يراعي expiry safety window وsingle-flight refresh.
+Token cache يراعي expiry safety window وsingle-flight refresh، ويكون مفتاحه على الأقل `ServiceId + EnvironmentId + AuthProfileId` مع audience/scope وأي قيمة تؤثر على صلاحية الـtoken. يمنع cross-service token reuse.
 
 ## 9. Generic Service Execution Engine
 
@@ -146,7 +156,7 @@ Token cache يراعي expiry safety window وsingle-flight refresh.
 1. يبني form من ServiceFields؛
 2. client + server validation؛
 3. RequestId + CorrelationId؛
-4. resolve Environment/AuthProfile؛
+4. resolve `ServiceEnvironmentConfig` المحدد ثم AuthProfile الخاص به؛
 5. HttpClientFactory request؛
 6. safe resilience/timeout/cancellation؛
 7. لا retry تلقائي لـ POST إلا إذا metadata تصرح `SafeToRetry`؛
@@ -154,7 +164,7 @@ Token cache يراعي expiry safety window وsingle-flight refresh.
 9. يسجل status/duration/endpoint alias بدون أسرار؛
 10. يعالج 2xx/400/401/403/404/409/429/5xx/timeout/TLS برسائل ثنائية اللغة.
 
-شاشة التنفيذ تطابق `docs/ui-baseline/bilingual_kuwait_government_service_portal.png` وتشمل selectors، dynamic fields، service info، Result، Raw Response بصلاحية مستقلة، History، Request Metadata وstatus states.
+شاشة التنفيذ تطابق `docs/ui-baseline/bilingual_kuwait_government_service_portal.svg` وتشمل selectors، dynamic fields، service info، Result، Raw Response بصلاحية مستقلة، History، Request Metadata وstatus states.
 
 ## 10. MOJ — المصادقة والخدمات الخمس
 
@@ -169,7 +179,7 @@ Token cache يراعي expiry safety window وsingle-flight refresh.
 - token داخل response `data` وفق schema الرسمي؛
 - `Authorization: Bearer <token>` للخدمات التي تتطلب Bearer.
 
-كل endpoint/base URL/header/path يصبح Environment/Metadata وليس hard-coded.
+كل endpoint/base URL/header/path يصبح ServiceEnvironmentConfig/Metadata وليس hard-coded. لا يفترض النظام أن خدمات MOJ الخمس تشترك في API key أو token endpoint أو username/password أو Consumer credentials؛ كل خدمة تضبط مستقلاً ما لم يربط المسؤول Shared AuthProfile صراحة.
 
 الخدمات الأولية:
 
@@ -199,15 +209,17 @@ Structured result/raw response configurable per service؛ sensitive storage encr
 
 Audit append-only من الواجهة للهوية، الصلاحيات، metadata، secrets lifecycle، executions، sensitive views، exports، setup/config changes. أضف tamper evidence مثل `PreviousHash` / `RecordHash` chain مع verification job.
 
-Audit UI تطابق `docs/ui-baseline/kuwait_government_audit_dashboard.png` وتشمل KPIs، filters، request volume، security indicators، table، detail drawer، masked payload، auth/device/source metadata. Retention configurable؛ لا تثبت مدة قانونية من دون قرار مؤسسي.
+Audit UI تطابق `docs/ui-baseline/kuwait_government_audit_dashboard.svg` وتشمل KPIs، filters، request volume، security indicators، table، detail drawer، masked payload، auth/device/source metadata. Retention configurable؛ لا تثبت مدة قانونية من دون قرار مؤسسي.
 
 ## 13. Admin / Health / Diagnostics
 
-إدارة environments، endpoints، activation/versioning، timeout، proxy/TLS، SMTP، branding، languages، retention، maintenance mode.
+إدارة التكامل يجب أن تعرض التسلسل `Entity -> Service -> Environments -> UAT | Production`. لكل Service + Environment: Edit، Test Connection، Test Authentication، Activate/Disable، Rotate Secret. تدعم App Name، Consumer Key identifier، IP allowlist metadata وProduction Endpoint Prefix(FQDN)، بينما Consumer Secret/API key/password/token secrets تبقى SecretRefs داخل Vault فقط.
 
-Health checks: DB، Data Protection keys، disk، MOJ token generation، endpoint reachability، clock skew.
+إدارة كذلك activation/versioning، timeout، proxy/TLS، SMTP، branding، languages، retention، maintenance mode.
 
-Diagnostics permission-protected وsanitized. Secret rotation workflow: create new → test → activate → revoke old + audit. Alerts للـ repeated failures ومشاكل health.
+Health checks: DB، Data Protection keys، disk، per-service authentication test، endpoint reachability، clock skew.
+
+Diagnostics permission-protected وsanitized. Secret rotation workflow: create new → test → activate → revoke old + audit. دوران Secret لخدمة لا يغير خدمة أخرى إلا عند Shared AuthProfile مقصود. Alerts للـ repeated failures ومشاكل health.
 
 ## 14. Localization / Accessibility
 
@@ -217,7 +229,7 @@ Resource-based localization، لا hard-coded UI strings. `dir=rtl/ltr` حقيق
 
 ## 15. Security Hardening
 
-اختبارات إلزامية لـ authorization bypass، IDOR، CSRF، XSS/output encoding، rate limiting، session fixation، brute force، secret/log leakage، migration safety، retry storms، timeout/cancellation، external API outage، token refresh concurrency، dynamic-input fuzzing، upload/logo restrictions عند وجودها. راجع NuGet dependencies/licenses/vulnerabilities. Critical/High release-affecting defects تمنع الإغلاق.
+اختبارات إلزامية لـ authorization bypass، IDOR، CSRF، XSS/output encoding، rate limiting، session fixation، brute force، secret/log leakage، migration safety، retry storms، timeout/cancellation، external API outage، token refresh concurrency، dynamic-input fuzzing، upload/logo restrictions عند وجودها. أضف اختبارات صريحة تمنع Service A من استخدام endpoint/SecretRef/token الخاصة بـService B وتثبت عزل UAT/Production ودوران secrets. راجع NuGet dependencies/licenses/vulnerabilities. Critical/High release-affecting defects تمنع الإغلاق.
 
 ## 16. Windows/IIS Installer
 
@@ -242,7 +254,7 @@ DB/API secrets لا توضع في installer logs أو package؛ الافتراض
 - Unit: permissions, validation, masking, mapping, setup state, token expiry.
 - Integration: migrations, identity, audit hash chain, secret encryption, HTTP/auth handlers.
 - Contract: كل MOJ service ضد schema الرسمي.
-- Security: authorization/IDOR/CSRF/XSS/leakage/lockout.
+- Security: authorization/IDOR/CSRF/XSS/leakage/lockout + cross-service endpoint/secret/token isolation.
 - Localization: RTL/LTR ومحتوى طويل/مختلط.
 - UI Design Parity: screenshots للـ 4 شاشات بالعربية والإنجليزية.
 - Setup: fresh/wrong DB/unavailable/migration retry/restart/resume/completed lock.
@@ -262,6 +274,7 @@ DB/API secrets لا توضع في installer logs أو package؛ الافتراض
 - Setup من deployment نظيف يصل إلى Login صالح بلا تعديل يدوي للـ config؛
 - Unauthorized users لا يتجاوزون RBAC/service permissions؛
 - Entity/Service جديدة عادية يمكن تعريفها metadata-driven؛
+- كل Service + Environment يمكن ضبط endpoint/auth/secrets الخاصة بها واختبارها دون تعديل source، ولا يحدث cross-service token/secret reuse؛
 - الخدمات الخمس MOJ مبنية من schemas الرسمية؛
 - كل execution له RequestId/Audit؛
 - لا secret أو token أو DB password plaintext في Git/logs؛
