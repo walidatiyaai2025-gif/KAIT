@@ -1,0 +1,55 @@
+name: P07 Upgrade Persistence Acceptance
+
+on:
+  push:
+    branches:
+      - main
+      - worker/p07-upgrade-persistence-acceptance
+  pull_request:
+    paths:
+      - 'scripts/verify-p07-upgrade-persistence.ps1'
+      - '.github/workflows/p07-upgrade-persistence.yml'
+      - 'src/GSIP.Infrastructure/Setup/**'
+      - 'src/GSIP.Infrastructure/Metadata/**'
+      - 'src/GSIP.Infrastructure/Secrets/**'
+      - 'src/GSIP.Domain/Metadata/**'
+      - 'src/GSIP.Domain/Secrets/**'
+      - 'src/GSIP.Application/Execution/**'
+      - 'src/GSIP.Infrastructure/Execution/**'
+
+permissions:
+  contents: read
+
+jobs:
+  upgrade-persistence:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exact commit with closed-phase history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pinned .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore solution
+        run: dotnet restore GSIP.sln
+
+      - name: Build solution Release
+        run: dotnet build GSIP.sln -c Release --no-restore
+
+      - name: Start SQL Server LocalDB
+        shell: pwsh
+        run: |
+          sqllocaldb start MSSQLLocalDB
+          sqllocaldb info MSSQLLocalDB
+
+      - name: Verify exact P06 upgrade persistence and P07 clean schema
+        shell: pwsh
+        run: ./scripts/verify-p07-upgrade-persistence.ps1
+
+      - name: Validate execution plan and governance
+        run: python scripts/validate_execution_plan.py
