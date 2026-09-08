@@ -34,7 +34,7 @@ if (failures.Count > 0)
     return 1;
 }
 
-Console.WriteLine("P03 checks passed: Identity schema, bootstrap transfer, configurable lockout, disabled-account rejection and sanitized authentication audit persistence are valid.");
+Console.WriteLine("P03 checks passed: Identity persistence, protected auth pipeline, MFA/forced-password challenge flow, configurable lockout/rate limiting, disabled-account rejection and sanitized authentication audit persistence are valid.");
 return 0;
 
 static void CheckSourceContracts(List<string> failures)
@@ -43,6 +43,9 @@ static void CheckSourceContracts(List<string> failures)
     var context = File.ReadAllText(Path.Combine(root, "src", "GSIP.Infrastructure", "Setup", "GsipDbContext.cs"));
     var authentication = File.ReadAllText(Path.Combine(root, "src", "GSIP.Infrastructure", "Identity", "AccountAuthenticationService.cs"));
     var migration = File.ReadAllText(Path.Combine(root, "src", "GSIP.Infrastructure", "Setup", "Migrations", "20260908132000_IdentityFoundation.cs"));
+    var program = File.ReadAllText(Path.Combine(root, "src", "GSIP.Web", "Program.cs"));
+    var controller = File.ReadAllText(Path.Combine(root, "src", "GSIP.Web", "Controllers", "ShellController.cs"));
+    var login = File.ReadAllText(Path.Combine(root, "src", "GSIP.Web", "Views", "Shell", "Login.cshtml"));
 
     Expect(context.Contains("IdentityDbContext<ApplicationUser", StringComparison.Ordinal), "GsipDbContext must use the mature ASP.NET Core Identity store.", failures);
     Expect(context.Contains("AuthenticationAuditEvents", StringComparison.Ordinal), "Authentication audit persistence is missing.", failures);
@@ -52,6 +55,22 @@ static void CheckSourceContracts(List<string> failures)
     {
         Expect(migration.Contains(table, StringComparison.Ordinal), $"Identity migration is missing {table}.", failures);
     }
+
+    foreach (var requiredPipeline in new[] { "UseGsipSecurityHeaders", "UseRateLimiter", "UseAuthentication", "UseAuthorization" })
+    {
+        Expect(program.Contains(requiredPipeline, StringComparison.Ordinal), $"P03 web pipeline is missing {requiredPipeline}.", failures);
+    }
+    Expect(program.Contains("AddRateLimiter", StringComparison.Ordinal) && program.Contains("LoginRateLimitPermitCount", StringComparison.Ordinal), "Configurable login rate limiting is missing.", failures);
+    Expect(controller.Contains("[Authorize]", StringComparison.Ordinal), "Protected shell endpoints must require authorization.", failures);
+    Expect(controller.Contains("[ValidateAntiForgeryToken]", StringComparison.Ordinal), "Authentication-changing POST endpoints must enforce antiforgery validation.", failures);
+    Expect(controller.Contains("EnableRateLimiting(\"login\")", StringComparison.Ordinal), "Login endpoint is missing the named rate-limit policy.", failures);
+    foreach (var route in new[] { "/login", "/logout", "/mfa/enroll", "/mfa/verify", "/password/change" })
+    {
+        Expect(controller.Contains(route, StringComparison.Ordinal), $"P03 account flow is missing route {route}.", failures);
+    }
+    Expect(login.Contains("data-auth-state=\"active\"", StringComparison.Ordinal), "P03 login UI is not marked as active authentication.", failures);
+    Expect(login.Contains("AntiForgeryToken", StringComparison.Ordinal), "P03 login UI must emit an antiforgery token.", failures);
+    Expect(!login.Contains(" disabled", StringComparison.Ordinal), "P03 login UI still contains a disabled shell-only control.", failures);
 }
 
 static async Task CheckIdentityPersistenceAsync(string sqlServer, List<string> failures)
@@ -177,6 +196,11 @@ static async Task CheckIdentityPersistenceAsync(string sqlServer, List<string> f
         Expect(user.Id == bootstrap.Id && user.IsPrivileged && user.MustChangePassword, "Bootstrap administrator was not transferred with its security flags.", failures);
         Expect(transferred.PasswordHash == "[ACTIVATED]" && transferred.ActivatedAtUtc is not null, "Bootstrap password hash was not erased after activation.", failures);
 
+        var validPassword = await authentication.PasswordSignInAsync("p03admin", bootstrapPassword, false);
+        Expect(validPassword.Status == AccountSignInStatus.MfaEnrollmentRequired, "Privileged bootstrap account did not enter the required MFA-enrollment challenge.", failures);
+        var setCookie = accessor.HttpContext.Response.Headers.SetCookie.ToString();
+        Expect(setCookie.Contains("GSIP.Auth", StringComparison.Ordinal) && !setCookie.Contains(bootstrapPassword, StringComparison.Ordinal), "Restricted sign-in cookie was not issued safely.", failures);
+
         for (var attempt = 0; attempt < 2; attempt++)
         {
             var rejected = await authentication.PasswordSignInAsync("p03admin", "incorrect synthetic value", false);
@@ -184,6 +208,8 @@ static async Task CheckIdentityPersistenceAsync(string sqlServer, List<string> f
         }
         var locked = await authentication.PasswordSignInAsync("p03admin", "incorrect synthetic value", false);
         Expect(locked.Status == AccountSignInStatus.LockedOut, "Configured failed-attempt threshold did not lock the account.", failures);
+        var unknown = await authentication.PasswordSignInAsync("unknown-synthetic-user", "incorrect synthetic value", false);
+        Expect(unknown.Status == AccountSignInStatus.InvalidCredentials, "Unknown-account sign-in did not preserve the generic invalid-credential response.", failures);
 
         user = await db.Users.SingleAsync();
         user.LockoutEnd = null;
@@ -262,4 +288,3 @@ sealed class TestHostEnvironment : IHostEnvironment
     public required string ContentRootPath { get; set; }
     public required IFileProvider ContentRootFileProvider { get; set; }
 }
-

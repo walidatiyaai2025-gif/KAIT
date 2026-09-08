@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="PhaseLabel"><value>Identity &amp; account security</value></data>
+  <data name="LoginTitle"><value>Secure account access</value></data>
+  <data name="LoginIntro"><value>Sign in with your GSIP account. Privileged accounts follow MFA and forced-password-change controls before the workspace opens.</value></data>
+  <data name="Username"><value>Username</value></data>
+  <data name="UsernamePlaceholder"><value>Enter your account username</value></data>
+  <data name="Password"><value>Password</value></data>
+  <data name="RememberMe"><value>Remember this account on this trusted browser</value></data>
+  <data name="SignIn"><value>Sign in securely</value></data>
+  <data name="SignOut"><value>Sign out</value></data>
+  <data name="AuthRequiredFields"><value>Enter both username and password.</value></data>
+  <data name="AuthInvalid"><value>The username or password is not valid.</value></data>
+  <data name="AuthLocked"><value>This account is temporarily locked after repeated failed attempts. Try again later or contact an authorized administrator.</value></data>
+  <data name="AuthDisabled"><value>This account is disabled. Contact an authorized administrator.</value></data>
+  <data name="SecureSessionNotice"><value>Credentials, MFA codes and authentication secrets are never written to application logs or audit payloads.</value></data>
+  <data name="MfaEnrollTitle"><value>Enroll multi-factor authentication</value></data>
+  <data name="MfaEnrollIntro"><value>Add the key to an authenticator app, then enter the current six-digit code to activate MFA.</value></data>
+  <data name="AuthenticatorKey"><value>Authenticator setup key</value></data>
+  <data name="MfaCode"><value>Authentication code</value></data>
+  <data name="MfaCodePlaceholder"><value>6-digit code</value></data>
+  <data name="ConfirmMfa"><value>Enable MFA</value></data>
+  <data name="MfaVerifyTitle"><value>Verify multi-factor authentication</value></data>
+  <data name="MfaVerifyIntro"><value>Enter the current code from your registered authenticator to continue.</value></data>
+  <data name="Verify"><value>Verify and continue</value></data>
+  <data name="MfaInvalid"><value>The authentication code is invalid or expired.</value></data>
+  <data name="PasswordChangeTitle"><value>Change your password</value></data>
+  <data name="PasswordChangeIntro"><value>Your account requires a password change before normal access is allowed.</value></data>
+  <data name="CurrentPassword"><value>Current password</value></data>
+  <data name="NewPassword"><value>New password</value></data>
+  <data name="ConfirmPassword"><value>Confirm new password</value></data>
+  <data name="ChangePassword"><value>Change password and continue</value></data>
+  <data name="PasswordRequiredFields"><value>Complete all password fields.</value></data>
+  <data name="PasswordMismatch"><value>The new password and confirmation do not match.</value></data>
+  <data name="PasswordChangeRejected"><value>The password change was rejected. Check the current password and configured password policy.</value></data>
+  <data name="ProtectedStep"><value>Protected identity step</value></data>
+</root>

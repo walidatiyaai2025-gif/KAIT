@@ -1,5 +1,6 @@
 @using System.Globalization
 @inject ShellText L
+@inject IdentityText I
 @{
     var isRtl = CultureInfo.CurrentUICulture.TextInfo.IsRightToLeft;
     var direction = isRtl ? "rtl" : "ltr";
@@ -14,6 +15,7 @@
     <meta name="color-scheme" content="light" />
     <title>@ViewData["Title"] · GSIP</title>
     <link rel="stylesheet" href="~/css/gsip.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/identity.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/setup.css" asp-append-version="true" />
 </head>
 <body class="gsip-body @direction @(isSetup ? "setup-active" : string.Empty)">
@@ -36,7 +38,17 @@
             </button>
             @if (!isSetup)
             {
-                <a class="login-link" href="/login?culture=@CultureInfo.CurrentUICulture.Name">@L["Login"]</a>
+                if (User.Identity?.IsAuthenticated == true)
+                {
+                    <form method="post" action="/logout" class="logout-form">
+                        @Html.AntiForgeryToken()
+                        <button class="login-link" type="submit">@I["SignOut"]</button>
+                    </form>
+                }
+                else
+                {
+                    <a class="login-link" href="/login?culture=@CultureInfo.CurrentUICulture.Name">@L["Login"]</a>
+                }
             }
         </div>
     </header>
@@ -55,7 +67,7 @@
             </nav>
             <div class="sidebar-foot">
                 <span class="phase-dot"></span>
-                <div><strong>P02</strong><small>@L["FoundationPhase"]</small></div>
+                <div><strong>P03</strong><small>@I["PhaseLabel"]</small></div>
             </div>
         </aside>
     }

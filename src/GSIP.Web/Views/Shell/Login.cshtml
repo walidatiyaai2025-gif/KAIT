@@ -1,28 +1,37 @@
-@model ShellViewModel
+@model LoginViewModel
 @inject ShellText L
+@inject IdentityText I
 @{
     ViewData["Title"] = L["Login"];
 }
-<section class="login-stage">
+<section class="login-stage auth-stage">
     <div class="login-intro">
-        <span class="eyebrow">GSIP · @Model.Phase</span>
-        <h1>@L["SecureAccess"]</h1>
-        <p>@L["LoginIntro"]</p>
+        <span class="eyebrow">GSIP · P03</span>
+        <h1>@I["LoginTitle"]</h1>
+        <p>@I["LoginIntro"]</p>
         <div class="assurance-list">
             <div><span>01</span><strong>@L["BilingualExperience"]</strong><small>@L["BilingualExperienceDetail"]</small></div>
             <div><span>02</span><strong>@L["GovernedFoundation"]</strong><small>@L["GovernedFoundationDetail"]</small></div>
             <div><span>03</span><strong>@L["SecurityByDesign"]</strong><small>@L["SecurityByDesignDetail"]</small></div>
         </div>
     </div>
-    <div class="login-card" data-auth-state="shell-only">
+    <div class="login-card" data-auth-state="active">
         <div class="login-mark">G</div>
         <h2>@L["Login"]</h2>
-        <p>@L["LoginShellNotice"]</p>
-        <label for="username">@L["Username"]</label>
-        <div class="input-shell"><span>◎</span><input id="username" type="text" autocomplete="username" disabled placeholder="@L["UsernamePlaceholder"]" /></div>
-        <label for="password">@L["Password"]</label>
-        <div class="input-shell"><span>◇</span><input id="password" type="password" autocomplete="current-password" disabled placeholder="••••••••••••" /></div>
-        <button class="primary-button" type="button" disabled>@L["LoginUnavailable"]</button>
-        <div class="phase-notice"><span>i</span><p>@L["IdentityDeferred"]</p></div>
+        <p>@I["SecureSessionNotice"]</p>
+        @if (!string.IsNullOrWhiteSpace(Model.ErrorCode))
+        {
+            <div class="auth-error" role="alert">@I[Model.ErrorCode]</div>
+        }
+        <form method="post" action="/login" autocomplete="on">
+            @Html.AntiForgeryToken()
+            <label asp-for="Username">@I["Username"]</label>
+            <div class="input-shell"><span aria-hidden="true">◎</span><input asp-for="Username" autocomplete="username" placeholder="@I["UsernamePlaceholder"]" /></div>
+            <label asp-for="Password">@I["Password"]</label>
+            <div class="input-shell"><span aria-hidden="true">◇</span><input asp-for="Password" type="password" autocomplete="current-password" placeholder="••••••••••••" /></div>
+            <label class="remember-row"><input asp-for="RememberMe" type="checkbox" /><span>@I["RememberMe"]</span></label>
+            <button class="primary-button" type="submit">@I["SignIn"]</button>
+        </form>
+        <div class="phase-notice"><span>i</span><p>@I["SecureSessionNotice"]</p></div>
     </div>
 </section>
