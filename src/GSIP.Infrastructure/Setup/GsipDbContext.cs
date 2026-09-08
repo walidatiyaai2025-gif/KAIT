@@ -1,4 +1,5 @@
 using GSIP.Application.Abstractions;
+using GSIP.Infrastructure.Authorization;
 using GSIP.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -13,6 +14,8 @@ public sealed class GsipDbContext(DbContextOptions<GsipDbContext> options)
     public DbSet<BootstrapAdministrator> BootstrapAdministrators => Set<BootstrapAdministrator>();
     public DbSet<ServiceEnvironmentPlaceholder> ServiceEnvironmentPlaceholders => Set<ServiceEnvironmentPlaceholder>();
     public DbSet<AuthenticationAuditEvent> AuthenticationAuditEvents => Set<AuthenticationAuditEvent>();
+    public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
+    public DbSet<RoleServicePermission> RoleServicePermissions => Set<RoleServicePermission>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -39,6 +42,33 @@ public sealed class GsipDbContext(DbContextOptions<GsipDbContext> options)
                 .WithMany()
                 .HasForeignKey(x => x.UserId)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<RolePermission>(entity =>
+        {
+            entity.ToTable("RolePermissions");
+            entity.HasKey(x => new { x.RoleId, x.PermissionKey });
+            entity.Property(x => x.PermissionKey).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.IsAllowed).IsRequired();
+            entity.HasIndex(x => x.PermissionKey);
+            entity.HasOne<IdentityRole<Guid>>()
+                .WithMany()
+                .HasForeignKey(x => x.RoleId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<RoleServicePermission>(entity =>
+        {
+            entity.ToTable("RoleServicePermissions");
+            entity.HasKey(x => new { x.RoleId, x.ServiceCode, x.PermissionKey });
+            entity.Property(x => x.ServiceCode).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.PermissionKey).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.IsAllowed).IsRequired();
+            entity.HasIndex(x => new { x.ServiceCode, x.PermissionKey });
+            entity.HasOne<IdentityRole<Guid>>()
+                .WithMany()
+                .HasForeignKey(x => x.RoleId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<SystemSetupRecord>(entity =>
