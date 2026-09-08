@@ -4,14 +4,20 @@ var root = FindRepositoryRoot();
 var viewPath = Path.Combine(root, "src", "GSIP.Web", "Views", "AuthProfiles", "Index.cshtml");
 var modelPath = Path.Combine(root, "src", "GSIP.Web", "Models", "AuthProfileAdminViewModels.cs");
 var cssPath = Path.Combine(root, "src", "GSIP.Web", "wwwroot", "css", "auth-profiles.css");
+var layoutPath = Path.Combine(root, "src", "GSIP.Web", "Views", "Shared", "_Layout.cshtml");
 var enPath = Path.Combine(root, "src", "GSIP.Web", "Resources", "AuthProfileResource.resx");
 var arPath = Path.Combine(root, "src", "GSIP.Web", "Resources", "AuthProfileResource.ar-KW.resx");
+var shellEnPath = Path.Combine(root, "src", "GSIP.Web", "Resources", "ShellResource.resx");
+var shellArPath = Path.Combine(root, "src", "GSIP.Web", "Resources", "ShellResource.ar-KW.resx");
 
 var view = File.ReadAllText(viewPath);
 var model = File.ReadAllText(modelPath);
 var css = File.ReadAllText(cssPath);
+var layout = File.ReadAllText(layoutPath);
 var en = XDocument.Load(enPath);
 var ar = XDocument.Load(arPath);
+var shellEn = XDocument.Load(shellEnPath);
+var shellAr = XDocument.Load(shellArPath);
 
 Check(!model.Contains("SecretValue", StringComparison.Ordinal), "Presentation model cannot carry plaintext SecretValue.");
 Check(!model.Contains("PlaintextValue", StringComparison.Ordinal), "Presentation model cannot carry plaintext secret aliases.");
@@ -29,16 +35,26 @@ Check(view.CountOccurrences("confirmShared") >= 2 && view.Contains("profile.IsSh
 Check(view.Contains("confirmRotation", StringComparison.Ordinal), "Rotation requires an explicit confirmation.");
 Check(view.Contains("CultureInfo.CurrentUICulture.TextInfo.IsRightToLeft", StringComparison.Ordinal), "UI must respond to RTL/LTR culture direction.");
 Check(css.Contains(":focus-visible", StringComparison.Ordinal) && css.Contains("@media(max-width:480px)", StringComparison.Ordinal), "Keyboard focus and narrow mobile behavior are required.");
+Check(layout.Contains("isAuthProfiles", StringComparison.Ordinal)
+    && layout.Contains("href=\"/auth-profiles?culture=", StringComparison.Ordinal)
+    && layout.Contains("@L[\"AuthProfiles\"]", StringComparison.Ordinal),
+    "AuthProfile administration must be discoverable in the governed GSIP shell with an active-route state.");
 
 var enKeys = ResourceKeys(en);
 var arKeys = ResourceKeys(ar);
-Check(enKeys.SetEquals(arKeys), "English and Arabic localization keys must remain in parity.");
-Check(ar.Descendants("value").Any(value => value.Value.Any(ch => ch is >= '\u0600' and <= '\u06FF')), "Arabic resource must contain Arabic localized content.");
+Check(enKeys.SetEquals(arKeys), "English and Arabic AuthProfile localization keys must remain in parity.");
+Check(ar.Descendants("value").Any(value => value.Value.Any(ch => ch is >= '\u0600' and <= '\u06FF')), "Arabic AuthProfile resource must contain Arabic localized content.");
+
+var shellEnKeys = ResourceKeys(shellEn);
+var shellArKeys = ResourceKeys(shellAr);
+Check(shellEnKeys.SetEquals(shellArKeys), "English and Arabic shell localization keys must remain in parity.");
+Check(shellEnKeys.Contains("AuthProfiles"), "Shell localization must include the AuthProfiles navigation key.");
 
 Console.WriteLine("P06 admin UI safety checks: PASS");
 Console.WriteLine($"Anti-forgery tokens: {view.CountOccurrences("@Html.AntiForgeryToken()")}");
 Console.WriteLine($"Write-only password inputs: {view.CountOccurrences("type=\"password\"")}");
-Console.WriteLine($"Localization keys: {enKeys.Count}");
+Console.WriteLine($"AuthProfile localization keys: {enKeys.Count}");
+Console.WriteLine($"Shell localization keys: {shellEnKeys.Count}");
 return;
 
 static HashSet<string> ResourceKeys(XDocument document) => document
