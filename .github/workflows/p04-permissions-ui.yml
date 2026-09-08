@@ -54,7 +54,7 @@ jobs:
         run: python scripts/validate_execution_plan.py
 
       - name: Upload P04 permissions UI evidence
-        if: always()
+        if: ${{ always() && github.event_name == 'push' }}
         uses: actions/upload-artifact@v4
         with:
           name: P04-Permissions-UI-Evidence-${{ github.sha }}
