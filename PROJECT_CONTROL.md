@@ -6,7 +6,7 @@
 - Repository: `walidatiyaai2025-gif/KAIT`
 - Default branch: `main`
 - Delivery model: phase-gated autonomous implementation
-- Current planned product state: P04 CLOSED; P05 Entity and Service metadata catalog is the next legal phase after this transition is integrated and exact-main verified
+- Current planned product state: P05 CLOSED; P06 Secret vault and isolated authentication profiles is the next legal phase after this transition is integrated and exact-main verified
 - Initial executable version: `0.1.0`
 - Pinned SDK / target framework: .NET SDK `10.0.400` / `net10.0`
 - Initial entity: Ministry of Justice (MOJ), Kuwait
@@ -16,23 +16,21 @@
 
 ## Last closed phase evidence
 
-P04 was closed from exact integrated `main` SHA `c3aa76a8d456c9b951b602001bcbe1023ae26dd9` after:
+P05 was closed from exact integrated implementation `main` SHA `4d706fab57071236e9847670342f5a399b3527e6` after:
 
-- the recovered permissions administration/UI closure implementation was normally integrated through PR #20 on top of the already integrated P04 role/permission and negative-authorization foundation;
-- Planning Integrity run `34253075877`: SUCCESS;
-- P00 Build Baseline regression run `34253075003`: SUCCESS;
-- P01 Architecture and UI Shell regression run `34253075362`: SUCCESS;
-- P02 First-run Setup Wizard regression run `34253075183`: SUCCESS;
-- P03 Web Security Headers regression run `34253075119`: SUCCESS;
-- P03 Identity and Account Security regression run `34253074987`: SUCCESS;
-- P04 RBAC Core run `34253075074`: SUCCESS;
-- P04 Permissions UI run `34253075409`: SUCCESS;
-- seeded editable roles, permission catalog, RolePermissions, UserRoles, per-service permissions, Default Deny and server-side authorization were exercised;
-- role creation/rename, user-role assignment/removal, forged identifier denial and protection against removing the last enabled System Administrator were exercised by executable administration/IDOR gates;
-- Arabic RTL / English LTR Permissions browser evidence was produced at the required responsive viewports with the governed role/user/service matrix and pending-approvals presentation;
-- exact-main artifact `P04-Permissions-UI-Evidence-c3aa76a8d456c9b951b602001bcbe1023ae26dd9` was produced at 476,233 bytes;
-- workflow artifact digest: `sha256:b5b6fa42c7dd114b302a2db3572c25130f01e2c045586a90bcaf90b97d290826`;
-- no owner-only or external evidence was deferred for P04.
+- the metadata-driven Entity and Service catalog was normally integrated through PR #22;
+- all 10 applicable exact-main workflows succeeded on the exact implementation SHA;
+- P05 Metadata Catalog run `34262416559`: SUCCESS;
+- metadata-driven Entity/Environment/Service/ServiceField/ResultMapping persistence was exercised;
+- used service definitions were versioned without silently rewriting historical definitions;
+- exactly one UAT and one Production configuration per service was enforced with independent endpoint bindings;
+- Production HTTPS and server-certificate validation requirements were enforced;
+- secret-bearing headers and invalid definitions were rejected atomically without later persistence leakage;
+- JSON-schema-governed export/import round trip was exercised;
+- protected Arabic RTL / English LTR metadata administration and generic sample service behavior were verified without custom per-service Controller/View code;
+- exact-main artifact `P05-Metadata-Evidence-4d706fab57071236e9847670342f5a399b3527e6` was produced at 507,662 bytes;
+- workflow artifact digest: `sha256:4f903fb240b6f0195fa7ad260afac9b45ece0d443e57f0752457d567abf41796`;
+- no owner-only or external evidence was deferred for P05.
 
 ## Authoritative documents
 
@@ -54,8 +52,8 @@ No old prompt, screenshot caption, branch description, or stale ledger overrides
 ## Phase policy
 
 - Exactly one canonical current phase exists at a time.
-- P00, P01, P02, P03 and P04 are closed; P05 is the next phase after this transition is integrated and exact-main verified.
-- Future phases remain locked until the current phase is formally CLOSED.
+- P00, P01, P02, P03, P04 and P05 are closed; P06 is the next phase after this transition is integrated and exact-main verified.
+- P07–P17 remain locked until the current phase is formally CLOSED.
 - Phase exit requires implementation + tests + evidence + documentation reconciliation + pushed commit + required CI + exact-main recheck.
 - Integration recovery and exact-main regressions take priority over new feature work.
 - A phase-transition branch does not authorize new-phase implementation until that transition is integrated and the resulting exact-main gate is green.
@@ -83,7 +81,11 @@ P03 established the authentication boundary required before detailed RBAC. Runti
 
 ## RBAC and permissions contract
 
-P04 established the authorization boundary required before metadata administration. Runtime authorization uses editable seeded roles, a canonical permission catalog, RolePermissions, UserRoles, per-service permission controls and Default Deny with server-side enforcement. Administration must continue to protect privileged access, reject forged/unknown identifiers, prevent removal of the last enabled System Administrator and preserve the bilingual Permissions management experience. P05 metadata administration must use this authorization boundary rather than bypass it.
+P04 established the authorization boundary. Runtime authorization uses editable seeded roles, a canonical permission catalog, RolePermissions, UserRoles, per-service permission controls and Default Deny with server-side enforcement. Administration must protect privileged access, reject forged/unknown identifiers, prevent removal of the last enabled System Administrator and preserve the bilingual Permissions management experience.
+
+## Metadata catalog contract
+
+P05 established the metadata-driven Entity/Environment/Service/ServiceField/ResultMapping boundary. Service definitions use independent UAT/Production bindings, secure metadata validation, historical versioning after first use, schema-governed JSON import/export, protected bilingual administration and generic execution metadata without custom per-service Controller/View requirements. Invalid or secret-bearing definitions must fail atomically and must not be persisted by later valid operations.
 
 ## Service environment / Go-Live control
 
