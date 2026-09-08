@@ -13,9 +13,11 @@ $stdout = Join-Path $artifactDir 'server.stdout.log'
 $stderr = Join-Path $artifactDir 'server.stderr.log'
 
 $previousBypass = $env:Setup__BypassGateForRegression
+$previousRegressionConnection = $env:IdentitySecurity__RegressionConnectionString
 $previousDotnetEnvironment = $env:DOTNET_ENVIRONMENT
 $previousAspNetCoreEnvironment = $env:ASPNETCORE_ENVIRONMENT
 $env:Setup__BypassGateForRegression = 'true'
+$env:IdentitySecurity__RegressionConnectionString = 'Server=(localdb)\MSSQLLocalDB;Database=master;Integrated Security=true;Encrypt=false;TrustServerCertificate=true'
 $env:DOTNET_ENVIRONMENT = 'RegressionTesting'
 $env:ASPNETCORE_ENVIRONMENT = 'RegressionTesting'
 $process = Start-Process dotnet -ArgumentList @('run','--project','src/GSIP.Web/GSIP.Web.csproj','--configuration','Release','--no-build','--urls',$baseUrl) -WorkingDirectory $root -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
@@ -122,6 +124,8 @@ finally {
     if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force }
     if ($null -eq $previousBypass) { Remove-Item Env:Setup__BypassGateForRegression -ErrorAction SilentlyContinue }
     else { $env:Setup__BypassGateForRegression = $previousBypass }
+    if ($null -eq $previousRegressionConnection) { Remove-Item Env:IdentitySecurity__RegressionConnectionString -ErrorAction SilentlyContinue }
+    else { $env:IdentitySecurity__RegressionConnectionString = $previousRegressionConnection }
     if ($null -eq $previousDotnetEnvironment) { Remove-Item Env:DOTNET_ENVIRONMENT -ErrorAction SilentlyContinue }
     else { $env:DOTNET_ENVIRONMENT = $previousDotnetEnvironment }
     if ($null -eq $previousAspNetCoreEnvironment) { Remove-Item Env:ASPNETCORE_ENVIRONMENT -ErrorAction SilentlyContinue }
