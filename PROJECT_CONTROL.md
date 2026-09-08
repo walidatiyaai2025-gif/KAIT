@@ -6,7 +6,7 @@
 - Repository: `walidatiyaai2025-gif/KAIT`
 - Default branch: `main`
 - Delivery model: phase-gated autonomous implementation
-- Current planned product state: pre-implementation baseline
+- Current planned product state: P00 build/runtime/CI baseline implementation in progress
 - Initial entity: Ministry of Justice (MOJ), Kuwait
 - UI languages: Arabic (RTL) and English (LTR)
 - Deployment target: Windows Server / IIS
@@ -20,11 +20,12 @@ Priority order when instructions conflict:
 2. `AGENTS.md`
 3. `CURRENT_PHASE.md`
 4. `docs/TASK_LEDGER.md`
-5. phase-specific requirements in `execution/GSIP_Full_Execution.json`
-6. `docs/FINAL_ACCEPTANCE_CRITERIA.md`
-7. `docs/UI_DESIGN_PARITY_GATE.md`
-8. `docs/OWNER_LAST_EXECUTION_POLICY.md`
-9. `docs/plans/GSIP_Complete_Implementation_Plan_AR.md`
+5. `docs/SERVICE_ENVIRONMENT_CONFIGURATION_CONTRACT.md`
+6. phase-specific requirements in `execution/GSIP_Full_Execution.json`
+7. `docs/FINAL_ACCEPTANCE_CRITERIA.md`
+8. `docs/UI_DESIGN_PARITY_GATE.md`
+9. `docs/OWNER_LAST_EXECUTION_POLICY.md`
+10. `docs/plans/GSIP_Complete_Implementation_Plan_AR.md`
 
 No old prompt, screenshot caption, branch description, or stale ledger overrides live evidence.
 
@@ -47,11 +48,15 @@ No old prompt, screenshot caption, branch description, or stale ledger overrides
 
 ## Versioning
 
-Use semantic versioning once the executable product exists. P00 must pin the initial product version, target .NET LTS/runtime, dependency policy, and artifact naming based on the supported build/deployment environment. Do not silently change pinned platform versions later.
+P00 pins .NET 10 LTS / `net10.0`, the deterministic SDK baseline, initial version and artifact naming in `docs/BUILD_AND_VERSIONING.md`. Do not silently change pinned platform versions later.
 
 ## Setup contract
 
 Normal Login is illegal before first-run setup completes. Setup must cover database connectivity, migrations, initial administrator, security baseline, organization/branding, integration environment, secrets placeholders, health review and Finish. Successful setup must persist a protected completed state and prevent accidental rerun.
+
+## Service environment / Go-Live control
+
+Every service owns independent UAT/Production bindings by default. Follow `docs/SERVICE_ENVIRONMENT_CONFIGURATION_CONTRACT.md`: `Entity -> Service -> ServiceEnvironmentConfig -> AuthProfile -> SecretRef`. Endpoint, HTTP behavior, header names, timeout, TLS/proxy settings and credentials may differ per service and environment. No secret or token may cross service boundaries accidentally. Shared AuthProfile use must be explicit and auditable.
 
 ## Security control
 

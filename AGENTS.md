@@ -42,9 +42,11 @@ The finished product must have:
 
 Never commit live API keys, access tokens, passwords, private keys, certificates containing private keys, connection-string passwords, or real personal data. Do not echo secrets in logs, screenshots, tests, exceptions, audit payloads, PR comments, or fixtures. Follow `docs/SECURITY_SECRETS_POLICY.md`.
 
-## 7. External API correctness
+## 7. External API correctness and isolation
 
 Official CAIT/MOJ API documentation and the reference material in `docs/moj-api-reference/` are the authority for service contracts. Do not invent request fields, response fields, authentication behavior, or endpoints. When documentation is incomplete, implement all non-blocked framework work and record the precise missing evidence instead of fabricating data.
+
+`docs/SERVICE_ENVIRONMENT_CONFIGURATION_CONTRACT.md` is mandatory. Never assume that services under one entity share URLs, API keys, token credentials, TLS/proxy settings or auth profiles. Configuration defaults to independent `ServiceEnvironmentConfig` and `SecretRef` values for every Service + Environment. Sharing is legal only through an explicit administrator-selected Shared AuthProfile. Token caches must include ServiceId + EnvironmentId + AuthProfileId and any audience/scope dimension that changes token validity.
 
 Real UAT/Production calls are allowed only with credentials and data that are explicitly authorized for that environment. Prefer contract fixtures/mocks for automated tests.
 
