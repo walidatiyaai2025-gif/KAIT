@@ -3,7 +3,8 @@ namespace GSIP.Domain.Secrets;
 public enum SecretLifecycleState
 {
     Active = 1,
-    Revoked = 2
+    Revoked = 2,
+    Staged = 3
 }
 
 public enum AuthProfileType
@@ -72,6 +73,10 @@ public sealed class SecretVaultEntry
     public byte[] ProtectedPayload { get; set; } = [];
     public SecretLifecycleState State { get; set; } = SecretLifecycleState.Active;
     public int Generation { get; set; } = 1;
+    public Guid OwnerServiceId { get; set; }
+    public Guid OwnerEnvironmentId { get; set; }
+    public Guid? OwnerAuthProfileId { get; set; }
+    public string SecretName { get; set; } = string.Empty;
     public DateTimeOffset CreatedAtUtc { get; set; }
     public DateTimeOffset? RevokedAtUtc { get; set; }
 }
@@ -84,6 +89,7 @@ public sealed class AuthProfile
     public string Name { get; set; } = string.Empty;
     public AuthProfileType AuthType { get; set; }
     public bool IsEnabled { get; set; } = true;
+    public long Version { get; set; } = 1;
     public string CreatedBy { get; set; } = string.Empty;
     public DateTimeOffset CreatedAtUtc { get; set; }
     public DateTimeOffset UpdatedAtUtc { get; set; }
@@ -110,5 +116,6 @@ public sealed class AuthProfileSecret
     public AuthProfile? AuthProfile { get; set; }
     public string SecretName { get; set; } = string.Empty;
     public string SecretReference { get; set; } = string.Empty;
+    public int Generation { get; set; } = 1;
     public DateTimeOffset UpdatedAtUtc { get; set; }
 }

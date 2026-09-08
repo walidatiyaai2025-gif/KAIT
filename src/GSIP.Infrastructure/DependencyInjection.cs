@@ -35,6 +35,7 @@ public static class DependencyInjection
         services.AddScoped<ISecretVault>(serviceProvider => serviceProvider.GetRequiredService<DataProtectionSecretVault>());
         services.AddScoped<ISecretMaterialResolver>(serviceProvider => serviceProvider.GetRequiredService<DataProtectionSecretVault>());
         services.AddScoped<IAuthProfileService, AuthProfileService>();
+        services.AddScoped<SecretRotationPersistenceAdapter>();
         services.AddScoped<IPasswordHasher<BootstrapAdministrator>, PasswordHasher<BootstrapAdministrator>>();
         services.Configure<IdentitySecurityOptions>(configuration.GetSection(IdentitySecurityOptions.SectionName));
         services.AddSingleton<IRuntimeDatabaseConnection>(serviceProvider => new RuntimeDatabaseConnection(
