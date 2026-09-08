@@ -57,8 +57,9 @@ try {
         try {
             $gate = $client.GetAsync("$baseUrl/").GetAwaiter().GetResult()
             if ([int]$gate.StatusCode -notin @(301,302,303,307,308)) { throw "P03+ dashboard did not require authentication. Status: $([int]$gate.StatusCode)" }
-            $location = if ($gate.Headers.Location) { $gate.Headers.Location.OriginalString } else { '' }
-            if (-not $location.StartsWith('/login', [System.StringComparison]::OrdinalIgnoreCase)) { throw "P03+ dashboard redirect did not target login. Location: $location" }
+            $location = if ($gate.Headers.Location) { $gate.Headers.Location } else { $null }
+            $locationPath = if ($null -eq $location) { '' } elseif ($location.IsAbsoluteUri) { $location.AbsolutePath } else { $location.OriginalString.Split('?')[0] }
+            if (-not $locationPath.StartsWith('/login', [System.StringComparison]::OrdinalIgnoreCase)) { throw "P03+ dashboard redirect did not target login. Location: $location" }
         }
         finally {
             $client.Dispose()
