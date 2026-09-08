@@ -137,26 +137,41 @@ public sealed class MetadataCatalogService(GsipDbContext dbContext, ISystemClock
         await AddChildrenAsync(replacementChildren, normalized, cancellationToken);
 
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
-        dbContext.ServiceEnvironmentConfigs.RemoveRange(service.EnvironmentConfigs);
-        dbContext.ServiceFieldDefinitions.RemoveRange(service.Fields);
-        dbContext.ResultMappingDefinitions.RemoveRange(service.ResultMappings);
-        await dbContext.SaveChangesAsync(cancellationToken);
-        service.EnvironmentConfigs.Clear();
-        service.Fields.Clear();
-        service.ResultMappings.Clear();
-        service.Code = normalized.Code;
-        service.NameAr = normalized.NameAr;
-        service.NameEn = normalized.NameEn;
-        service.DescriptionAr = normalized.DescriptionAr;
-        service.DescriptionEn = normalized.DescriptionEn;
-        service.Active = normalized.Active;
-        service.UpdatedAtUtc = clock.UtcNow;
-        foreach (var config in replacementChildren.EnvironmentConfigs) service.EnvironmentConfigs.Add(config);
-        foreach (var field in replacementChildren.Fields) service.Fields.Add(field);
-        foreach (var mapping in replacementChildren.ResultMappings) service.ResultMappings.Add(mapping);
+        await dbContext.ServiceEnvironmentConfigs.Where(x => x.ServiceId == service.Id).ExecuteDeleteAsync(cancellationToken);
+        await dbContext.ServiceFieldDefinitions.Where(x => x.ServiceId == service.Id).ExecuteDeleteAsync(cancellationToken);
+        await dbContext.ResultMappingDefinitions.Where(x => x.ServiceId == service.Id).ExecuteDeleteAsync(cancellationToken);
+
+        dbContext.ChangeTracker.Clear();
+        var updatedService = await dbContext.CatalogServices.SingleOrDefaultAsync(x => x.Id == serviceId && x.IsCurrent, cancellationToken)
+            ?? throw new KeyNotFoundException("Current service definition not found during metadata replacement.");
+        updatedService.Code = normalized.Code;
+        updatedService.NameAr = normalized.NameAr;
+        updatedService.NameEn = normalized.NameEn;
+        updatedService.DescriptionAr = normalized.DescriptionAr;
+        updatedService.DescriptionEn = normalized.DescriptionEn;
+        updatedService.Active = normalized.Active;
+        updatedService.UpdatedAtUtc = clock.UtcNow;
+
+        foreach (var config in replacementChildren.EnvironmentConfigs)
+        {
+            config.ServiceId = updatedService.Id;
+            dbContext.ServiceEnvironmentConfigs.Add(config);
+        }
+        foreach (var field in replacementChildren.Fields)
+        {
+            field.ServiceId = updatedService.Id;
+            dbContext.ServiceFieldDefinitions.Add(field);
+        }
+        foreach (var mapping in replacementChildren.ResultMappings)
+        {
+            mapping.ServiceId = updatedService.Id;
+            dbContext.ResultMappingDefinitions.Add(mapping);
+        }
+
         await dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
-        return service;
+        dbContext.ChangeTracker.Clear();
+        return await LoadCurrentServiceAsync(updatedService.Id, cancellationToken);
     }
 
     public async Task<CatalogService> DeactivateServiceAsync(Guid serviceId, CancellationToken cancellationToken = default)
