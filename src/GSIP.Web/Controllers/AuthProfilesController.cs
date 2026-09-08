@@ -345,12 +345,24 @@ public sealed class AuthProfilesController(
             return NotFound();
         }
 
-        if (string.IsNullOrWhiteSpace(name) || !TryParseAuthType(authenticationType, out _))
+        if (string.IsNullOrWhiteSpace(name) || !TryParseAuthType(authenticationType, out var authType))
         {
             return BadRequest("Invalid AuthProfile metadata request.");
         }
 
-        return Conflict("AuthProfile metadata mutation requires a canonical foundation operation.");
+        try
+        {
+            await authProfiles.UpdateAsync(
+                new UpdateAuthProfileCommand(profile.Id, name, authType),
+                cancellationToken);
+            SetSuccess();
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or ArgumentException or KeyNotFoundException)
+        {
+            SetRejected();
+        }
+
+        return RedirectToIndex(null);
     }
 
     [HttpPost("{authProfileId:guid}/delete")]
