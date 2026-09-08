@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>GSIP.Application</AssemblyName>
+    <RootNamespace>GSIP.Application</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\GSIP.Contracts\GSIP.Contracts.csproj" />
+    <ProjectReference Include="..\GSIP.Domain\GSIP.Domain.csproj" />
+  </ItemGroup>
+</Project>

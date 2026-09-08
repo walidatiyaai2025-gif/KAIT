@@ -1,0 +1,28 @@
+@model ShellViewModel
+@inject IStringLocalizer<ShellResource> L
+@{
+    ViewData["Title"] = L["Login"];
+}
+<section class="login-stage">
+    <div class="login-intro">
+        <span class="eyebrow">GSIP · @Model.Phase</span>
+        <h1>@L["SecureAccess"]</h1>
+        <p>@L["LoginIntro"]</p>
+        <div class="assurance-list">
+            <div><span>01</span><strong>@L["BilingualExperience"]</strong><small>@L["BilingualExperienceDetail"]</small></div>
+            <div><span>02</span><strong>@L["GovernedFoundation"]</strong><small>@L["GovernedFoundationDetail"]</small></div>
+            <div><span>03</span><strong>@L["SecurityByDesign"]</strong><small>@L["SecurityByDesignDetail"]</small></div>
+        </div>
+    </div>
+    <div class="login-card" data-auth-state="shell-only">
+        <div class="login-mark">G</div>
+        <h2>@L["Login"]</h2>
+        <p>@L["LoginShellNotice"]</p>
+        <label for="username">@L["Username"]</label>
+        <div class="input-shell"><span>◎</span><input id="username" type="text" autocomplete="username" disabled placeholder="@L["UsernamePlaceholder"]" /></div>
+        <label for="password">@L["Password"]</label>
+        <div class="input-shell"><span>◇</span><input id="password" type="password" autocomplete="current-password" disabled placeholder="••••••••••••" /></div>
+        <button class="primary-button" type="button" disabled>@L["LoginUnavailable"]</button>
+        <div class="phase-notice"><span>i</span><p>@L["IdentityDeferred"]</p></div>
+    </div>
+</section>

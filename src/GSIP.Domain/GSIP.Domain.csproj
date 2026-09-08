@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>GSIP.Domain</AssemblyName>
+    <RootNamespace>GSIP.Domain</RootNamespace>
+  </PropertyGroup>
+</Project>
