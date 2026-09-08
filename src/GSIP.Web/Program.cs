@@ -2,6 +2,7 @@ using System.Globalization;
 using GSIP.Application.Configuration;
 using GSIP.Infrastructure;
 using GSIP.Integrations;
+using GSIP.Web;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Localization;
 
