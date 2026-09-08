@@ -1,8 +1,11 @@
 using GSIP.Application.Abstractions;
+using GSIP.Application.Authorization;
 using GSIP.Application.Identity;
 using GSIP.Application.Setup;
+using GSIP.Infrastructure.Authorization;
 using GSIP.Infrastructure.Identity;
 using GSIP.Infrastructure.Setup;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -82,11 +85,14 @@ public static class DependencyInjection
         });
 
         services.AddHttpContextAccessor();
-        services.AddAuthorization();
+        services.AddAuthorization(GsipAuthorizationPolicyRegistration.AddPolicies);
+        services.AddScoped<IGsipPermissionEvaluator, GsipPermissionEvaluator>();
+        services.AddScoped<IAuthorizationHandler, GsipPermissionAuthorizationHandler>();
         services.AddScoped<IAccountSecurityPolicyProvider, AccountSecurityPolicyProvider>();
         services.AddScoped<IAuthenticationAuditWriter, AuthenticationAuditWriter>();
         services.AddScoped<IAccountAuthenticationService, AccountAuthenticationService>();
         services.AddHostedService<IdentityDatabaseMigrationService>();
+        services.AddHostedService<RbacBootstrapService>();
         return services;
     }
 

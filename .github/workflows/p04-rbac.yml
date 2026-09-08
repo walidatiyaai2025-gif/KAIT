@@ -1,0 +1,44 @@
+name: P04 RBAC Core
+
+on:
+  push:
+    branches:
+      - main
+      - 'worker/p04-*'
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  rbac-core:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      GSIP_P04_SQL: 'Server=(localdb)\MSSQLLocalDB;Database=GSIP_P04_${{ github.run_id }}_${{ github.run_attempt }};Integrated Security=true;TrustServerCertificate=true;MultipleActiveResultSets=true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pinned .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore solution
+        run: dotnet restore GSIP.sln
+
+      - name: Build solution Release
+        run: dotnet build GSIP.sln -c Release --no-restore
+
+      - name: Start SQL Server LocalDB
+        shell: pwsh
+        run: |
+          sqllocaldb start MSSQLLocalDB
+          sqllocaldb info MSSQLLocalDB
+
+      - name: Run P04 RBAC SQL and authorization checks
+        run: dotnet run --project tests/GSIP.P04Checks/GSIP.P04Checks.csproj -c Release --no-build
+
+      - name: Validate execution plan and governance
+        run: python scripts/validate_execution_plan.py

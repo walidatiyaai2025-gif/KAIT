@@ -22,6 +22,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GSIP.P02Checks", "tests\GSI
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GSIP.P03Checks", "tests\GSIP.P03Checks\GSIP.P03Checks.csproj", "{F4F40C23-DFE1-4A56-9C39-7A693960B13D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GSIP.P04Checks", "tests\GSIP.P04Checks\GSIP.P04Checks.csproj", "{A124AA73-5D28-47CF-A43C-728A542F04D4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -68,5 +70,9 @@ Global
 		{F4F40C23-DFE1-4A56-9C39-7A693960B13D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F4F40C23-DFE1-4A56-9C39-7A693960B13D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F4F40C23-DFE1-4A56-9C39-7A693960B13D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A124AA73-5D28-47CF-A43C-728A542F04D4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A124AA73-5D28-47CF-A43C-728A542F04D4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A124AA73-5D28-47CF-A43C-728A542F04D4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A124AA73-5D28-47CF-A43C-728A542F04D4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
