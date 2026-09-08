@@ -40,7 +40,7 @@ $helperProject = Join-Path $helperDir 'SeedP04.csproj'
 $helperSource = Join-Path $helperDir 'Program.cs'
 @"
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup>
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup>
   <ItemGroup><ProjectReference Include="$infraProject" /><ProjectReference Include="$applicationProject" /></ItemGroup>
 </Project>
 "@ | Set-Content $helperProject -Encoding utf8
@@ -190,8 +190,8 @@ try {
     if ($en.Content -notmatch 'Synthetic P04 Administrator') { throw 'Authenticated user details panel is not rendering synthetic account data.' }
     if ($en.Content -notmatch 'Marriage Cases Service') { throw 'Configured service permission matrix did not render.' }
 
-    $enHtml = $en.Content.Replace('<head>', "<head><base href='$baseUrl/' />")
-    $arHtml = $ar.Content.Replace('<head>', "<head><base href='$baseUrl/' />")
+    $enHtml = $en.Content.Replace('href="/', "href=`"$baseUrl/").Replace('src="/', "src=`"$baseUrl/")
+    $arHtml = $ar.Content.Replace('href="/', "href=`"$baseUrl/").Replace('src="/', "src=`"$baseUrl/")
     $enPath = Join-Path $artifactDir 'permissions-en.html'
     $arPath = Join-Path $artifactDir 'permissions-ar.html'
     $enHtml | Set-Content $enPath -Encoding utf8
