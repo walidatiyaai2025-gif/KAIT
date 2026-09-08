@@ -28,7 +28,7 @@ if (failures.Count > 0)
     return 1;
 }
 
-Console.WriteLine("P02 checks passed: setup gate, regression-bypass isolation, protected/restart-safe state, SQL wrong-credentials and migration-failure/retry paths, provisioning, bootstrap administrator and per-service environment placeholders are valid.");
+Console.WriteLine("P02 checks passed: setup gate, review health gate, regression-bypass isolation, protected/restart-safe state, SQL wrong-credentials and migration-failure/retry paths, provisioning, bootstrap administrator and per-service environment placeholders are valid.");
 return 0;
 
 static string FindRepositoryRoot()
@@ -55,7 +55,7 @@ static void CheckSourceContract(string root, List<string> failures)
     Expect(program.Contains("PersistKeysToFileSystem", StringComparison.Ordinal), "Data Protection keys are not persisted for restart-safe setup state.", failures);
 
     var setupService = File.ReadAllText(Path.Combine(root, "src", "GSIP.Infrastructure", "Setup", "SetupService.cs"));
-    foreach (var required in new[] { "TestDatabaseAsync", "ProvisionDatabaseAsync", "MigrateAsync", "PasswordHasher", "ServiceEnvironmentPlaceholders", "UAT", "Production", "Protect(" })
+    foreach (var required in new[] { "TestDatabaseAsync", "ProvisionDatabaseAsync", "RunHealthCheckAsync", "HEALTH_CHECK_FAILED", "MigrateAsync", "PasswordHasher", "ServiceEnvironmentPlaceholders", "UAT", "Production", "Protect(" })
     {
         Expect(setupService.Contains(required, StringComparison.Ordinal), $"Setup service is missing required behavior: {required}.", failures);
     }
@@ -66,6 +66,7 @@ static void CheckSourceContract(string root, List<string> failures)
     {
         Expect(controller.Contains($"{action}(", StringComparison.Ordinal), $"Setup controller is missing {action} action.", failures);
     }
+    Expect(controller.Contains("RunHealthCheckAsync", StringComparison.Ordinal) && controller.Contains("SetupStep.Review", StringComparison.Ordinal), "Review step does not execute the setup health gate.", failures);
     Expect(controller.Contains("ValidateAntiForgeryToken", StringComparison.Ordinal), "Setup POST actions must be antiforgery-protected.", failures);
 
     var wizard = File.ReadAllText(Path.Combine(root, "src", "GSIP.Web", "Views", "Setup", "Wizard.cshtml"));
@@ -273,6 +274,41 @@ static async Task CheckRuntimeAsync(string sqlServer, List<string> failures)
             Integration = new IntegrationSetupOptions { DefaultEnvironment = "UAT" },
             Notifications = new NotificationSetupOptions()
         };
+
+        var healthy = await service.RunHealthCheckAsync(draft);
+        Expect(!healthy.HasCriticalFailures, "Valid P02 draft failed the Review health gate.", failures);
+        Expect(healthy.Checks.Any(check => check.Code == "DATABASE_MIGRATIONS" && check.State == SetupHealthState.Pass), "Review health gate did not prove applied migrations.", failures);
+
+        var blockedDraft = new SetupDraft
+        {
+            Culture = "en",
+            CurrentStep = SetupStep.Review,
+            Database = database,
+            DatabaseConnectionVerified = true,
+            DatabaseProvisioned = true,
+            Administrator = new AdministratorSetupOptions
+            {
+                DisplayName = "Blocked Health Administrator",
+                Username = "blockedadmin",
+                Email = "blockedadmin@example.invalid",
+                Password = bootstrapPassword
+            },
+            Branding = new BrandingSetupOptions(),
+            Security = new SecuritySetupOptions
+            {
+                SessionTimeoutMinutes = 1,
+                LockoutMinutes = 15,
+                MaxFailedAccessAttempts = 5,
+                RequireMfaForPrivilegedAccounts = true
+            },
+            Integration = new IntegrationSetupOptions { DefaultEnvironment = "UAT" },
+            Notifications = new NotificationSetupOptions()
+        };
+        var blockedHealth = await service.RunHealthCheckAsync(blockedDraft);
+        Expect(blockedHealth.HasCriticalFailures && blockedHealth.Checks.Any(check => check.Code == "SECURITY_BASELINE" && check.State == SetupHealthState.Fail), "Invalid security baseline did not fail the Review health gate.", failures);
+        var blockedCompletion = await service.CompleteAsync(blockedDraft);
+        Expect(!blockedCompletion.Success && blockedCompletion.Code == "HEALTH_CHECK_FAILED", $"Finish was not blocked by critical Review health failure: {blockedCompletion.Code}.", failures);
+        Expect(!(await service.GetStatusAsync()).IsCompleted, "Health-gate failure incorrectly marked setup complete.", failures);
 
         await service.SaveDraftAsync(draft);
         var draftFile = Directory.EnumerateFiles(Path.Combine(temporaryRoot, "App_Data", "setup"), "draft.protected").Single();

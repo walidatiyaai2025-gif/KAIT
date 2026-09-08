@@ -26,6 +26,16 @@ public sealed class SetupController(ISetupService setupService) : Controller
                 ? ["Application data directory is writable.", "Data Protection encryption round-trip succeeded.", ".NET application runtime is active."]
                 : [operation.Message];
         }
+        else if (requestedStep == SetupStep.Review)
+        {
+            var health = await setupService.RunHealthCheckAsync(status.Draft, cancellationToken);
+            var summary = string.Join("; ", health.Checks.Select(check => $"{check.State.ToString().ToUpperInvariant()}:{check.Code}"));
+            operation = health.HasCriticalFailures
+                ? SetupOperationResult.Fail("HEALTH_CHECK_FAILED", $"Critical setup health checks failed. {summary}")
+                : health.HasWarnings
+                    ? SetupOperationResult.Ok("HEALTH_CHECK_WARNING", $"Critical checks passed with warnings. {summary}")
+                    : SetupOperationResult.Ok("HEALTH_CHECK_PASS", $"All setup health checks passed. {summary}");
+        }
 
         return View("Wizard", new SetupWizardViewModel
         {
@@ -79,8 +89,6 @@ public sealed class SetupController(ISetupService setupService) : Controller
             && string.Equals(database.Server, draft.Database.Server, StringComparison.OrdinalIgnoreCase)
             && string.Equals(database.Username, draft.Database.Username, StringComparison.Ordinal))
         {
-            // Passwords are deliberately never rendered back into HTML. Reuse the encrypted
-            // draft value when the user repeats Test/Next without changing the SQL identity.
             database.Password = draft.Database.Password;
         }
 

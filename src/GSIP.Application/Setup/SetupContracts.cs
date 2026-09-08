@@ -15,6 +15,21 @@ public enum SetupStep
     Finish = 10
 }
 
+public enum SetupHealthState
+{
+    Pass = 0,
+    Warning = 1,
+    Fail = 2
+}
+
+public sealed record SetupHealthCheck(string Code, SetupHealthState State, string Message);
+
+public sealed record SetupHealthReport(IReadOnlyList<SetupHealthCheck> Checks)
+{
+    public bool HasCriticalFailures => Checks.Any(check => check.State == SetupHealthState.Fail);
+    public bool HasWarnings => Checks.Any(check => check.State == SetupHealthState.Warning);
+}
+
 public sealed class DatabaseSetupOptions
 {
     public string Server { get; set; } = string.Empty;
@@ -98,5 +113,6 @@ public interface ISetupService
     Task<SetupOperationResult> RunPreflightAsync(CancellationToken cancellationToken = default);
     Task<SetupOperationResult> TestDatabaseAsync(DatabaseSetupOptions options, CancellationToken cancellationToken = default);
     Task<SetupOperationResult> ProvisionDatabaseAsync(DatabaseSetupOptions options, CancellationToken cancellationToken = default);
+    Task<SetupHealthReport> RunHealthCheckAsync(SetupDraft draft, CancellationToken cancellationToken = default);
     Task<SetupOperationResult> CompleteAsync(SetupDraft draft, CancellationToken cancellationToken = default);
 }

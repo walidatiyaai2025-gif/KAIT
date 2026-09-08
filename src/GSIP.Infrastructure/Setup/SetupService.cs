@@ -168,6 +168,133 @@ public sealed partial class SetupService : ISetupService
         }
     }
 
+    public async Task<SetupHealthReport> RunHealthCheckAsync(SetupDraft draft, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(draft);
+        var checks = new List<SetupHealthCheck>();
+
+        var databaseValidation = ValidateDatabaseOptions(draft.Database);
+        if (!databaseValidation.Success)
+        {
+            checks.Add(new SetupHealthCheck("DATABASE_OPTIONS", SetupHealthState.Fail, databaseValidation.Message));
+        }
+        else
+        {
+            var connection = await TestDatabaseAsync(draft.Database, cancellationToken);
+            checks.Add(new SetupHealthCheck(
+                "DATABASE_CONNECTION",
+                connection.Success && draft.DatabaseConnectionVerified ? SetupHealthState.Pass : SetupHealthState.Fail,
+                connection.Success && draft.DatabaseConnectionVerified
+                    ? "SQL Server connection is verified."
+                    : "SQL Server connection must be successfully tested again before Finish."));
+
+            if (!draft.DatabaseProvisioned)
+            {
+                checks.Add(new SetupHealthCheck("DATABASE_MIGRATIONS", SetupHealthState.Fail, "Database provisioning and migrations are not marked complete."));
+            }
+            else if (connection.Success)
+            {
+                try
+                {
+                    await using var dbContext = CreateDbContext(BuildConnectionString(draft.Database, draft.Database.DatabaseName));
+                    var pending = (await dbContext.Database.GetPendingMigrationsAsync(cancellationToken)).ToArray();
+                    checks.Add(pending.Length == 0
+                        ? new SetupHealthCheck("DATABASE_MIGRATIONS", SetupHealthState.Pass, "All GSIP database migrations are applied.")
+                        : new SetupHealthCheck("DATABASE_MIGRATIONS", SetupHealthState.Fail, "Pending GSIP database migrations remain and must be applied before Finish."));
+                }
+                catch (Exception exception) when (exception is SqlException or InvalidOperationException)
+                {
+                    checks.Add(new SetupHealthCheck("DATABASE_MIGRATIONS", SetupHealthState.Fail, "GSIP could not verify the target database migration state."));
+                }
+            }
+        }
+
+        var administratorValidation = ValidateAdministrator(draft.Administrator);
+        checks.Add(new SetupHealthCheck(
+            "ADMINISTRATOR",
+            administratorValidation.Success ? SetupHealthState.Pass : SetupHealthState.Fail,
+            administratorValidation.Message));
+
+        var brandingReady = !string.IsNullOrWhiteSpace(draft.Branding.OrganizationNameEn)
+            && !string.IsNullOrWhiteSpace(draft.Branding.OrganizationNameAr)
+            && !string.IsNullOrWhiteSpace(draft.Branding.PrimaryColor);
+        checks.Add(new SetupHealthCheck(
+            "BRANDING",
+            brandingReady ? SetupHealthState.Pass : SetupHealthState.Fail,
+            brandingReady ? "Organization bilingual identity is configured." : "Organization bilingual names and primary color are required."));
+
+        try
+        {
+            _ = TimeZoneInfo.FindSystemTimeZoneById(draft.Branding.TimeZoneId.Trim());
+            checks.Add(new SetupHealthCheck("TIME_ZONE", SetupHealthState.Pass, "Configured time zone is available on this host."));
+        }
+        catch (Exception exception) when (exception is TimeZoneNotFoundException or InvalidTimeZoneException or ArgumentException)
+        {
+            checks.Add(new SetupHealthCheck("TIME_ZONE", SetupHealthState.Fail, "Configured time zone is not available on this host."));
+        }
+
+        var securityRangeValid = draft.Security.SessionTimeoutMinutes is >= 5 and <= 1440
+            && draft.Security.LockoutMinutes is >= 1 and <= 1440
+            && draft.Security.MaxFailedAccessAttempts is >= 3 and <= 20;
+        checks.Add(new SetupHealthCheck(
+            "SECURITY_BASELINE",
+            securityRangeValid ? SetupHealthState.Pass : SetupHealthState.Fail,
+            securityRangeValid ? "Session and lockout controls are within the supported secure ranges." : "Security baseline values are outside the supported ranges."));
+        if (!draft.Security.RequireMfaForPrivilegedAccounts)
+        {
+            checks.Add(new SetupHealthCheck("PRIVILEGED_MFA", SetupHealthState.Warning, "Privileged-account MFA is disabled; enable it unless an approved security exception exists."));
+        }
+        else
+        {
+            checks.Add(new SetupHealthCheck("PRIVILEGED_MFA", SetupHealthState.Pass, "Privileged-account MFA policy is enabled."));
+        }
+
+        var environmentValid = string.Equals(draft.Integration.DefaultEnvironment, "UAT", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(draft.Integration.DefaultEnvironment, "Production", StringComparison.OrdinalIgnoreCase);
+        var integrationTimeoutValid = draft.Integration.TimeoutSeconds is >= 3 and <= 300;
+        checks.Add(new SetupHealthCheck(
+            "INTEGRATION_BASELINE",
+            environmentValid && integrationTimeoutValid ? SetupHealthState.Pass : SetupHealthState.Fail,
+            environmentValid && integrationTimeoutValid ? "Integration environment and timeout baseline are valid." : "Integration environment or timeout baseline is invalid."));
+
+        if (!string.IsNullOrWhiteSpace(draft.Integration.ProxyUrl))
+        {
+            var validProxy = Uri.TryCreate(draft.Integration.ProxyUrl, UriKind.Absolute, out var proxyUri)
+                && (string.Equals(proxyUri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(proxyUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase));
+            checks.Add(new SetupHealthCheck(
+                "INTEGRATION_PROXY",
+                validProxy ? SetupHealthState.Pass : SetupHealthState.Fail,
+                validProxy ? "Configured proxy URL is syntactically valid." : "Configured proxy URL must be an absolute HTTP or HTTPS URL."));
+        }
+
+        checks.Add(new SetupHealthCheck(
+            "TLS_VALIDATION",
+            draft.Integration.ValidateServerCertificate ? SetupHealthState.Pass : SetupHealthState.Warning,
+            draft.Integration.ValidateServerCertificate
+                ? "Server certificate validation is enabled for integrations."
+                : "Server certificate validation is disabled; this requires an explicitly approved exception."));
+
+        if (draft.Notifications.Enabled)
+        {
+            var notificationConfigValid = !string.IsNullOrWhiteSpace(draft.Notifications.SmtpHost)
+                && draft.Notifications.SmtpPort is >= 1 and <= 65535
+                && draft.Notifications.SenderAddress.Contains('@', StringComparison.Ordinal);
+            checks.Add(new SetupHealthCheck(
+                "NOTIFICATIONS",
+                notificationConfigValid ? SetupHealthState.Warning : SetupHealthState.Fail,
+                notificationConfigValid
+                    ? "SMTP configuration is present; perform a delivery test before relying on notifications in production."
+                    : "Enabled notifications require SMTP host, valid port and sender address."));
+        }
+        else
+        {
+            checks.Add(new SetupHealthCheck("NOTIFICATIONS", SetupHealthState.Pass, "Notifications are disabled and remain optional for first-run completion."));
+        }
+
+        return new SetupHealthReport(checks);
+    }
+
     public async Task<SetupOperationResult> CompleteAsync(SetupDraft draft, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(draft);
@@ -192,6 +319,15 @@ public sealed partial class SetupService : ISetupService
         if (!draft.DatabaseProvisioned)
         {
             return SetupOperationResult.Fail("DATABASE_NOT_PROVISIONED", "Database provisioning must complete before Finish.");
+        }
+
+        var health = await RunHealthCheckAsync(draft, cancellationToken);
+        if (health.HasCriticalFailures)
+        {
+            var failedCodes = string.Join(", ", health.Checks
+                .Where(check => check.State == SetupHealthState.Fail)
+                .Select(check => check.Code));
+            return SetupOperationResult.Fail("HEALTH_CHECK_FAILED", $"Review health check has critical failures: {failedCodes}. Resolve them before Finish.");
         }
 
         var connectionString = BuildConnectionString(draft.Database, draft.Database.DatabaseName);
