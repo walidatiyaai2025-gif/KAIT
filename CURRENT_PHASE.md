@@ -2,49 +2,50 @@
 
 ## Canonical current phase
 
-**P06 — Secret vault and isolated authentication profiles**
+**P07 — Generic service execution engine**
 
 Status: **OPEN / READY**
 
-P05 is CLOSED from integrated exact-main evidence. The metadata-driven Entity and Service catalog implementation was normally merged through PR #22 at exact `main` SHA `4d706fab57071236e9847670342f5a399b3527e6`.
+P06 is CLOSED from integrated exact-main evidence. The final P06 implementation/security candidate was normally integrated through PR #26 at exact `main` SHA `4c6c8460415a71c4eedb184066f6ba928faa8416`, after the canonical foundation, rotation/redaction/cache, Windows/IIS Data Protection hardening, AuthProfile administration and independent security/evidence work had converged through PRs #24, #25, #27, #28 and #29.
 
-On that exact implementation SHA, all ten applicable exact-main workflows succeeded. The P05 Metadata Catalog workflow run `34262416559` succeeded and produced `P05-Metadata-Evidence-4d706fab57071236e9847670342f5a399b3527e6` (507,662 bytes) with workflow digest `sha256:4f903fb240b6f0195fa7ad260afac9b45ece0d443e57f0752457d567abf41796`.
+On that exact P06 implementation SHA, all **13/13** applicable exact-main checks succeeded. P06 Security Acceptance and Evidence run `34278983765` succeeded and produced `P06-Security-Evidence-4c6c8460415a71c4eedb184066f6ba928faa8416` (5,975 bytes), digest `sha256:052190f8b090ca8981e01bef73bc5e2176d6282b5c448faa03b05fe5adb6af1a`. P06 AuthProfile Administration run `34278983611` also produced `P06-AuthProfile-Admin-Evidence-4c6c8460415a71c4eedb184066f6ba928faa8416` (552,487 bytes), digest `sha256:b3d4f0d62418e7c69cc03ad52599e88bc54c6c3f14910594cd8432d617d241a7`.
 
-P05 acceptance verifies metadata-driven Entity/Environment/Service/ServiceField/ResultMapping persistence, secure administration, used-definition versioning, strict independent UAT/Production bindings, Production HTTPS and certificate-validation enforcement, rejection of secret-bearing headers, atomic rejection of invalid definitions, JSON-schema import/export round trip, Arabic RTL / English LTR protected administration UI, and a complete synthetic service definition without custom per-service Controller/View code. No owner-only or external P05 evidence is deferred.
+P06 acceptance verifies opaque scoped SecretRefs, default Service + Environment isolation, explicit auditable Shared AuthProfile bindings, durable atomic expected-current-reference/generation rotation with rollback, profile/cache generation advancement, centralized redaction/masking, cross-service-safe token-cache identity, protected metadata/binding lifecycle, server-side authorization/IDOR/CSRF controls, write-only secret administration, masked-only display, Windows/IIS DPAPI protection for persisted Data Protection keys, bilingual Arabic RTL / English LTR responsive browser evidence, independent negative/no-leak security acceptance, and preservation of P00–P05 contracts. No owner-only or external P06 evidence is deferred.
 
-This P06 transition becomes authoritative only after this closure reconciliation is normally integrated to `main` and the resulting exact-main closed-phase regressions remain green. Do not begin P06 implementation from an unmerged transition branch.
+This P07 transition becomes authoritative only after this closure reconciliation is normally integrated to `main` and the resulting exact-main closed-phase regressions remain green. Do not begin P07 implementation from an unmerged transition branch.
 
 ## Legal work now
 
-After this transition is integrated and exact-main verification is green, P06 only, plus any repair needed to preserve closed P00/P01/P02/P03/P04/P05 baselines and repository controls.
+After this transition is integrated and exact-main verification is green, P07 only, plus any repair needed to preserve closed P00/P01/P02/P03/P04/P05/P06 baselines and repository controls.
 
-P06 scope is the canonical ledger scope: Secret vault, isolated authentication profiles/SecretRefs, explicit Shared AuthProfile support, rotation/redaction, and cross-service-safe token cache keys.
+P07 scope is the canonical ledger scope: the generic service execution engine must resolve the exact `Service + Environment + AuthProfile` binding and drive the high-fidelity dynamic Service Execution UI without introducing MOJ-specific P08/P09 behavior early.
 
 ## Locked future work
 
-P07–P17 remain locked. Do not implement generic execution, MOJ authentication/services, history/audit, operational administration, installer or release acceptance before their phase is current.
+P08–P17 remain locked. Do not implement MOJ authentication/services, history/audit, operational administration, installer or release acceptance before their phase is current.
 
-The per-service/per-environment isolation contract in `docs/SERVICE_ENVIRONMENT_CONFIGURATION_CONTRACT.md` remains binding. Every Service + Environment binding and AuthProfile remains isolated by default; sharing must be explicit and auditable, and no secret or token may cross service boundaries automatically.
+The per-service/per-environment isolation contract in `docs/SERVICE_ENVIRONMENT_CONFIGURATION_CONTRACT.md` remains binding. Execution must never fall back across Service or Environment boundaries, and credential/token resolution must remain scoped to the exact authorized binding.
 
-## P05 closure evidence
+## P06 closure evidence
 
-- Final integrated implementation SHA: `4d706fab57071236e9847670342f5a399b3527e6`
-- Final implementation PR: #22 — normally merged
-- Exact-main applicable workflows: 10/10 SUCCESS
-- P05 Metadata Catalog: run `34262416559` — SUCCESS
-- Exact-main artifact: `P05-Metadata-Evidence-4d706fab57071236e9847670342f5a399b3527e6`
-- Artifact size: 507,662 bytes
-- Artifact workflow digest: `sha256:4f903fb240b6f0195fa7ad260afac9b45ece0d443e57f0752457d567abf41796`
-- Metadata evidence: Entity/Environment/Service/ServiceField/ResultMapping catalog and generic sample proof
-- Versioning evidence: previously used definitions create a new version while history remains immutable
-- Isolation/security evidence: exactly one UAT and one Production binding per service, HTTPS/certificate enforcement for Production, secret-bearing header rejection, rejected-definition atomicity
-- Import/export evidence: schema-governed JSON round trip
-- UI evidence: protected bilingual Arabic RTL / English LTR metadata administration
-- Regression evidence: P00–P04 closed contracts remain green on the exact P05 implementation SHA
-- Owner/external dependency: none deferred for P05
+- Final integrated implementation/security SHA: `4c6c8460415a71c4eedb184066f6ba928faa8416`
+- Final independent security PR: #26 — normally merged
+- AuthProfile administration PR: #29 — normally merged
+- Canonical foundation PR: #25 — normally merged
+- Rotation/redaction/cache PRs: #24 and #27 — normally merged
+- Windows/IIS Data Protection hardening PR: #28 — normally merged
+- Exact-main applicable checks: **13/13 SUCCESS**
+- P06 Security Acceptance and Evidence: run `34278983765` — **SUCCESS**
+- Exact-main security artifact: `P06-Security-Evidence-4c6c8460415a71c4eedb184066f6ba928faa8416`
+- Security artifact size: 5,975 bytes
+- Security artifact digest: `sha256:052190f8b090ca8981e01bef73bc5e2176d6282b5c448faa03b05fe5adb6af1a`
+- Exact-main admin/browser artifact: `P06-AuthProfile-Admin-Evidence-4c6c8460415a71c4eedb184066f6ba928faa8416`
+- Admin/browser artifact size: 552,487 bytes
+- Admin/browser artifact digest: `sha256:b3d4f0d62418e7c69cc03ad52599e88bc54c6c3f14910594cd8432d617d241a7`
+- Owner/external dependency: none deferred for P06
 
-Detailed evidence is recorded in `docs/evidence/P05_METADATA_CATALOG.md`.
+Detailed evidence is recorded in `docs/evidence/P06_SECRET_VAULT_AUTH_PROFILES.md`.
 
-## P06 exit condition
+## P07 exit condition
 
-P06 may be marked CLOSED only when the Secret Vault and authentication-profile model is implemented with secure SecretRefs, isolated per-Service + Environment bindings, explicit auditable sharing where allowed, rotation/redaction and cross-service-safe token cache semantics, with tests, CI/evidence and exact-main verification complete and pushed without weakening P00–P05 or introducing P07+ scope.
+P07 may be marked CLOSED only when generic execution resolves the exact authorized Service + Environment + AuthProfile configuration, performs metadata-driven request execution without cross-service/environment fallback, exposes the required dynamic high-fidelity execution UI, has executable positive/negative tests and evidence, preserves P00–P06 security/isolation contracts, and passes exact-main verification without introducing P08+ scope.
