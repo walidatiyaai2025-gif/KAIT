@@ -1,23 +1,25 @@
-using Microsoft.Extensions.Localization;
+using System.Globalization;
+using System.Resources;
 
 namespace GSIP.Web;
 
 /// <summary>
-/// Explicit resource facade for the shared P01 shell. The localizer factory is given the
-/// resource base name and assembly deliberately so runtime lookup cannot depend on inferred
-/// namespace/path conventions.
+/// Deterministic resource facade for the shared bilingual P01 shell.
+/// The manifest base name matches Resources/ShellResource*.resx explicitly,
+/// while RequestLocalization controls CurrentUICulture per request.
 /// </summary>
 public sealed class ShellText
 {
-    private readonly IStringLocalizer _localizer;
+    private static readonly ResourceManager Resources = new(
+        "GSIP.Web.Resources.ShellResource",
+        typeof(ShellResource).Assembly);
 
-    public ShellText(IStringLocalizerFactory factory)
+    public string this[string name]
     {
-        ArgumentNullException.ThrowIfNull(factory);
-        var assemblyName = typeof(ShellResource).Assembly.GetName().Name
-            ?? throw new InvalidOperationException("GSIP.Web assembly name is unavailable.");
-        _localizer = factory.Create("ShellResource", assemblyName);
+        get
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(name);
+            return Resources.GetString(name, CultureInfo.CurrentUICulture) ?? name;
+        }
     }
-
-    public LocalizedString this[string name] => _localizer[name];
 }

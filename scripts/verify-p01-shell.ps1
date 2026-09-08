@@ -27,6 +27,10 @@ try {
     $ar = Invoke-WebRequest "$baseUrl/?culture=ar-KW" -UseBasicParsing
     $login = Invoke-WebRequest "$baseUrl/login?culture=en" -UseBasicParsing
 
+    $en.Content | Set-Content (Join-Path $artifactDir 'dashboard-en.html') -Encoding utf8
+    $ar.Content | Set-Content (Join-Path $artifactDir 'dashboard-ar.html') -Encoding utf8
+    $login.Content | Set-Content (Join-Path $artifactDir 'login-en.html') -Encoding utf8
+
     if ($en.Content -notmatch '<html lang="en" dir="ltr" data-culture-name="en">') { throw 'English shell culture/direction is incorrect.' }
     if ($ar.Content -notmatch '<html lang="ar" dir="rtl" data-culture-name="ar-KW">') { throw 'Arabic shell culture/direction is incorrect.' }
     if ($ar.Content -notmatch 'بوابة تكامل الخدمات الحكومية') { throw 'Arabic localized product name is missing.' }

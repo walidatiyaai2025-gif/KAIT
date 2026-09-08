@@ -72,11 +72,12 @@ static void CheckLocalization(string root, List<string> failures)
 {
     var program = File.ReadAllText(Path.Combine(root, "src", "GSIP.Web", "Program.cs"));
     Expect(program.Contains("AddLocalization", StringComparison.Ordinal), "Resource-based localization is not registered.", failures);
-    Expect(program.Contains("AddScoped<ShellText>", StringComparison.Ordinal), "Explicit shared shell resource facade is not registered.", failures);
+    Expect(program.Contains("AddScoped<ShellText>", StringComparison.Ordinal), "Shared shell resource facade is not registered.", failures);
     Expect(program.Contains("ar-KW", StringComparison.Ordinal) && program.Contains("\"en\"", StringComparison.Ordinal), "Arabic/English supported cultures are missing.", failures);
 
     var shellText = File.ReadAllText(Path.Combine(root, "src", "GSIP.Web", "ShellText.cs"));
-    Expect(shellText.Contains("factory.Create(\"ShellResource\", assemblyName)", StringComparison.Ordinal), "Shared shell resource lookup must use an explicit base name and assembly.", failures);
+    Expect(shellText.Contains("GSIP.Web.Resources.ShellResource", StringComparison.Ordinal), "Shared shell ResourceManager must bind the exact embedded resource base name.", failures);
+    Expect(shellText.Contains("CultureInfo.CurrentUICulture", StringComparison.Ordinal), "Shared shell resource lookup must use the request UI culture.", failures);
 
     var layout = File.ReadAllText(Path.Combine(root, "src", "GSIP.Web", "Views", "Shared", "_Layout.cshtml"));
     Expect(layout.Contains("dir=\"@direction\"", StringComparison.Ordinal), "Layout must set real RTL/LTR direction.", failures);

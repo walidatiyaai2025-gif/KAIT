@@ -41,6 +41,7 @@ jobs:
         run: ./scripts/verify-p01-shell.ps1
 
       - name: Upload P01 screenshot evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: P01-UI-Evidence-${{ github.sha }}
