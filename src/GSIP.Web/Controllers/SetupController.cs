@@ -68,6 +68,22 @@ public sealed class SetupController(ISetupService setupService) : Controller
     public async Task<IActionResult> Database(DatabaseSetupOptions database, string command, CancellationToken cancellationToken)
     {
         var draft = await GetDraftAsync(cancellationToken);
+
+        if (database.UseWindowsAuthentication)
+        {
+            database.Username = string.Empty;
+            database.Password = string.Empty;
+        }
+        else if (string.IsNullOrEmpty(database.Password)
+            && !draft.Database.UseWindowsAuthentication
+            && string.Equals(database.Server, draft.Database.Server, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(database.Username, draft.Database.Username, StringComparison.Ordinal))
+        {
+            // Passwords are deliberately never rendered back into HTML. Reuse the encrypted
+            // draft value when the user repeats Test/Next without changing the SQL identity.
+            database.Password = draft.Database.Password;
+        }
+
         draft.Database = database;
         draft.DatabaseConnectionVerified = false;
         draft.DatabaseProvisioned = false;
