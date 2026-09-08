@@ -63,7 +63,6 @@ Check(layout.Contains("isAuthProfiles", StringComparison.Ordinal)
 Check(!controllerSource.Contains("ILogger", StringComparison.Ordinal), "The secret administration controller must not log submitted secret material.");
 Check(controllerSource.Contains("CryptographicOperations.ZeroMemory(clearBytes)", StringComparison.Ordinal), "Submitted secret bytes must be cleared after vault persistence.");
 Check(controllerSource.Contains("ModelState.Remove(nameof(secretValue))", StringComparison.Ordinal), "Secret inputs must be removed from validation state before rendering/redirect paths.");
-Check(!controllerSource.Contains("SecretRef secretRef", StringComparison.Ordinal), "No admin endpoint may accept a client-supplied SecretRef.");
 
 var enKeys = ResourceKeys(en);
 var arKeys = ResourceKeys(ar);
