@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -13,15 +14,29 @@ internal interface IRuntimeDatabaseConnection
 
 internal sealed class RuntimeDatabaseConnection(
     IDataProtectionProvider dataProtectionProvider,
-    IHostEnvironment environment) : IRuntimeDatabaseConnection
+    IHostEnvironment environment,
+    IConfiguration configuration) : IRuntimeDatabaseConnection
 {
     private const string ProtectorPurpose = "GSIP.Setup.State.v1";
+    private const string RegressionConnectionKey = "IdentitySecurity:RegressionConnectionString";
 
     public string GetRequiredConnectionString()
     {
         var path = Path.Combine(environment.ContentRootPath, "App_Data", "setup", "completed.protected");
         if (!File.Exists(path))
         {
+            // Browser regression jobs intentionally bypass the completed-setup gate so they can
+            // preserve closed P01/P03 UI contracts without persisting a fake production setup
+            // record. Keep this escape hatch strictly confined to the dedicated test environment.
+            if (environment.IsEnvironment("RegressionTesting"))
+            {
+                var regressionConnection = configuration[RegressionConnectionKey];
+                if (!string.IsNullOrWhiteSpace(regressionConnection))
+                {
+                    return regressionConnection;
+                }
+            }
+
             throw new InvalidOperationException("GSIP setup is not complete; a runtime database connection is unavailable.");
         }
 
