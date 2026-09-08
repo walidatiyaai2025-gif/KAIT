@@ -1,0 +1,46 @@
+name: P07 Service Execution UI
+
+on:
+  push:
+    branches:
+      - 'worker/p07-service-execution-ui-parity'
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  execution-ui:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout exact commit
+        uses: actions/checkout@v4
+      - name: Setup pinned .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Restore solution
+        run: dotnet restore GSIP.sln
+      - name: Build solution Release
+        run: dotnet build GSIP.sln -c Release --no-restore
+      - name: Start SQL Server LocalDB
+        shell: pwsh
+        run: |
+          sqllocaldb start MSSQLLocalDB
+          sqllocaldb info MSSQLLocalDB
+      - name: Verify bilingual responsive Service Execution UI
+        shell: pwsh
+        run: ./scripts/verify-p07-execution-ui.ps1
+      - name: Validate execution plan and governance
+        run: python scripts/validate_execution_plan.py
+      - name: Upload P07 Service Execution UI evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: P07-Execution-UI-Evidence-${{ github.sha }}
+          path: artifacts/p07-execution-ui-evidence/
+          if-no-files-found: error
+          retention-days: 30
