@@ -6,7 +6,7 @@
 - Repository: `walidatiyaai2025-gif/KAIT`
 - Default branch: `main`
 - Delivery model: phase-gated autonomous implementation
-- Current planned product state: P06 CLOSED; P07 Generic service execution engine is the next legal phase after this transition is integrated and exact-main verified
+- Current planned product state: P06 CLOSED from corrected final evidence; P07 Generic service execution engine is OPEN / READY after this reconciliation is integrated and exact-main verified
 - Initial executable version: `0.1.0`
 - Pinned SDK / target framework: .NET SDK `10.0.400` / `net10.0`
 - Initial entity: Ministry of Justice (MOJ), Kuwait
@@ -16,17 +16,23 @@
 
 ## Last closed phase evidence
 
-P06 was closed from exact integrated implementation/security `main` SHA `4c6c8460415a71c4eedb184066f6ba928faa8416` after:
+P06 is closed from corrected exact integrated implementation/security `main` SHA `fef5882abf8a6f12990c3e7c0e9f849d08cd7947` after:
 
 - rotation/redaction/cache was normally integrated through PR #24 and its focused regression follow-up PR #27;
 - canonical Secret Vault / SecretRef / AuthProfile persistence and lifecycle was normally integrated through PR #25;
 - Windows/IIS persisted ASP.NET Core Data Protection keys were protected with DPAPI through PR #28;
 - server-authorized bilingual AuthProfile administration and browser evidence was normally integrated through PR #29;
 - the recovered independent security/evidence gate was normally integrated through PR #26 without duplicating production implementation;
-- all 13 applicable exact-main checks succeeded on the exact implementation/security SHA;
-- P06 Security Acceptance and Evidence run `34278983765`: SUCCESS;
-- exact-main security artifact `P06-Security-Evidence-4c6c8460415a71c4eedb184066f6ba928faa8416` was produced at 5,975 bytes with digest `sha256:052190f8b090ca8981e01bef73bc5e2176d6282b5c448faa03b05fe5adb6af1a`;
-- exact-main AuthProfile administration/browser artifact `P06-AuthProfile-Admin-Evidence-4c6c8460415a71c4eedb184066f6ba928faa8416` was produced at 552,487 bytes with digest `sha256:b3d4f0d62418e7c69cc03ad52599e88bc54c6c3f14910594cd8432d617d241a7`;
+- the earlier closure reconciliation was normally integrated through PR #30;
+- a later live audit of the higher-authority execution plan identified one unintegrated canonical P06 requirement: a runtime token cache with expiry safety window and single-flight refresh;
+- the already-existing legitimate `P06::token-cache-runtime` branch was recovered, reconciled to current main and normally integrated through PR #31 instead of creating duplicate work;
+- runtime token caching now uses the existing exact Service + Environment + AuthProfile + version/generation `TokenCacheIdentity`, a configurable expiry safety window, single-flight refresh, caller-cancellation isolation, fail-safe non-caching of failed/canceled/near-expiry refresh results, and secret-safe token serialization/diagnostics;
+- all 13 exact-main workflow runs succeeded on the corrected implementation/security SHA;
+- P06 Token Cache Runtime run `34281504875`: SUCCESS;
+- P06 Security Acceptance and Evidence run `34281505005`: SUCCESS;
+- exact-main security artifact `P06-Security-Evidence-fef5882abf8a6f12990c3e7c0e9f849d08cd7947` was produced at 5,975 bytes with digest `sha256:2a3ccafdd523e513caca803514b1dde6b3da349460d5715bca17e6841fe5a573`;
+- P06 AuthProfile Administration run `34281505040`: SUCCESS;
+- exact-main AuthProfile administration/browser artifact `P06-AuthProfile-Admin-Evidence-fef5882abf8a6f12990c3e7c0e9f849d08cd7947` was produced at 557,361 bytes with digest `sha256:aa2adb57ffb3cd7ecece6c696ed4df3bec0bb3c41ad99180b0fb530ac10bce91`;
 - opaque SecretRefs are scoped to the owning AuthProfile/Service/Environment and cannot be silently reused across boundaries;
 - Shared AuthProfile use is explicit and auditable;
 - secret rotation uses durable expected-current-reference/generation compare-and-swap semantics with rollback and cache-validity version advancement;
@@ -34,7 +40,10 @@ P06 was closed from exact integrated implementation/security `main` SHA `4c6c846
 - AuthProfile metadata/binding mutations are protected by server-side authorization, IDOR/CSRF checks and safe owner/shared-binding lifecycle rules;
 - Arabic RTL / English LTR desktop and narrow browser evidence passed;
 - closed P00–P05 contracts remained green;
+- PR #31 introduced no P07 execution-engine implementation and no P08+ scope;
 - no owner-only or external P06 evidence was deferred.
+
+The P06 evidence baseline recorded by PR #30 is superseded by this corrected closure record because it predated integration of the canonical runtime token-cache requirement. P07 remains the intended next phase and becomes the sole legal implementation phase only after this reconciliation is integrated and the resulting exact-main closed-phase gates are green.
 
 ## Authoritative documents
 
@@ -56,7 +65,7 @@ No old prompt, screenshot caption, branch description, or stale ledger overrides
 ## Phase policy
 
 - Exactly one canonical current phase exists at a time.
-- P00, P01, P02, P03, P04, P05 and P06 are closed; P07 is the next phase after this transition is integrated and exact-main verified.
+- P00, P01, P02, P03, P04, P05 and P06 are closed; P07 is the current/next legal implementation phase once this final P06 reconciliation is integrated and exact-main verified.
 - P08–P17 remain locked until the current phase is formally CLOSED.
 - Phase exit requires implementation + tests + evidence + documentation reconciliation + pushed commit + required CI + exact-main recheck.
 - Integration recovery and exact-main regressions take priority over new feature work.
@@ -93,7 +102,7 @@ P05 established the metadata-driven Entity/Environment/Service/ServiceField/Resu
 
 ## Secret and authentication-profile contract
 
-P06 established the Secret Vault/AuthProfile boundary. Plaintext secrets never belong in metadata, Git, logs or evidence. Runtime references use opaque SecretRefs scoped to the exact AuthProfile, Service and Environment. Shared AuthProfile relationships must be explicit and auditable. Rotation must stage safely, activate atomically against the expected current reference/generation, preserve the current valid secret on failure and advance cache-validity identity on success. Administration is write-only for plaintext secret input and masked-only for display, protected server-side by authorization/IDOR/CSRF controls. Persisted ASP.NET Core Data Protection keys on Windows/IIS use DPAPI protection.
+P06 established the Secret Vault/AuthProfile and runtime token-cache safety boundary. Plaintext secrets never belong in metadata, Git, logs or evidence. Runtime references use opaque SecretRefs scoped to the exact AuthProfile, Service and Environment. Shared AuthProfile relationships must be explicit and auditable. Rotation must stage safely, activate atomically against the expected current reference/generation, preserve the current valid secret on failure and advance cache-validity identity on success. Administration is write-only for plaintext secret input and masked-only for display, protected server-side by authorization/IDOR/CSRF controls. Persisted ASP.NET Core Data Protection keys on Windows/IIS use DPAPI protection. Runtime token reuse is in-memory only and keyed by the exact governed token-cache identity; reuse must respect an expiry safety window, coalesce concurrent refresh through single-flight semantics, isolate caller cancellation, reject failed/canceled/unsafe refresh results from caching, and avoid token leakage through normal serialization or diagnostics.
 
 ## Service environment / Go-Live control
 

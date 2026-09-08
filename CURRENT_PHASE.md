@@ -6,17 +6,17 @@
 
 Status: **OPEN / READY**
 
-P06 is CLOSED from integrated exact-main evidence. The final P06 implementation/security candidate was normally integrated through PR #26 at exact `main` SHA `4c6c8460415a71c4eedb184066f6ba928faa8416`, after the canonical foundation, rotation/redaction/cache, Windows/IIS Data Protection hardening, AuthProfile administration and independent security/evidence work had converged through PRs #24, #25, #27, #28 and #29.
+P06 is CLOSED from corrected integrated exact-main evidence. The final P06 implementation/security baseline is exact `main` SHA `fef5882abf8a6f12990c3e7c0e9f849d08cd7947`. P06 originally converged through PRs #24, #25, #26, #27, #28 and #29; a final live-plan audit after the earlier PR #30 closure reconciliation found one canonical P06 requirement that had not yet been integrated: the runtime token cache required by `execution/GSIP_Full_Execution.json`, including an expiry safety window and single-flight refresh. The already-existing legitimate `P06::token-cache-runtime` work was recovered instead of duplicated, reconciled to current main and normally merged through PR #31.
 
-On that exact P06 implementation SHA, all **13/13** applicable exact-main checks succeeded. P06 Security Acceptance and Evidence run `34278983765` succeeded and produced `P06-Security-Evidence-4c6c8460415a71c4eedb184066f6ba928faa8416` (5,975 bytes), digest `sha256:052190f8b090ca8981e01bef73bc5e2176d6282b5c448faa03b05fe5adb6af1a`. P06 AuthProfile Administration run `34278983611` also produced `P06-AuthProfile-Admin-Evidence-4c6c8460415a71c4eedb184066f6ba928faa8416` (552,487 bytes), digest `sha256:b3d4f0d62418e7c69cc03ad52599e88bc54c6c3f14910594cd8432d617d241a7`.
+On that corrected exact P06 implementation SHA, all **13/13 exact-main workflow runs succeeded**. P06 Token Cache Runtime run `34281504875` succeeded. P06 Security Acceptance and Evidence run `34281505005` succeeded and produced `P06-Security-Evidence-fef5882abf8a6f12990c3e7c0e9f849d08cd7947` (5,975 bytes), digest `sha256:2a3ccafdd523e513caca803514b1dde6b3da349460d5715bca17e6841fe5a573`. P06 AuthProfile Administration run `34281505040` succeeded and produced `P06-AuthProfile-Admin-Evidence-fef5882abf8a6f12990c3e7c0e9f849d08cd7947` (557,361 bytes), digest `sha256:aa2adb57ffb3cd7ecece6c696ed4df3bec0bb3c41ad99180b0fb530ac10bce91`.
 
-P06 acceptance verifies opaque scoped SecretRefs, default Service + Environment isolation, explicit auditable Shared AuthProfile bindings, durable atomic expected-current-reference/generation rotation with rollback, profile/cache generation advancement, centralized redaction/masking, cross-service-safe token-cache identity, protected metadata/binding lifecycle, server-side authorization/IDOR/CSRF controls, write-only secret administration, masked-only display, Windows/IIS DPAPI protection for persisted Data Protection keys, bilingual Arabic RTL / English LTR responsive browser evidence, independent negative/no-leak security acceptance, and preservation of P00–P05 contracts. No owner-only or external P06 evidence is deferred.
+P06 acceptance verifies opaque scoped SecretRefs, default Service + Environment isolation, explicit auditable Shared AuthProfile bindings, durable atomic expected-current-reference/generation rotation with rollback, profile/cache generation advancement, centralized redaction/masking, protected metadata/binding lifecycle, server-side authorization/IDOR/CSRF controls, write-only secret administration, masked-only display, Windows/IIS DPAPI protection for persisted Data Protection keys, bilingual Arabic RTL / English LTR responsive browser evidence, independent negative/no-leak security acceptance, and the corrected runtime token-cache contract: exact Service + Environment + AuthProfile + version/generation identity, configurable expiry safety window, single-flight refresh, caller-cancellation isolation, rejection of failed/canceled/near-expiry refresh results, and secret-safe token serialization/diagnostics. P00–P05 contracts remain preserved. No owner-only or external P06 evidence is deferred.
 
-This P07 transition becomes authoritative only after this closure reconciliation is normally integrated to `main` and the resulting exact-main closed-phase regressions remain green. Do not begin P07 implementation from an unmerged transition branch.
+The earlier PR #30 closure record is superseded only as to its P06 evidence baseline; its P07 transition remains the intended next phase. This corrected P07 authority becomes final only after this final closure-reconciliation change is normally integrated to `main` and the resulting exact-main closed-phase regressions remain green.
 
 ## Legal work now
 
-After this transition is integrated and exact-main verification is green, P07 only, plus any repair needed to preserve closed P00/P01/P02/P03/P04/P05/P06 baselines and repository controls.
+After this final reconciliation is integrated and exact-main verification is green, P07 only, plus any repair needed to preserve closed P00/P01/P02/P03/P04/P05/P06 baselines and repository controls.
 
 P07 scope is the canonical ledger scope: the generic service execution engine must resolve the exact `Service + Environment + AuthProfile` binding and drive the high-fidelity dynamic Service Execution UI without introducing MOJ-specific P08/P09 behavior early.
 
@@ -28,21 +28,27 @@ The per-service/per-environment isolation contract in `docs/SERVICE_ENVIRONMENT_
 
 ## P06 closure evidence
 
-- Final integrated implementation/security SHA: `4c6c8460415a71c4eedb184066f6ba928faa8416`
+- Corrected final integrated implementation/security SHA: `fef5882abf8a6f12990c3e7c0e9f849d08cd7947`
+- Runtime token-cache recovery PR: #31 — normally merged
 - Final independent security PR: #26 — normally merged
 - AuthProfile administration PR: #29 — normally merged
 - Canonical foundation PR: #25 — normally merged
 - Rotation/redaction/cache PRs: #24 and #27 — normally merged
 - Windows/IIS Data Protection hardening PR: #28 — normally merged
-- Exact-main applicable checks: **13/13 SUCCESS**
-- P06 Security Acceptance and Evidence: run `34278983765` — **SUCCESS**
-- Exact-main security artifact: `P06-Security-Evidence-4c6c8460415a71c4eedb184066f6ba928faa8416`
+- Earlier closure reconciliation: PR #30 — superseded only by this corrected P06 evidence baseline
+- Exact-main workflow runs on corrected implementation SHA: **13/13 SUCCESS**
+- P06 Token Cache Runtime: run `34281504875` — **SUCCESS**
+- P06 Security Acceptance and Evidence: run `34281505005` — **SUCCESS**
+- Exact-main security artifact: `P06-Security-Evidence-fef5882abf8a6f12990c3e7c0e9f849d08cd7947`
 - Security artifact size: 5,975 bytes
-- Security artifact digest: `sha256:052190f8b090ca8981e01bef73bc5e2176d6282b5c448faa03b05fe5adb6af1a`
-- Exact-main admin/browser artifact: `P06-AuthProfile-Admin-Evidence-4c6c8460415a71c4eedb184066f6ba928faa8416`
-- Admin/browser artifact size: 552,487 bytes
-- Admin/browser artifact digest: `sha256:b3d4f0d62418e7c69cc03ad52599e88bc54c6c3f14910594cd8432d617d241a7`
-- Owner/external dependency: none deferred for P06
+- Security artifact digest: `sha256:2a3ccafdd523e513caca803514b1dde6b3da349460d5715bca17e6841fe5a573`
+- P06 AuthProfile Administration: run `34281505040` — **SUCCESS**
+- Exact-main admin/browser artifact: `P06-AuthProfile-Admin-Evidence-fef5882abf8a6f12990c3e7c0e9f849d08cd7947`
+- Admin/browser artifact size: 557,361 bytes
+- Admin/browser artifact digest: `sha256:aa2adb57ffb3cd7ecece6c696ed4df3bec0bb3c41ad99180b0fb530ac10bce91`
+- Runtime cache evidence: exact identity isolation, expiry safety window, single-flight refresh, cancellation/failure safety and secret-safe token diagnostics
+- P07 implementation introduced by the P06 repair: **NONE**
+- Owner/external dependency deferred for P06: **NONE**
 
 Detailed evidence is recorded in `docs/evidence/P06_SECRET_VAULT_AUTH_PROFILES.md`.
 
