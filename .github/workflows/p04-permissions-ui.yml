@@ -14,6 +14,8 @@ jobs:
   permissions-ui:
     runs-on: windows-latest
     timeout-minutes: 35
+    env:
+      GSIP_P04_SQL: 'Server=(localdb)\MSSQLLocalDB;Database=GSIP_P04_UI_CORE_${{ github.run_id }}_${{ github.run_attempt }};Integrated Security=true;TrustServerCertificate=true;MultipleActiveResultSets=true'
 
     steps:
       - name: Checkout
@@ -38,8 +40,6 @@ jobs:
 
       - name: Preserve P04 RBAC authorization contracts
         shell: pwsh
-        env:
-          GSIP_P04_SQL_SERVER: '(localdb)\MSSQLLocalDB'
         run: dotnet run --project tests/GSIP.P04Checks/GSIP.P04Checks.csproj --configuration Release --no-build
 
       - name: Verify protected bilingual permissions UI
