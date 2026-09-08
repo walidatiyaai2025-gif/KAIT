@@ -6,7 +6,7 @@
 - Repository: `walidatiyaai2025-gif/KAIT`
 - Default branch: `main`
 - Delivery model: phase-gated autonomous implementation
-- Current planned product state: P03 CLOSED; P04 RBAC and service-level permissions is the next legal phase after transition exact-main verification
+- Current planned product state: P04 CLOSED; P05 Entity and Service metadata catalog is the next legal phase after this transition is integrated and exact-main verified
 - Initial executable version: `0.1.0`
 - Pinned SDK / target framework: .NET SDK `10.0.400` / `net10.0`
 - Initial entity: Ministry of Justice (MOJ), Kuwait
@@ -16,20 +16,23 @@
 
 ## Last closed phase evidence
 
-P03 was closed from exact integrated `main` SHA `20d2542427a388ac81e5249cc59f60dcbfa2ea91` after:
+P04 was closed from exact integrated `main` SHA `c3aa76a8d456c9b951b602001bcbe1023ae26dd9` after:
 
-- the P03 security-header component was normally integrated through PR #12 and the recovered Identity/MFA/account-security implementation was normally integrated through PR #13;
-- Planning Integrity run `34239792230`: SUCCESS;
-- P00 Build Baseline regression run `34239792270`: SUCCESS;
-- P01 Architecture and UI Shell regression run `34239792297`: SUCCESS;
-- P02 First-run Setup Wizard regression run `34239792244`: SUCCESS;
-- P03 Web Security Headers run `34239792235`: SUCCESS;
-- P03 Identity and Account Security run `34239792740`: SUCCESS;
-- Identity persistence, login/logout, password/session/account controls, forced password change, MFA enrollment/verification, privileged-account MFA policy, lockout/rate limiting, CSRF, authenticated dashboard gating, production cookie/HSTS/security-header posture and sanitized authentication audit events were exercised by the P03 gate;
-- Arabic RTL / English LTR authentication browser evidence was produced at desktop and mobile viewports;
-- exact-main artifact `P03-Identity-Evidence-20d2542427a388ac81e5249cc59f60dcbfa2ea91` was produced at 330,634 bytes;
-- workflow artifact digest: `sha256:d12317bb99d8a3835bd0a4a34db0688af5c164e1e3865e13f76828b1bbac9245`;
-- no owner-only or external evidence was deferred for P03.
+- the recovered permissions administration/UI closure implementation was normally integrated through PR #20 on top of the already integrated P04 role/permission and negative-authorization foundation;
+- Planning Integrity run `34253075877`: SUCCESS;
+- P00 Build Baseline regression run `34253075003`: SUCCESS;
+- P01 Architecture and UI Shell regression run `34253075362`: SUCCESS;
+- P02 First-run Setup Wizard regression run `34253075183`: SUCCESS;
+- P03 Web Security Headers regression run `34253075119`: SUCCESS;
+- P03 Identity and Account Security regression run `34253074987`: SUCCESS;
+- P04 RBAC Core run `34253075074`: SUCCESS;
+- P04 Permissions UI run `34253075409`: SUCCESS;
+- seeded editable roles, permission catalog, RolePermissions, UserRoles, per-service permissions, Default Deny and server-side authorization were exercised;
+- role creation/rename, user-role assignment/removal, forged identifier denial and protection against removing the last enabled System Administrator were exercised by executable administration/IDOR gates;
+- Arabic RTL / English LTR Permissions browser evidence was produced at the required responsive viewports with the governed role/user/service matrix and pending-approvals presentation;
+- exact-main artifact `P04-Permissions-UI-Evidence-c3aa76a8d456c9b951b602001bcbe1023ae26dd9` was produced at 476,233 bytes;
+- workflow artifact digest: `sha256:b5b6fa42c7dd114b302a2db3572c25130f01e2c045586a90bcaf90b97d290826`;
+- no owner-only or external evidence was deferred for P04.
 
 ## Authoritative documents
 
@@ -51,7 +54,7 @@ No old prompt, screenshot caption, branch description, or stale ledger overrides
 ## Phase policy
 
 - Exactly one canonical current phase exists at a time.
-- P00, P01, P02 and P03 are closed; P04 is the next phase after this transition is integrated and exact-main verified.
+- P00, P01, P02, P03 and P04 are closed; P05 is the next phase after this transition is integrated and exact-main verified.
 - Future phases remain locked until the current phase is formally CLOSED.
 - Phase exit requires implementation + tests + evidence + documentation reconciliation + pushed commit + required CI + exact-main recheck.
 - Integration recovery and exact-main regressions take priority over new feature work.
@@ -76,7 +79,11 @@ P02 established the protected first-run Setup boundary. Normal Login is illegal 
 
 ## Identity and account-security contract
 
-P03 established the authentication boundary required before detailed RBAC. Runtime access uses ASP.NET Core Identity persistence with protected login/logout, configurable password/session/remember-me and account controls, forced password change, MFA enrollment/verification, privileged-account MFA policy, lockout/rate limiting, server-side authentication challenge, CSRF protection, security headers/HSTS/cookie controls and sanitized authentication audit events. P04 authorization must preserve and build on this boundary rather than bypassing it.
+P03 established the authentication boundary required before detailed RBAC. Runtime access uses ASP.NET Core Identity persistence with protected login/logout, configurable password/session/remember-me and account controls, forced password change, MFA enrollment/verification, privileged-account MFA policy, lockout/rate limiting, server-side authentication challenge, CSRF protection, security headers/HSTS/cookie controls and sanitized authentication audit events.
+
+## RBAC and permissions contract
+
+P04 established the authorization boundary required before metadata administration. Runtime authorization uses editable seeded roles, a canonical permission catalog, RolePermissions, UserRoles, per-service permission controls and Default Deny with server-side enforcement. Administration must continue to protect privileged access, reject forged/unknown identifiers, prevent removal of the last enabled System Administrator and preserve the bilingual Permissions management experience. P05 metadata administration must use this authorization boundary rather than bypass it.
 
 ## Service environment / Go-Live control
 
