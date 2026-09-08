@@ -33,7 +33,8 @@ public static class DependencyInjection
         services.AddSingleton<IRuntimeDatabaseConnection>(serviceProvider =>
             new RuntimeDatabaseConnection(
                 serviceProvider.GetRequiredService<Microsoft.AspNetCore.DataProtection.IDataProtectionProvider>(),
-                environment));
+                environment,
+                configuration));
         services.AddDbContext<GsipDbContext>((serviceProvider, options) =>
         {
             var connection = serviceProvider.GetRequiredService<IRuntimeDatabaseConnection>();
