@@ -76,6 +76,8 @@ static void CheckSecurityBaseline(string root, List<string> failures)
     {
         ".pfx", ".p12", ".key"
     };
+    var privateKeyMarker = string.Concat("-----BEGIN ", "PRIVATE KEY-----");
+    var jwtLikeBearerPrefix = string.Concat("Bearer ", "eyJ");
 
     foreach (var topLevel in new[] { "src", "tests" })
     {
@@ -106,8 +108,8 @@ static void CheckSecurityBaseline(string root, List<string> failures)
             }
 
             var text = File.ReadAllText(file);
-            Expect(!text.Contains("-----BEGIN PRIVATE KEY-----", StringComparison.Ordinal), $"Private key marker found in {Path.GetRelativePath(root, file)}.", failures);
-            Expect(!text.Contains("Bearer eyJ", StringComparison.Ordinal), $"JWT-like bearer token found in {Path.GetRelativePath(root, file)}.", failures);
+            Expect(!text.Contains(privateKeyMarker, StringComparison.Ordinal), $"Private key marker found in {Path.GetRelativePath(root, file)}.", failures);
+            Expect(!text.Contains(jwtLikeBearerPrefix, StringComparison.Ordinal), $"JWT-like bearer token found in {Path.GetRelativePath(root, file)}.", failures);
         }
     }
 }
