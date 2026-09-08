@@ -1,9 +1,11 @@
 using GSIP.Application.Abstractions;
+using GSIP.Application.Authentication;
 using GSIP.Application.Authorization;
 using GSIP.Application.Identity;
 using GSIP.Application.Metadata;
 using GSIP.Application.Secrets;
 using GSIP.Application.Setup;
+using GSIP.Infrastructure.Authentication;
 using GSIP.Infrastructure.Authorization;
 using GSIP.Infrastructure.Identity;
 using GSIP.Infrastructure.Metadata;
@@ -29,6 +31,8 @@ public static class DependencyInjection
 
         var security = configuration.GetSection(IdentitySecurityOptions.SectionName).Get<IdentitySecurityOptions>() ?? new IdentitySecurityOptions();
         services.AddSingleton<ISystemClock, SystemClock>();
+        services.AddSingleton<TokenCacheOptions>();
+        services.AddSingleton<ITokenCache, InMemoryTokenCache>();
         services.AddScoped<ISetupService, SetupService>();
         services.AddScoped<IMetadataCatalogService, MetadataCatalogService>();
         services.AddScoped<DataProtectionSecretVault>();

@@ -1,0 +1,50 @@
+name: P06 Token Cache Runtime
+
+on:
+  push:
+    branches:
+      - main
+      - worker/p06-token-cache-runtime
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  token-cache-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact commit
+        uses: actions/checkout@v4
+
+      - name: Set up .NET from global.json
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore solution
+        run: dotnet restore GSIP.sln
+
+      - name: Restore token-cache checks
+        run: dotnet restore tests/GSIP.P06TokenCacheChecks/GSIP.P06TokenCacheChecks.csproj
+
+      - name: Restore existing P06 rotation/redaction checks
+        run: dotnet restore tests/GSIP.P06RotationRedactionChecks/GSIP.P06RotationRedactionChecks.csproj
+
+      - name: Build solution Release
+        run: dotnet build GSIP.sln -c Release --no-restore
+
+      - name: Build token-cache checks Release
+        run: dotnet build tests/GSIP.P06TokenCacheChecks/GSIP.P06TokenCacheChecks.csproj -c Release --no-restore
+
+      - name: Run token-cache expiry, single-flight and isolation checks
+        run: dotnet run --project tests/GSIP.P06TokenCacheChecks/GSIP.P06TokenCacheChecks.csproj -c Release --no-build
+
+      - name: Preserve existing P06 rotation/redaction/cache-identity checks
+        run: dotnet run --project tests/GSIP.P06RotationRedactionChecks/GSIP.P06RotationRedactionChecks.csproj -c Release
+
+      - name: Validate execution plan and governance
+        run: python scripts/validate_execution_plan.py

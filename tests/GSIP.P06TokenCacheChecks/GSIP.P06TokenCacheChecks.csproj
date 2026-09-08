@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>GSIP.P06TokenCacheChecks</AssemblyName>
+    <RootNamespace>GSIP.P06TokenCacheChecks</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\GSIP.Application\GSIP.Application.csproj" />
+    <ProjectReference Include="..\..\src\GSIP.Infrastructure\GSIP.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>
