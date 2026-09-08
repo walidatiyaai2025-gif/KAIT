@@ -166,29 +166,31 @@ public sealed class PermissionsController(
         string? culture,
         CancellationToken cancellationToken)
     {
-        var normalizedName = ValidateRoleName(roleName);
-        if (normalizedName is null)
+        var validatedName = ValidateRoleName(roleName);
+        if (validatedName is null)
         {
             return BadRequest("Role name must contain 1 to 100 printable characters.");
         }
 
-        var role = await roleManager.FindByIdAsync(roleId.ToString());
+        var role = await dbContext.Roles.SingleOrDefaultAsync(candidate => candidate.Id == roleId, cancellationToken);
         if (role is null)
         {
             return NotFound();
         }
 
-        var duplicate = await roleManager.FindByNameAsync(normalizedName);
-        if (duplicate is not null && duplicate.Id != roleId)
+        var normalizedLookupName = roleManager.NormalizeKey(validatedName);
+        var duplicate = await dbContext.Roles
+            .AsNoTracking()
+            .AnyAsync(candidate => candidate.Id != roleId && candidate.NormalizedName == normalizedLookupName, cancellationToken);
+        if (duplicate)
         {
             return Conflict("A role with this name already exists.");
         }
 
-        var result = await roleManager.SetRoleNameAsync(role, normalizedName);
-        if (!result.Succeeded)
-        {
-            return BadRequest("The role could not be renamed.");
-        }
+        role.Name = validatedName;
+        role.NormalizedName = normalizedLookupName;
+        role.ConcurrencyStamp = Guid.NewGuid().ToString("N");
+        await dbContext.SaveChangesAsync(cancellationToken);
 
         return RedirectToAction(nameof(Index), new { culture = NormalizeCulture(culture), userId });
     }
