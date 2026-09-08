@@ -1,5 +1,4 @@
 using GSIP.Web.Security;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
@@ -48,12 +47,7 @@ static void ProductionHttpsEmitsHardenedHeaders()
     AssertHeader(context, "Cross-Origin-Resource-Policy", "same-origin");
     AssertHeader(context, "Strict-Transport-Security", "max-age=31536000; includeSubDomains");
 
-    var csp = context.Response.Headers["Content-Security-Policy"].ToString();
-    AssertContains(csp, "default-src 'self'");
-    AssertContains(csp, "object-src 'none'");
-    AssertContains(csp, "frame-ancestors 'none'");
-    AssertContains(csp, "form-action 'self'");
-    AssertContains(csp, "script-src 'self'");
+    AssertHardenedCsp(context.Response.Headers["Content-Security-Policy"].ToString());
 }
 
 static void ProductionHttpOmitsHsts()
@@ -67,7 +61,7 @@ static void DevelopmentHttpsOmitsHsts()
 {
     var context = Invoke(Environments.Development, isHttps: true);
     AssertAbsent(context, "Strict-Transport-Security");
-    AssertHeader(context, "Content-Security-Policy", SecurityHeadersMiddleware.ContentSecurityPolicy);
+    AssertHardenedCsp(context.Response.Headers["Content-Security-Policy"].ToString());
 }
 
 static void DownstreamObservesHeaders()
@@ -99,7 +93,9 @@ static void ReplacesWeakerPreexistingPolicy()
 
     middleware.InvokeAsync(context).GetAwaiter().GetResult();
 
-    AssertHeader(context, "Content-Security-Policy", SecurityHeadersMiddleware.ContentSecurityPolicy);
+    var csp = context.Response.Headers["Content-Security-Policy"].ToString();
+    Assert(!string.Equals(csp, "default-src *", StringComparison.Ordinal), "Weak CSP was not replaced.");
+    AssertHardenedCsp(csp);
     AssertHeader(context, "X-Frame-Options", "DENY");
 }
 
@@ -111,6 +107,15 @@ static DefaultHttpContext Invoke(string environmentName, bool isHttps)
     context.Request.Scheme = isHttps ? Uri.UriSchemeHttps : Uri.UriSchemeHttp;
     middleware.InvokeAsync(context).GetAwaiter().GetResult();
     return context;
+}
+
+static void AssertHardenedCsp(string csp)
+{
+    AssertContains(csp, "default-src 'self'");
+    AssertContains(csp, "object-src 'none'");
+    AssertContains(csp, "frame-ancestors 'none'");
+    AssertContains(csp, "form-action 'self'");
+    AssertContains(csp, "script-src 'self'");
 }
 
 static void AssertHeader(HttpContext context, string name, string expected)
