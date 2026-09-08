@@ -114,11 +114,16 @@ static void CheckDesignSystem(string root, List<string> failures)
 static void CheckPhaseBoundaries(string root, List<string> failures)
 {
     var login = File.ReadAllText(Path.Combine(root, "src", "GSIP.Web", "Views", "Shell", "Login.cshtml"));
-    Expect(login.Contains("data-auth-state=\"shell-only\"", StringComparison.Ordinal), "Login must be explicitly marked shell-only in P01.", failures);
-    Expect(login.Contains("type=\"button\" disabled", StringComparison.Ordinal), "P01 login must not submit credentials.", failures);
+    Expect(login.Contains("data-auth-state=\"shell-only\"", StringComparison.Ordinal), "Login must retain the closed-P01 shell boundary until a later phase deliberately replaces it.", failures);
+    Expect(login.Contains("type=\"button\" disabled", StringComparison.Ordinal), "Closed-P01 regression gate requires the login shell to remain non-submitting until later-phase implementation replaces it.", failures);
 
     var currentPhase = File.ReadAllText(Path.Combine(root, "CURRENT_PHASE.md"));
-    Expect(currentPhase.Contains("P01 — Solution architecture and bilingual shell", StringComparison.Ordinal), "Canonical current phase must remain P01 while implementation is unclosed.", failures);
+    var ledger = File.ReadAllText(Path.Combine(root, "docs", "TASK_LEDGER.md"));
+    var p01StillCurrent = currentPhase.Contains("P01 — Solution architecture and bilingual shell", StringComparison.Ordinal);
+    var laterCanonicalPhase = Enumerable.Range(2, 16).Any(number => currentPhase.Contains($"P{number:00} —", StringComparison.Ordinal));
+    var p01Closed = ledger.Contains("| P01 | CLOSED |", StringComparison.Ordinal);
+
+    Expect(p01StillCurrent || (laterCanonicalPhase && p01Closed), "P01 regression gate requires either active P01 or a later canonical phase with P01 CLOSED in the ledger.", failures);
 }
 
 static void Expect(bool condition, string message, List<string> failures)
