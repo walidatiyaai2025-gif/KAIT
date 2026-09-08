@@ -199,8 +199,17 @@ try {
     if ($enDecoded -notmatch 'Synthetic P04 Administrator') { throw 'Authenticated user details panel is not rendering synthetic account data.' }
     if ($enDecoded -notmatch 'Marriage Cases Service') { throw 'Configured service permission matrix did not render.' }
 
-    $enHtml = $en.Content.Replace('href="/', "href=`"$baseUrl/").Replace('src="/', "src=`"$baseUrl/")
-    $arHtml = $ar.Content.Replace('href="/', "href=`"$baseUrl/").Replace('src="/', "src=`"$baseUrl/")
+    $stylePaths = @(
+        (Join-Path $root 'src/GSIP.Web/wwwroot/css/gsip.css'),
+        (Join-Path $root 'src/GSIP.Web/wwwroot/css/identity.css'),
+        (Join-Path $root 'src/GSIP.Web/wwwroot/css/setup.css'),
+        (Join-Path $root 'src/GSIP.Web/wwwroot/css/permissions.css')
+    )
+    $styleBundle = ($stylePaths | ForEach-Object { Get-Content $_ -Raw }) -join "`n"
+    $inlineStyles = "<style data-evidence-inline-styles>`n$styleBundle`n</style>"
+    $enHtml = $en.Content.Replace('</head>', "$inlineStyles`n</head>").Replace('href="/', "href=`"$baseUrl/").Replace('src="/', "src=`"$baseUrl/")
+    $arHtml = $ar.Content.Replace('</head>', "$inlineStyles`n</head>").Replace('href="/', "href=`"$baseUrl/").Replace('src="/', "src=`"$baseUrl/")
+    if ($enHtml -notmatch 'data-evidence-inline-styles' -or $arHtml -notmatch 'data-evidence-inline-styles') { throw 'Exact-candidate CSS was not embedded into browser evidence documents.' }
     $enPath = Join-Path $artifactDir 'permissions-en.html'
     $arPath = Join-Path $artifactDir 'permissions-ar.html'
     $enHtml | Set-Content $enPath -Encoding utf8
@@ -241,7 +250,7 @@ try {
             viewport = $capture.Size
             phase = 'P04'
             commit = $env:GITHUB_SHA
-            renderSource = 'authenticated server-rendered response from exact candidate; browser-rendered with live candidate CSS'
+            renderSource = 'authenticated server-rendered response from exact candidate; exact candidate CSS embedded for deterministic browser rendering'
             dataClassification = 'synthetic-only'
         }
     }
