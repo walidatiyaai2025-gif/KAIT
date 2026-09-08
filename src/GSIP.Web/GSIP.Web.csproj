@@ -3,4 +3,10 @@
     <AssemblyName>GSIP.Web</AssemblyName>
     <RootNamespace>GSIP.Web</RootNamespace>
   </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\GSIP.Application\GSIP.Application.csproj" />
+    <ProjectReference Include="..\GSIP.Contracts\GSIP.Contracts.csproj" />
+    <ProjectReference Include="..\GSIP.Infrastructure\GSIP.Infrastructure.csproj" />
+    <ProjectReference Include="..\GSIP.Integrations\GSIP.Integrations.csproj" />
+  </ItemGroup>
 </Project>

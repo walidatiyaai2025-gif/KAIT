@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>GSIP.P01Checks</AssemblyName>
+    <RootNamespace>GSIP.P01Checks</RootNamespace>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,50 @@
+@model ShellViewModel
+@inject ShellText L
+@{
+    ViewData["Title"] = L["Dashboard"];
+}
+<section class="hero-row">
+    <div>
+        <span class="eyebrow">GSIP · @Model.Phase</span>
+        <h1>@L["Welcome"]</h1>
+        <p>@L["WelcomeSubtitle"]</p>
+    </div>
+    <div class="search-shell" aria-disabled="true">
+        <span aria-hidden="true">⌕</span>
+        <span>@L["SearchPlaceholder"]</span>
+        <kbd>⌘ K</kbd>
+    </div>
+</section>
+
+<section class="kpi-grid" aria-label="@L["FoundationStatus"]">
+    <article class="kpi-card"><span class="kpi-icon blue">✓</span><div><strong>.NET 10</strong><span>@L["PlatformReady"]</span></div></article>
+    <article class="kpi-card"><span class="kpi-icon teal">文</span><div><strong>AR / EN</strong><span>@L["BilingualReady"]</span></div></article>
+    <article class="kpi-card"><span class="kpi-icon gold">P01</span><div><strong>@L["CurrentPhase"]</strong><span>@L["ShellArchitecture"]</span></div></article>
+    <article class="kpi-card"><span class="kpi-icon navy">#</span><div><strong>v@(Model.ProductVersion)</strong><span>@L["BuildVersion"]</span></div></article>
+</section>
+
+<section class="foundation-panel">
+    <div class="panel-accent"></div>
+    <div class="foundation-icon" aria-hidden="true">G</div>
+    <div class="foundation-copy">
+        <span class="status-badge"><i></i>@L["FoundationActive"]</span>
+        <h2>@L["FoundationTitle"]</h2>
+        <p>@L["FoundationDescription"]</p>
+    </div>
+    <div class="foundation-meta">
+        <span>@L["Architecture"]</span><strong>Web · Application · Domain · Infrastructure · Integrations · Contracts</strong>
+        <span>@L["Direction"]</span><strong>RTL / LTR</strong>
+    </div>
+</section>
+
+<div class="section-heading">
+    <div><h2>@L["WorkspacePreview"]</h2><p>@L["WorkspacePreviewSubtitle"]</p></div>
+    <span class="preview-chip">@L["PreviewOnly"]</span>
+</div>
+<section class="workspace-grid">
+    <article class="workspace-card"><span class="workspace-icon">◇</span><h3>@L["Entities"]</h3><p>@L["EntitiesPreview"]</p><button disabled>@L["AvailableAfterSetup"]</button></article>
+    <article class="workspace-card"><span class="workspace-icon">▦</span><h3>@L["Services"]</h3><p>@L["ServicesPreview"]</p><button disabled>@L["AvailableAfterSetup"]</button></article>
+    <article class="workspace-card"><span class="workspace-icon">◈</span><h3>@L["Permissions"]</h3><p>@L["PermissionsPreview"]</p><button disabled>@L["FuturePhase"]</button></article>
+    <article class="workspace-card"><span class="workspace-icon">◴</span><h3>@L["Audit"]</h3><p>@L["AuditPreview"]</p><button disabled>@L["FuturePhase"]</button></article>
+</section>
+<footer class="shell-footer">@L["GeneratedAt"] @Model.GeneratedAtUtc.ToString("u") · @L["NoLiveData"]</footer>

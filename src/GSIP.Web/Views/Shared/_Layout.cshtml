@@ -1,0 +1,68 @@
+@using System.Globalization
+@inject ShellText L
+@{
+    var isRtl = CultureInfo.CurrentUICulture.TextInfo.IsRightToLeft;
+    var direction = isRtl ? "rtl" : "ltr";
+    var language = isRtl ? "ar" : "en";
+}
+<!doctype html>
+<html lang="@language" dir="@direction" data-culture-name="@CultureInfo.CurrentUICulture.Name">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <title>@ViewData["Title"] · GSIP</title>
+    <link rel="stylesheet" href="~/css/gsip.css" asp-append-version="true" />
+</head>
+<body class="gsip-body @direction">
+    <a class="skip-link" href="#main-content">@L["SkipToContent"]</a>
+    <header class="topbar">
+        <div class="brand-cluster">
+            <div class="brand-mark" aria-hidden="true"><span>G</span></div>
+            <div>
+                <div class="brand-title">@L["ProductName"]</div>
+                <div class="brand-subtitle">@L["ProductNameEnglish"]</div>
+            </div>
+        </div>
+        <div class="topbar-motto">
+            <strong>@L["Motto"]</strong>
+            <span>@L["MottoEnglish"]</span>
+        </div>
+        <div class="topbar-actions">
+            <button class="language-switch" type="button" data-culture="@(isRtl ? "en" : "ar-KW")" aria-label="@L["SwitchLanguage"]">
+                @(isRtl ? "EN" : "AR")
+            </button>
+            <a class="login-link" href="/login?culture=@CultureInfo.CurrentUICulture.Name">@L["Login"]</a>
+        </div>
+    </header>
+    <aside class="sidebar" aria-label="@L["PrimaryNavigation"]">
+        <div class="sidebar-accent"></div>
+        <nav>
+            <a class="nav-item active" href="/?culture=@CultureInfo.CurrentUICulture.Name"><span class="nav-glyph">⌂</span><span>@L["Home"]</span></a>
+            <span class="nav-item disabled" aria-disabled="true"><span class="nav-glyph">◇</span><span>@L["Entities"]</span></span>
+            <span class="nav-item disabled" aria-disabled="true"><span class="nav-glyph">▦</span><span>@L["Services"]</span></span>
+            <span class="nav-item disabled" aria-disabled="true"><span class="nav-glyph">≡</span><span>@L["Requests"]</span></span>
+            <span class="nav-item disabled" aria-disabled="true"><span class="nav-glyph">◴</span><span>@L["Audit"]</span></span>
+            <span class="nav-item disabled" aria-disabled="true"><span class="nav-glyph">◈</span><span>@L["Permissions"]</span></span>
+            <span class="nav-item disabled" aria-disabled="true"><span class="nav-glyph">⚙</span><span>@L["Settings"]</span></span>
+        </nav>
+        <div class="sidebar-foot">
+            <span class="phase-dot"></span>
+            <div><strong>P01</strong><small>@L["FoundationPhase"]</small></div>
+        </div>
+    </aside>
+    <main id="main-content" class="main-content" tabindex="-1">
+        @RenderBody()
+    </main>
+    <script>
+        document.querySelectorAll('[data-culture]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                const url = new URL(window.location.href);
+                url.searchParams.set('culture', button.dataset.culture);
+                window.location.assign(url.pathname + url.search + url.hash);
+            });
+        });
+    </script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

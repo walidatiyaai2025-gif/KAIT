@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>GSIP.Integrations</AssemblyName>
+    <RootNamespace>GSIP.Integrations</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <ProjectReference Include="..\GSIP.Application\GSIP.Application.csproj" />
+    <ProjectReference Include="..\GSIP.Contracts\GSIP.Contracts.csproj" />
+  </ItemGroup>
+</Project>

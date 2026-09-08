@@ -1,0 +1,50 @@
+name: P01 Architecture and UI Shell
+
+on:
+  push:
+    branches:
+      - main
+      - 'worker/p01-*'
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  architecture-ui-shell:
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pinned .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore GSIP.sln
+
+      - name: Build Release
+        run: dotnet build GSIP.sln --configuration Release --no-restore
+
+      - name: Preserve P00 contracts
+        run: dotnet run --project tests/GSIP.BaselineChecks/GSIP.BaselineChecks.csproj --configuration Release --no-build
+
+      - name: Run P01 architecture/design checks
+        run: dotnet run --project tests/GSIP.P01Checks/GSIP.P01Checks.csproj --configuration Release --no-build
+
+      - name: Runtime and bilingual browser evidence
+        shell: pwsh
+        run: ./scripts/verify-p01-shell.ps1
+
+      - name: Upload P01 screenshot evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: P01-UI-Evidence-${{ github.sha }}
+          path: artifacts/p01-ui/
+          if-no-files-found: error
+          retention-days: 30
