@@ -108,7 +108,10 @@ try
         "Safe remaining System Administrator assignment was lost.");
 
     var dashboard = await controller.Index(regular.Id, CancellationToken.None) as ViewResult;
-    Assert(dashboard?.Model is PermissionsDashboardViewModel model, "Permissions dashboard model was not produced.");
+    if (dashboard?.Model is not PermissionsDashboardViewModel model)
+    {
+        throw new InvalidOperationException("Permissions dashboard model was not produced.");
+    }
     Assert(model.PendingApprovals == 0, "Pending approvals must render truthful zero until a governed approval source exists.");
     Assert(model.SelectedUser?.Id == regular.Id, "Selected user identity was not preserved by the dashboard.");
 
