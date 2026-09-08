@@ -150,9 +150,73 @@ public sealed class AuthProfileService(
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
         dbContext.AuthProfileBindings.Add(binding);
         config.AuthProfileId = profile.Id;
+        profile.Version++;
         profile.UpdatedAtUtc = clock.UtcNow;
         await dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+        dbContext.ChangeTracker.Clear();
+        return Map(await LoadProfileAsync(profile.Id, asTracking: false, cancellationToken));
+    }
+
+    public async Task<AuthProfileDescriptor> UpdateAsync(UpdateAuthProfileCommand command, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        var name = NormalizeRequired(command.Name, 160, "AuthProfile name");
+        var profile = await LoadProfileAsync(command.AuthProfileId, asTracking: true, cancellationToken);
+        if (await dbContext.AuthProfiles.AsNoTracking().AnyAsync(
+                x => x.Id != profile.Id
+                     && x.OwnerServiceId == profile.OwnerServiceId
+                     && x.OwnerEnvironmentId == profile.OwnerEnvironmentId
+                     && x.Name == name,
+                cancellationToken))
+            throw new InvalidOperationException("An AuthProfile with the same name already exists in this service/environment.");
+
+        if (!string.Equals(profile.Name, name, StringComparison.Ordinal) || profile.AuthType != command.AuthType)
+        {
+            profile.Name = name;
+            profile.AuthType = command.AuthType;
+            profile.Version++;
+            profile.UpdatedAtUtc = clock.UtcNow;
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        return Map(profile);
+    }
+
+    public async Task<AuthProfileDescriptor> UnbindAsync(UnbindAuthProfileCommand command, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        var profile = await LoadProfileAsync(command.AuthProfileId, asTracking: true, cancellationToken);
+        if (profile.OwnerServiceId == command.ServiceId && profile.OwnerEnvironmentId == command.EnvironmentId)
+            throw new InvalidOperationException("The owner AuthProfile binding cannot be removed. Disable the profile or move dependent configuration through a governed replacement flow.");
+
+        var binding = profile.Bindings.SingleOrDefault(
+            x => x.ServiceId == command.ServiceId && x.EnvironmentId == command.EnvironmentId);
+        if (binding is null || !binding.IsShared)
+            throw new KeyNotFoundException("Shared AuthProfile binding not found.");
+
+        var config = await dbContext.ServiceEnvironmentConfigs.SingleOrDefaultAsync(
+            x => x.ServiceId == command.ServiceId
+                 && x.EnvironmentId == command.EnvironmentId
+                 && x.AuthProfileId == profile.Id,
+            cancellationToken) ?? throw new InvalidOperationException("Persisted shared binding is not consistent with service/environment configuration.");
+
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            config.AuthProfileId = null;
+            dbContext.AuthProfileBindings.Remove(binding);
+            profile.Version++;
+            profile.UpdatedAtUtc = clock.UtcNow;
+            await dbContext.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(CancellationToken.None);
+            dbContext.ChangeTracker.Clear();
+            throw;
+        }
+
         dbContext.ChangeTracker.Clear();
         return Map(await LoadProfileAsync(profile.Id, asTracking: false, cancellationToken));
     }

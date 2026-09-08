@@ -133,12 +133,24 @@ public sealed record ShareAuthProfileCommand(
     string Actor,
     string Reason);
 
+public sealed record UpdateAuthProfileCommand(
+    Guid AuthProfileId,
+    string Name,
+    AuthProfileType AuthType);
+
+public sealed record UnbindAuthProfileCommand(
+    Guid AuthProfileId,
+    Guid ServiceId,
+    Guid EnvironmentId);
+
 public interface IAuthProfileService
 {
     Task<AuthProfileDescriptor> CreateAsync(CreateAuthProfileCommand command, CancellationToken cancellationToken = default);
     Task<AuthProfileDescriptor> GetAsync(Guid authProfileId, CancellationToken cancellationToken = default);
     Task<AuthProfileDescriptor?> ResolveAsync(Guid serviceId, Guid environmentId, CancellationToken cancellationToken = default);
     Task<AuthProfileDescriptor> ShareAsync(ShareAuthProfileCommand command, CancellationToken cancellationToken = default);
+    Task<AuthProfileDescriptor> UpdateAsync(UpdateAuthProfileCommand command, CancellationToken cancellationToken = default);
+    Task<AuthProfileDescriptor> UnbindAsync(UnbindAuthProfileCommand command, CancellationToken cancellationToken = default);
     Task<AuthProfileDescriptor> SetSecretReferenceAsync(
         Guid authProfileId,
         string secretName,
