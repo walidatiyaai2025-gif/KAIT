@@ -6,7 +6,7 @@
 - Repository: `walidatiyaai2025-gif/KAIT`
 - Default branch: `main`
 - Delivery model: phase-gated autonomous implementation
-- Current planned product state: P06 CLOSED from corrected final evidence; P07 Generic service execution engine is OPEN / READY after this reconciliation is integrated and exact-main verified
+- Current planned product state: P06 CLOSED from corrected final evidence; P07 Generic service execution engine is the canonical current phase and remains OPEN / READY
 - Initial executable version: `0.1.0`
 - Pinned SDK / target framework: .NET SDK `10.0.400` / `net10.0`
 - Initial entity: Ministry of Justice (MOJ), Kuwait
@@ -43,7 +43,7 @@ P06 is closed from corrected exact integrated implementation/security `main` SHA
 - PR #31 introduced no P07 execution-engine implementation and no P08+ scope;
 - no owner-only or external P06 evidence was deferred.
 
-The P06 evidence baseline recorded by PR #30 is superseded by this corrected closure record because it predated integration of the canonical runtime token-cache requirement. P07 remains the intended next phase and becomes the sole legal implementation phase only after this reconciliation is integrated and the resulting exact-main closed-phase gates are green.
+The P06 evidence baseline recorded by PR #30 is superseded by this corrected closure record because it predated integration of the canonical runtime token-cache requirement. The final corrected closure reconciliation was normally integrated through PR #32 at exact `main` SHA `90b3068ea39a342392222ae581e568b94f7f9004`; all 15 applicable exact-main push workflows on that SHA completed successfully. P07 is therefore the sole legal current implementation phase. This status does not mark any open P07 implementation, evidence, or closure item complete.
 
 ## Authoritative documents
 
@@ -65,7 +65,7 @@ No old prompt, screenshot caption, branch description, or stale ledger overrides
 ## Phase policy
 
 - Exactly one canonical current phase exists at a time.
-- P00, P01, P02, P03, P04, P05 and P06 are closed; P07 is the current/next legal implementation phase once this final P06 reconciliation is integrated and exact-main verified.
+- P00, P01, P02, P03, P04, P05 and P06 are closed; P07 is the canonical current legal implementation phase and remains OPEN / READY.
 - P08–P17 remain locked until the current phase is formally CLOSED.
 - Phase exit requires implementation + tests + evidence + documentation reconciliation + pushed commit + required CI + exact-main recheck.
 - Integration recovery and exact-main regressions take priority over new feature work.
