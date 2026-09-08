@@ -25,9 +25,22 @@ try {
     }
     if (-not $healthy) { throw "GSIP.Web did not become healthy. See $stderr" }
 
-    $gate = Invoke-WebRequest "$baseUrl/login?culture=en" -UseBasicParsing -MaximumRedirection 0 -SkipHttpErrorCheck
-    if ($gate.StatusCode -notin @(301,302,303,307,308)) { throw "Login did not return a redirect before setup completion. Status: $($gate.StatusCode)" }
-    $location = [string]$gate.Headers.Location
+    # Invoke-WebRequest treats -MaximumRedirection 0 as an error on a valid 3xx response.
+    # Use HttpClient with redirects disabled so the gate assertion can inspect the first response directly.
+    $handler = [System.Net.Http.HttpClientHandler]::new()
+    $handler.AllowAutoRedirect = $false
+    $client = [System.Net.Http.HttpClient]::new($handler)
+    try {
+        $gate = $client.GetAsync("$baseUrl/login?culture=en").GetAwaiter().GetResult()
+        $gateStatusCode = [int]$gate.StatusCode
+        if ($gateStatusCode -notin @(301,302,303,307,308)) { throw "Login did not return a redirect before setup completion. Status: $gateStatusCode" }
+        $location = if ($gate.Headers.Location) { $gate.Headers.Location.OriginalString } else { '' }
+    }
+    finally {
+        $client.Dispose()
+        $handler.Dispose()
+    }
+
     if ([string]::IsNullOrWhiteSpace($location) -or -not $location.StartsWith('/setup', [System.StringComparison]::OrdinalIgnoreCase)) {
         throw "Login redirect did not target /setup before setup completion. Location: $location"
     }
