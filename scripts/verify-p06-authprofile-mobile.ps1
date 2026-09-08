@@ -10,6 +10,115 @@ $browserCandidates = @(
 $browser = $browserCandidates | Select-Object -First 1
 if (-not $browser) { throw 'No supported Chrome/Edge browser found for P06 responsive evidence.' }
 
+function Invoke-CdpCommand {
+    param(
+        [Parameter(Mandatory)] [System.Net.WebSockets.ClientWebSocket] $Socket,
+        [Parameter(Mandatory)] [int] $Id,
+        [Parameter(Mandatory)] [string] $Method,
+        [hashtable] $Params = @{}
+    )
+
+    $payload = [ordered]@{ id = $Id; method = $Method; params = $Params } | ConvertTo-Json -Depth 12 -Compress
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($payload)
+    $segment = [System.ArraySegment[byte]]::new($bytes)
+    $Socket.SendAsync(
+        $segment,
+        [System.Net.WebSockets.WebSocketMessageType]::Text,
+        $true,
+        [System.Threading.CancellationToken]::None).GetAwaiter().GetResult()
+
+    while ($true) {
+        $stream = [System.IO.MemoryStream]::new()
+        try {
+            do {
+                $buffer = New-Object byte[] 65536
+                $receiveSegment = [System.ArraySegment[byte]]::new($buffer)
+                $received = $Socket.ReceiveAsync(
+                    $receiveSegment,
+                    [System.Threading.CancellationToken]::None).GetAwaiter().GetResult()
+                if ($received.MessageType -eq [System.Net.WebSockets.WebSocketMessageType]::Close) {
+                    throw "Browser DevTools connection closed while waiting for $Method."
+                }
+                if ($received.Count -gt 0) {
+                    $stream.Write($buffer, 0, $received.Count)
+                }
+            } until ($received.EndOfMessage)
+
+            $text = [System.Text.Encoding]::UTF8.GetString($stream.ToArray())
+        }
+        finally {
+            $stream.Dispose()
+        }
+
+        if ([string]::IsNullOrWhiteSpace($text)) { continue }
+        $message = $text | ConvertFrom-Json
+        if ($null -eq $message.id -or [int]$message.id -ne $Id) { continue }
+        if ($message.error) {
+            throw "Browser DevTools command $Method failed: $($message.error.message)"
+        }
+        return $message.result
+    }
+}
+
+function Start-ResponsiveBrowser {
+    param([string] $ProfileDirectory)
+
+    $port = Get-Random -Minimum 20000 -Maximum 45000
+    $arguments = @(
+        '--headless=new',
+        '--disable-gpu',
+        '--no-first-run',
+        '--no-default-browser-check',
+        '--hide-scrollbars',
+        '--allow-file-access-from-files',
+        '--force-device-scale-factor=1',
+        "--remote-debugging-port=$port",
+        "--user-data-dir=$ProfileDirectory",
+        'about:blank'
+    )
+    $process = Start-Process $browser -ArgumentList $arguments -PassThru
+
+    $version = $null
+    for ($attempt = 0; $attempt -lt 50; $attempt++) {
+        Start-Sleep -Milliseconds 100
+        if ($process.HasExited) { break }
+        try {
+            $version = Invoke-RestMethod "http://127.0.0.1:$port/json/version" -TimeoutSec 2
+            if ($version) { break }
+        }
+        catch { }
+    }
+    if (-not $version) {
+        if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue }
+        throw 'Browser DevTools endpoint did not become available for exact responsive evidence.'
+    }
+
+    $targets = Invoke-RestMethod "http://127.0.0.1:$port/json/list" -TimeoutSec 5
+    $target = $targets | Where-Object { $_.type -eq 'page' } | Select-Object -First 1
+    if (-not $target -or -not $target.webSocketDebuggerUrl) {
+        Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+        throw 'Browser DevTools page target was not available for responsive evidence.'
+    }
+
+    $socket = [System.Net.WebSockets.ClientWebSocket]::new()
+    try {
+        $socket.ConnectAsync(
+            [Uri]$target.webSocketDebuggerUrl,
+            [System.Threading.CancellationToken]::None).GetAwaiter().GetResult()
+    }
+    catch {
+        $socket.Dispose()
+        Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+        throw
+    }
+
+    return [pscustomobject]@{
+        Process = $process
+        Socket = $socket
+        Profile = $ProfileDirectory
+    }
+}
+
 $cases = @(
     @{ Html='auth-profiles-en.html'; Screenshot='p06-auth-profiles-en-mobile.png'; Culture='en'; Direction='ltr' },
     @{ Html='auth-profiles-ar.html'; Screenshot='p06-auth-profiles-ar-mobile.png'; Culture='ar-KW'; Direction='rtl' }
@@ -19,58 +128,86 @@ foreach ($case in $cases) {
     $htmlPath = Join-Path $artifactDir $case.Html
     if (-not (Test-Path $htmlPath)) { throw "Missing authenticated evidence HTML: $($case.Html)" }
 
-    $instrumentedPath = Join-Path $artifactDir ("metric-" + $case.Html)
-    $html = Get-Content $htmlPath -Raw
-    $metricScript = @'
-<script data-p06-responsive-metric>
-(function () {
-  document.documentElement.setAttribute('data-evidence-inner-width', String(window.innerWidth));
-  document.documentElement.setAttribute('data-evidence-scroll-width', String(document.documentElement.scrollWidth));
-  document.documentElement.setAttribute('data-evidence-client-width', String(document.documentElement.clientWidth));
-})();
-</script>
-'@
-    $html.Replace('</body>', "$metricScript`n</body>") | Set-Content $instrumentedPath -Encoding utf8
+    $fileUrl = 'file:///' + $htmlPath.Replace('\','/')
+    $profileDir = Join-Path $artifactDir ("browser-profile-" + ($case.Culture -replace '[^a-zA-Z0-9_-]', '-'))
+    Remove-Item $profileDir -Recurse -Force -ErrorAction SilentlyContinue
+    $session = Start-ResponsiveBrowser -ProfileDirectory $profileDir
 
-    $fileUrl = 'file:///' + $instrumentedPath.Replace('\','/')
-    $common = @(
-        '--headless=new',
-        '--disable-gpu',
-        '--no-first-run',
-        '--no-default-browser-check',
-        '--hide-scrollbars',
-        '--allow-file-access-from-files',
-        '--force-device-scale-factor=1',
-        '--window-size=390,844'
-    )
+    try {
+        $socket = $session.Socket
+        $commandId = 1
+        $null = Invoke-CdpCommand -Socket $socket -Id $commandId -Method 'Page.enable'; $commandId++
+        $null = Invoke-CdpCommand -Socket $socket -Id $commandId -Method 'Runtime.enable'; $commandId++
+        $null = Invoke-CdpCommand -Socket $socket -Id $commandId -Method 'Emulation.setDeviceMetricsOverride' -Params @{
+            width = 390
+            height = 844
+            deviceScaleFactor = 1
+            mobile = $false
+            screenWidth = 390
+            screenHeight = 844
+        }; $commandId++
+        $null = Invoke-CdpCommand -Socket $socket -Id $commandId -Method 'Page.navigate' -Params @{ url = $fileUrl }; $commandId++
 
-    $dump = & $browser @common '--dump-dom' $fileUrl 2>$null | Out-String
-    if ($LASTEXITCODE -ne 0) { throw "Browser DOM metric capture failed for $($case.Culture)." }
-    $innerMatch = [regex]::Match($dump, 'data-evidence-inner-width="(\d+)"')
-    $scrollMatch = [regex]::Match($dump, 'data-evidence-scroll-width="(\d+)"')
-    $clientMatch = [regex]::Match($dump, 'data-evidence-client-width="(\d+)"')
-    if (-not $innerMatch.Success -or -not $scrollMatch.Success -or -not $clientMatch.Success) {
-        throw "Responsive DOM metrics were not emitted for $($case.Culture)."
+        $ready = $false
+        for ($attempt = 0; $attempt -lt 50; $attempt++) {
+            Start-Sleep -Milliseconds 100
+            $result = Invoke-CdpCommand -Socket $socket -Id $commandId -Method 'Runtime.evaluate' -Params @{
+                expression = 'document.readyState'
+                returnByValue = $true
+            }; $commandId++
+            if ($result.result.value -eq 'complete') { $ready = $true; break }
+        }
+        if (-not $ready) { throw "Responsive page did not finish loading for $($case.Culture)." }
+
+        $metricsResult = Invoke-CdpCommand -Socket $socket -Id $commandId -Method 'Runtime.evaluate' -Params @{
+            expression = 'JSON.stringify({innerWidth:window.innerWidth,clientWidth:document.documentElement.clientWidth,scrollWidth:document.documentElement.scrollWidth,innerHeight:window.innerHeight})'
+            returnByValue = $true
+        }; $commandId++
+        $metrics = $metricsResult.result.value | ConvertFrom-Json
+        $innerWidth = [int]$metrics.innerWidth
+        $clientWidth = [int]$metrics.clientWidth
+        $scrollWidth = [int]$metrics.scrollWidth
+        $innerHeight = [int]$metrics.innerHeight
+
+        if ($innerWidth -ne 390 -or $clientWidth -ne 390) {
+            throw "Narrow evidence viewport is not exact 390 CSS px for $($case.Culture): inner=$innerWidth client=$clientWidth."
+        }
+        if ($innerHeight -ne 844) {
+            throw "Narrow evidence viewport height is not exact 844 CSS px for $($case.Culture): innerHeight=$innerHeight."
+        }
+        if ($scrollWidth -gt $clientWidth) {
+            throw "Horizontal overflow detected for $($case.Culture) at 390px: scrollWidth=$scrollWidth clientWidth=$clientWidth."
+        }
+
+        $screenshotResult = Invoke-CdpCommand -Socket $socket -Id $commandId -Method 'Page.captureScreenshot' -Params @{
+            format = 'png'
+            fromSurface = $true
+            captureBeyondViewport = $false
+        }
+        $output = Join-Path $artifactDir $case.Screenshot
+        [System.IO.File]::WriteAllBytes($output, [Convert]::FromBase64String([string]$screenshotResult.data))
+        if (-not (Test-Path $output) -or (Get-Item $output).Length -lt 12000) {
+            throw "390px screenshot is unexpectedly small for $($case.Culture)."
+        }
+
+        Write-Host "P06 responsive evidence $($case.Culture): viewport=${clientWidth}x${innerHeight} scrollWidth=$scrollWidth PASS"
     }
-
-    $innerWidth = [int]$innerMatch.Groups[1].Value
-    $scrollWidth = [int]$scrollMatch.Groups[1].Value
-    $clientWidth = [int]$clientMatch.Groups[1].Value
-    if ($innerWidth -ne 390 -or $clientWidth -ne 390) {
-        throw "Narrow evidence viewport is not exact 390 CSS px for $($case.Culture): inner=$innerWidth client=$clientWidth."
+    finally {
+        if ($session.Socket) {
+            try {
+                if ($session.Socket.State -eq [System.Net.WebSockets.WebSocketState]::Open) {
+                    $session.Socket.CloseAsync(
+                        [System.Net.WebSockets.WebSocketCloseStatus]::NormalClosure,
+                        'done',
+                        [System.Threading.CancellationToken]::None).GetAwaiter().GetResult()
+                }
+            }
+            catch { }
+            $session.Socket.Dispose()
+        }
+        if ($session.Process -and -not $session.Process.HasExited) {
+            Stop-Process -Id $session.Process.Id -Force -ErrorAction SilentlyContinue
+        }
+        Remove-Item $profileDir -Recurse -Force -ErrorAction SilentlyContinue
     }
-    if ($scrollWidth -gt $clientWidth) {
-        throw "Horizontal overflow detected for $($case.Culture) at 390px: scrollWidth=$scrollWidth clientWidth=$clientWidth."
-    }
-
-    $output = Join-Path $artifactDir $case.Screenshot
-    $arguments = @($common + @("--screenshot=$output", $fileUrl))
-    $browserProcess = Start-Process $browser -ArgumentList $arguments -Wait -PassThru
-    if ($browserProcess.ExitCode -ne 0 -or -not (Test-Path $output)) { throw "390px screenshot failed for $($case.Culture)." }
-    if ((Get-Item $output).Length -lt 12000) { throw "390px screenshot is unexpectedly small for $($case.Culture)." }
-
-    Write-Host "P06 responsive evidence $($case.Culture): viewport=$clientWidth scrollWidth=$scrollWidth PASS"
 }
-
-Remove-Item (Join-Path $artifactDir 'metric-auth-profiles-en.html') -Force -ErrorAction SilentlyContinue
-Remove-Item (Join-Path $artifactDir 'metric-auth-profiles-ar.html') -Force -ErrorAction SilentlyContinue
