@@ -22,45 +22,17 @@ public static class SecretRedaction
 
     private static readonly HashSet<string> ExplicitSensitiveNames = new(StringComparer.Ordinal)
     {
-        "password",
-        "passwordhash",
-        "passphrase",
-        "secret",
-        "secretvalue",
-        "plaintextsecret",
-        "clientsecret",
-        "consumersecret",
-        "apikey",
-        "xapikey",
-        "accesstoken",
-        "refreshtoken",
-        "bearertoken",
-        "authorization",
-        "proxyauthorization",
-        "cookie",
-        "setcookie",
-        "privatekey",
-        "databasepassword",
-        "connectionstring"
+        "password", "passwordhash", "passphrase", "secret", "secretvalue", "plaintextsecret",
+        "clientsecret", "consumersecret", "apikey", "xapikey", "accesstoken", "refreshtoken",
+        "bearertoken", "authorization", "proxyauthorization", "cookie", "setcookie",
+        "privatekey", "databasepassword", "connectionstring"
     };
 
-    // These identifiers describe opaque references/state and are intentionally
-    // safe to render. They must not be hidden merely because their name contains
-    // the word "secret".
     private static readonly HashSet<string> ExplicitSafeNames = new(StringComparer.Ordinal)
     {
-        "secretref",
-        "secretrefid",
-        "secretreference",
-        "secretgeneration",
-        "secretversion",
-        "hassecret",
-        "secretconfigured",
-        "maskedsecret",
-        "secretstate",
-        "secretstatus",
-        "authprofileid",
-        "authprofileversion"
+        "secretref", "secretrefid", "secretreference", "secretgeneration", "secretversion",
+        "hassecret", "secretconfigured", "maskedsecret", "secretstate", "secretstatus",
+        "authprofileid", "authprofileversion"
     };
 
     private static readonly Regex HeaderPattern = new(
@@ -98,11 +70,6 @@ public static class SecretRedaction
             || normalized.Contains("privatekey", StringComparison.Ordinal);
     }
 
-    /// <summary>
-    /// Removes known plaintext values and common secret-bearing header/assignment
-    /// forms from arbitrary text. Known secret values are also scrubbed when JSON
-    /// escaped or URI escaped.
-    /// </summary>
     public static string RedactText(string? text, IEnumerable<string?>? knownSecrets = null)
     {
         if (string.IsNullOrEmpty(text))
@@ -110,57 +77,78 @@ public static class SecretRedaction
             return text ?? string.Empty;
         }
 
-        var result = text;
-        foreach (var secret in NormalizeSecrets(knownSecrets))
+        try
         {
-            foreach (var representation in EnumerateRepresentations(secret))
+            var result = text;
+            foreach (var secret in NormalizeSecrets(knownSecrets))
             {
-                result = result.Replace(representation, Redacted, StringComparison.Ordinal);
+                foreach (var representation in EnumerateRepresentations(secret))
+                {
+                    result = result.Replace(representation, Redacted, StringComparison.Ordinal);
+                }
             }
-        }
 
-        result = HeaderPattern.Replace(result, MaskAssignment);
-        result = AssignmentPattern.Replace(result, MaskAssignment);
-        return result;
+            result = HeaderPattern.Replace(result, MaskAssignment);
+            result = AssignmentPattern.Replace(result, MaskAssignment);
+            return result;
+        }
+        catch (Exception)
+        {
+            return Redacted;
+        }
     }
 
-    /// <summary>
-    /// Produces a safe structured-log projection. Sensitive field values are
-    /// replaced with a constant mask; non-sensitive values are still scanned for
-    /// known plaintext values before being returned.
-    /// </summary>
     public static IReadOnlyDictionary<string, string?> RedactFields(
         IEnumerable<KeyValuePair<string, object?>> fields,
         IEnumerable<string?>? knownSecrets = null)
     {
         ArgumentNullException.ThrowIfNull(fields);
-        var secrets = NormalizeSecrets(knownSecrets);
         var result = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var field in fields)
+        IReadOnlyList<string> secrets;
+        try
         {
-            if (IsSensitiveName(field.Key))
-            {
-                result[field.Key] = Redacted;
-                continue;
-            }
+            secrets = NormalizeSecrets(knownSecrets);
+        }
+        catch (Exception)
+        {
+            secrets = Array.Empty<string>();
+        }
 
-            result[field.Key] = field.Value switch
+        try
+        {
+            foreach (var field in fields)
             {
-                null => null,
-                string value => RedactText(value, secrets),
-                IFormattable value => RedactText(value.ToString(null, CultureInfo.InvariantCulture), secrets),
-                _ => ToSafeJson(field.Value, secrets)
-            };
+                if (IsSensitiveName(field.Key))
+                {
+                    result[field.Key] = Redacted;
+                    continue;
+                }
+
+                try
+                {
+                    result[field.Key] = field.Value switch
+                    {
+                        null => null,
+                        string value => RedactText(value, secrets),
+                        IFormattable value => RedactText(value.ToString(null, CultureInfo.InvariantCulture), secrets),
+                        _ => ToSafeJson(field.Value, secrets)
+                    };
+                }
+                catch (Exception)
+                {
+                    result[field.Key] = Redacted;
+                }
+            }
+        }
+        catch (Exception)
+        {
+            result["redactionFailure"] = Redacted;
         }
 
         return result;
     }
 
-    /// <summary>
-    /// Redacts sensitive JSON property values recursively. Invalid JSON is never
-    /// echoed back because it may itself contain plaintext secret material.
-    /// </summary>
     public static string RedactJson(string? json, IEnumerable<string?>? knownSecrets = null)
     {
         if (string.IsNullOrWhiteSpace(json))
@@ -168,19 +156,17 @@ public static class SecretRedaction
             return string.Empty;
         }
 
-        JsonNode? node;
         try
         {
-            node = JsonNode.Parse(json);
+            var node = JsonNode.Parse(json);
+            RedactNode(node);
+            var safeJson = node?.ToJsonString(SafeJsonOptions) ?? "null";
+            return RedactText(safeJson, knownSecrets);
         }
-        catch (JsonException)
+        catch (Exception)
         {
             return Redacted;
         }
-
-        RedactNode(node);
-        var safeJson = node?.ToJsonString(SafeJsonOptions) ?? "null";
-        return RedactText(safeJson, knownSecrets);
     }
 
     public static string ToSafeJson(object? value, IEnumerable<string?>? knownSecrets = null)
@@ -190,8 +176,15 @@ public static class SecretRedaction
             return "null";
         }
 
-        var json = JsonSerializer.Serialize(value, value.GetType(), SafeJsonOptions);
-        return RedactJson(json, knownSecrets);
+        try
+        {
+            var json = JsonSerializer.Serialize(value, value.GetType(), SafeJsonOptions);
+            return RedactJson(json, knownSecrets);
+        }
+        catch (Exception)
+        {
+            return Redacted;
+        }
     }
 
     public static IReadOnlyList<string> RedactValidationMessages(
@@ -199,15 +192,31 @@ public static class SecretRedaction
         IEnumerable<string?>? knownSecrets = null)
     {
         ArgumentNullException.ThrowIfNull(messages);
-        var secrets = NormalizeSecrets(knownSecrets);
-        return messages.Select(message => RedactText(message, secrets)).ToArray();
+
+        try
+        {
+            var secrets = NormalizeSecrets(knownSecrets);
+            return messages.Select(message => RedactText(message, secrets)).ToArray();
+        }
+        catch (Exception)
+        {
+            return new[] { Redacted };
+        }
     }
 
     public static SafeExceptionInfo ToSafeException(Exception exception, IEnumerable<string?>? knownSecrets = null)
     {
         ArgumentNullException.ThrowIfNull(exception);
-        var secrets = NormalizeSecrets(knownSecrets);
-        return BuildSafeException(exception, secrets, depth: 0);
+
+        try
+        {
+            var secrets = NormalizeSecrets(knownSecrets);
+            return BuildSafeException(exception, secrets, depth: 0);
+        }
+        catch (Exception)
+        {
+            return new SafeExceptionInfo(exception.GetType().FullName ?? exception.GetType().Name, Redacted, null);
+        }
     }
 
     public static SafeSecretState ToSafeSecretState(bool configured, long generation)
@@ -222,17 +231,25 @@ public static class SecretRedaction
 
     private static SafeExceptionInfo BuildSafeException(Exception exception, IReadOnlyList<string> secrets, int depth)
     {
-        // Bound recursive exception rendering to prevent pathological/cyclic
-        // diagnostic payloads while never including stack traces or Data values.
         SafeExceptionInfo? inner = null;
         if (exception.InnerException is not null && depth < 8)
         {
             inner = BuildSafeException(exception.InnerException, secrets, depth + 1);
         }
 
+        string safeMessage;
+        try
+        {
+            safeMessage = RedactText(exception.Message, secrets);
+        }
+        catch (Exception)
+        {
+            safeMessage = Redacted;
+        }
+
         return new SafeExceptionInfo(
             exception.GetType().FullName ?? exception.GetType().Name,
-            RedactText(exception.Message, secrets),
+            safeMessage,
             inner);
     }
 
