@@ -4,10 +4,12 @@ The owner-approved reference designs are mandatory v1 baselines, not optional in
 
 ## Canonical reference files
 
-- `docs/ui-baseline/bilingual_kuwait_government_services_dashboard.png` — Home / Dashboard
-- `docs/ui-baseline/bilingual_kuwait_government_service_portal.png` — Service Execution
-- `docs/ui-baseline/bilingual_kuwait_government_permissions_dashboard.png` — Permissions & Role Management
-- `docs/ui-baseline/kuwait_government_audit_dashboard.png` — Audit & Monitoring
+- `docs/ui-baseline/bilingual_kuwait_government_services_dashboard.svg` — Home / Dashboard
+- `docs/ui-baseline/bilingual_kuwait_government_service_portal.svg` — Service Execution
+- `docs/ui-baseline/bilingual_kuwait_government_permissions_dashboard.svg` — Permissions & Role Management
+- `docs/ui-baseline/kuwait_government_audit_dashboard.svg` — Audit & Monitoring
+
+These repository-native vector baselines preserve the approved information architecture, component hierarchy, navigation model, government navy/blue/gold visual identity, and screen density. `docs/ui-baseline/README.md` is the index.
 
 ## Mandatory behavior
 
