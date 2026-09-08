@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gsip.local/schemas/metadata/v1",
+  "title": "GSIP Metadata Catalog Package",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "entities"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "entities": {
+      "type": "array",
+      "maxItems": 500,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "nameAr", "nameEn", "logo", "active", "displayOrder", "services"],
+        "properties": {
+          "code": { "type": "string", "minLength": 1, "maxLength": 40, "pattern": "^[A-Za-z0-9._-]+$" },
+          "nameAr": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "nameEn": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "logo": { "type": "string", "maxLength": 500 },
+          "active": { "type": "boolean" },
+          "displayOrder": { "type": "integer" },
+          "services": {
+            "type": "array",
+            "maxItems": 500,
+            "items": { "$ref": "#/$defs/service" }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "service": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "nameAr", "nameEn", "descriptionAr", "descriptionEn", "active", "environmentConfigs", "fields", "resultMappings"],
+      "properties": {
+        "code": { "type": "string", "minLength": 1, "maxLength": 120, "pattern": "^[A-Za-z0-9._-]+$" },
+        "nameAr": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "nameEn": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "descriptionAr": { "type": "string", "maxLength": 2000 },
+        "descriptionEn": { "type": "string", "maxLength": 2000 },
+        "active": { "type": "boolean" },
+        "environmentConfigs": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "$ref": "#/$defs/environmentConfig" }
+        },
+        "fields": { "type": "array", "maxItems": 250, "items": { "$ref": "#/$defs/field" } },
+        "resultMappings": { "type": "array", "maxItems": 250, "items": { "$ref": "#/$defs/resultMapping" } }
+      }
+    },
+    "environmentConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["environmentCode", "baseUrl", "relativePath", "httpMethod", "contentType", "nonSecretHeadersJson", "timeoutSeconds", "tlsPolicy", "validateServerCertificate", "proxyUrl", "healthPath", "healthMethod", "active"],
+      "properties": {
+        "environmentCode": { "enum": ["UAT", "Production"] },
+        "baseUrl": { "type": "string", "format": "uri", "maxLength": 1000 },
+        "relativePath": { "type": "string", "pattern": "^/[^/].*|^/$", "maxLength": 500 },
+        "httpMethod": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"] },
+        "contentType": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "nonSecretHeadersJson": { "type": "string", "maxLength": 4000 },
+        "timeoutSeconds": { "type": "integer", "minimum": 1, "maximum": 300 },
+        "tlsPolicy": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "validateServerCertificate": { "type": "boolean" },
+        "proxyUrl": { "type": "string", "maxLength": 1000 },
+        "healthPath": { "type": "string", "maxLength": 500 },
+        "healthMethod": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", ""] },
+        "active": { "type": "boolean" },
+        "authProfileId": { "type": ["string", "null"], "format": "uuid" }
+      }
+    },
+    "field": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "labelAr", "labelEn", "fieldType", "required", "regex", "optionsJson", "displayOrder", "sensitive", "masking"],
+      "properties": {
+        "key": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "labelAr": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "labelEn": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "fieldType": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "required": { "type": "boolean" },
+        "regex": { "type": "string", "maxLength": 500 },
+        "minimum": { "type": ["number", "null"] },
+        "maximum": { "type": ["number", "null"] },
+        "minLength": { "type": ["integer", "null"], "minimum": 0 },
+        "maxLength": { "type": ["integer", "null"], "minimum": 0 },
+        "optionsJson": { "type": "string", "maxLength": 4000 },
+        "displayOrder": { "type": "integer" },
+        "sensitive": { "type": "boolean" },
+        "masking": { "type": "string", "maxLength": 40 }
+      }
+    },
+    "resultMapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourcePath", "labelAr", "labelEn", "resultType", "formatter", "sensitive", "displayOrder"],
+      "properties": {
+        "sourcePath": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "labelAr": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "labelEn": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "resultType": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "formatter": { "type": "string", "maxLength": 200 },
+        "sensitive": { "type": "boolean" },
+        "displayOrder": { "type": "integer" }
+      }
+    }
+  }
+}
