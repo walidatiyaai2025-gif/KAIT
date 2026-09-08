@@ -9,6 +9,10 @@ $baseUrl = "http://127.0.0.1:$port"
 $stdout = Join-Path $artifactDir 'server.stdout.log'
 $stderr = Join-Path $artifactDir 'server.stderr.log'
 
+# Closed P01 regression needs to inspect the shell directly after P02 introduces the
+# first-run gate. This bypass is test-process-only and production defaults remain gated.
+$previousBypass = $env:Setup__BypassGateForRegression
+$env:Setup__BypassGateForRegression = 'true'
 $process = Start-Process dotnet -ArgumentList @('run','--project','src/GSIP.Web/GSIP.Web.csproj','--configuration','Release','--no-build','--urls',$baseUrl) -WorkingDirectory $root -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
 
 try {
@@ -79,4 +83,6 @@ try {
 }
 finally {
     if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force }
+    if ($null -eq $previousBypass) { Remove-Item Env:Setup__BypassGateForRegression -ErrorAction SilentlyContinue }
+    else { $env:Setup__BypassGateForRegression = $previousBypass }
 }
