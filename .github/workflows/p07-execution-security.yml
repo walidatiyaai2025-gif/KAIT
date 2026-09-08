@@ -1,0 +1,35 @@
+name: P07 Execution Security Boundary
+
+on:
+  push:
+    branches:
+      - 'worker/p07-execution-auth-binding-security'
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  execution-security:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact commit
+        uses: actions/checkout@v4
+      - name: Set up .NET from global.json
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Restore solution
+        run: dotnet restore GSIP.sln
+      - name: Restore P07 execution security checks
+        run: dotnet restore tests/GSIP.P07ExecutionSecurityChecks/GSIP.P07ExecutionSecurityChecks.csproj
+      - name: Build solution Release
+        run: dotnet build GSIP.sln -c Release --no-restore
+      - name: Build P07 execution security checks Release
+        run: dotnet build tests/GSIP.P07ExecutionSecurityChecks/GSIP.P07ExecutionSecurityChecks.csproj -c Release --no-restore
+      - name: Run fail-closed P07 execution security checks
+        run: dotnet run --project tests/GSIP.P07ExecutionSecurityChecks/GSIP.P07ExecutionSecurityChecks.csproj -c Release --no-build
+      - name: Validate execution plan and governance
+        run: python scripts/validate_execution_plan.py
