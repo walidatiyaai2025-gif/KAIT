@@ -15,9 +15,19 @@ var builder = WebApplication.CreateBuilder(args);
 var keyDirectory = Path.Combine(builder.Environment.ContentRootPath, "App_Data", "keys");
 Directory.CreateDirectory(keyDirectory);
 
-builder.Services.AddDataProtection()
+var dataProtection = builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo(keyDirectory))
     .SetApplicationName("GSIP");
+
+// Explicit filesystem persistence requires explicit key-at-rest protection.
+// GSIP targets Windows/IIS deployment, so bind persisted Data Protection keys
+// to the deployment identity with DPAPI. Non-Windows CI/dev hosts keep the
+// existing filesystem provider without attempting to invoke Windows-only APIs.
+if (OperatingSystem.IsWindows())
+{
+    dataProtection.ProtectKeysWithDpapi();
+}
+
 builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
 builder.Services.AddScoped<ShellText>();
 builder.Services.AddScoped<IdentityText>();
