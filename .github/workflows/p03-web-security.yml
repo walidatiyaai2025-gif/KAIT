@@ -40,5 +40,4 @@ jobs:
         run: dotnet run --project tests/GSIP.P03SecurityChecks/GSIP.P03SecurityChecks.csproj --configuration Release --no-build
 
       - name: Validate execution plan and governance
-        shell: pwsh
-        run: ./scripts/validate-plan.ps1
+        run: python scripts/validate_execution_plan.py
