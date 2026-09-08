@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Localization;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
+builder.Services.AddScoped<ShellText>();
 builder.Services
     .AddControllersWithViews()
     .AddViewLocalization();

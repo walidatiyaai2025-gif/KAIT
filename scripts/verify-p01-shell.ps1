@@ -27,9 +27,10 @@ try {
     $ar = Invoke-WebRequest "$baseUrl/?culture=ar-KW" -UseBasicParsing
     $login = Invoke-WebRequest "$baseUrl/login?culture=en" -UseBasicParsing
 
-    if ($en.Content -notmatch '<html lang="en" dir="ltr">') { throw 'English shell is not LTR.' }
-    if ($ar.Content -notmatch '<html lang="ar" dir="rtl">') { throw 'Arabic shell is not RTL.' }
+    if ($en.Content -notmatch '<html lang="en" dir="ltr" data-culture-name="en">') { throw 'English shell culture/direction is incorrect.' }
+    if ($ar.Content -notmatch '<html lang="ar" dir="rtl" data-culture-name="ar-KW">') { throw 'Arabic shell culture/direction is incorrect.' }
     if ($ar.Content -notmatch 'بوابة تكامل الخدمات الحكومية') { throw 'Arabic localized product name is missing.' }
+    if ($ar.Content -match '>ProductName<') { throw 'Arabic resource lookup fell back to a resource key.' }
     if ($en.Content -notmatch 'Government Services Integration Portal') { throw 'English localized product name is missing.' }
     if ($login.Content -notmatch 'data-auth-state="shell-only"') { throw 'P01 login shell boundary marker is missing.' }
     if ($login.Content -notmatch 'disabled') { throw 'P01 login controls must remain disabled.' }

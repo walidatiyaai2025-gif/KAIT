@@ -1,12 +1,12 @@
 @using System.Globalization
-@inject IStringLocalizer<ShellResource> L
+@inject ShellText L
 @{
     var isRtl = CultureInfo.CurrentUICulture.TextInfo.IsRightToLeft;
     var direction = isRtl ? "rtl" : "ltr";
     var language = isRtl ? "ar" : "en";
 }
 <!doctype html>
-<html lang="@language" dir="@direction">
+<html lang="@language" dir="@direction" data-culture-name="@CultureInfo.CurrentUICulture.Name">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />

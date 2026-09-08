@@ -72,10 +72,15 @@ static void CheckLocalization(string root, List<string> failures)
 {
     var program = File.ReadAllText(Path.Combine(root, "src", "GSIP.Web", "Program.cs"));
     Expect(program.Contains("AddLocalization", StringComparison.Ordinal), "Resource-based localization is not registered.", failures);
+    Expect(program.Contains("AddScoped<ShellText>", StringComparison.Ordinal), "Explicit shared shell resource facade is not registered.", failures);
     Expect(program.Contains("ar-KW", StringComparison.Ordinal) && program.Contains("\"en\"", StringComparison.Ordinal), "Arabic/English supported cultures are missing.", failures);
+
+    var shellText = File.ReadAllText(Path.Combine(root, "src", "GSIP.Web", "ShellText.cs"));
+    Expect(shellText.Contains("factory.Create(\"ShellResource\", assemblyName)", StringComparison.Ordinal), "Shared shell resource lookup must use an explicit base name and assembly.", failures);
 
     var layout = File.ReadAllText(Path.Combine(root, "src", "GSIP.Web", "Views", "Shared", "_Layout.cshtml"));
     Expect(layout.Contains("dir=\"@direction\"", StringComparison.Ordinal), "Layout must set real RTL/LTR direction.", failures);
+    Expect(layout.Contains("data-culture-name=\"@CultureInfo.CurrentUICulture.Name\"", StringComparison.Ordinal), "Layout must expose the exact selected culture for runtime evidence.", failures);
     Expect(layout.Contains("data-culture", StringComparison.Ordinal), "Language switch must preserve the current URL state.", failures);
 
     foreach (var resource in new[] { "ShellResource.resx", "ShellResource.ar-KW.resx" })
