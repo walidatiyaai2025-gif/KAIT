@@ -55,7 +55,9 @@ Check(view.Contains("ApiKeyHeader", StringComparison.Ordinal)
     "UI authentication types must match the canonical AuthProfileType contract.");
 Check(view.Contains("confirmRotation", StringComparison.Ordinal), "Rotation requires explicit confirmation.");
 Check(view.Contains("CultureInfo.CurrentUICulture.TextInfo.IsRightToLeft", StringComparison.Ordinal), "UI must respond to RTL/LTR culture direction.");
-Check(css.Contains(":focus-visible", StringComparison.Ordinal) && css.Contains("@media(max-width:480px)", StringComparison.Ordinal), "Keyboard focus and narrow mobile behavior are required.");
+Check(css.Contains(":focus-visible", StringComparison.Ordinal)
+    && css.Contains("@media(max-width:480px)", StringComparison.Ordinal),
+    "Keyboard focus and narrow mobile behavior are required.");
 Check(layout.Contains("isAuthProfiles", StringComparison.Ordinal)
     && layout.Contains("href=\"/auth-profiles?culture=", StringComparison.Ordinal)
     && layout.Contains("@L[\"AuthProfiles\"]", StringComparison.Ordinal),
@@ -97,7 +99,7 @@ foreach (var mutationName in mutationNames)
 var fixture = SecurityFixture.Create();
 var fakeCatalog = new FakeCatalog(fixture.Snapshot);
 var fakeProfiles = new FakeAuthProfiles(fixture.Profile);
-var fakeVault = new FakeVault(fixture.SecretReference);
+var fakeVault = new FakeVault(fixture.SecretReference, fixture.ServiceAId, fixture.EnvironmentId, fixture.Profile.Id, fixture.SecretName);
 var controller = new AuthProfilesController(fakeCatalog, fakeProfiles, fakeVault)
 {
     ControllerContext = new ControllerContext
@@ -137,7 +139,7 @@ Check(fakeProfiles.ShareCalls == shareCallsBefore, "Unconfirmed sharing must not
 var forgedSecretId = Guid.NewGuid();
 Check(await controller.RotateSecret(fixture.Profile.Id, forgedSecretId, "synthetic-secret-value", true, null, CancellationToken.None) is NotFoundResult,
     "Forged secret-slot ID must be rejected without exposing SecretRef.");
-Check(fakeVault.CreateCalls == 0 && fakeVault.RevokeCalls == 0, "Forged secret rotation must not touch the vault.");
+Check(fakeVault.CreateCalls == 0 && fakeVault.RevokeCalls == 0 && fakeVault.StagedCalls == 0, "Forged secret rotation must not touch the vault.");
 
 Check(await controller.Delete(fixture.Profile.Id, CancellationToken.None) is ConflictObjectResult,
     "Deletion of an in-use AuthProfile must be rejected fail-closed.");
@@ -156,8 +158,7 @@ Console.WriteLine($"AuthProfile localization keys: {enKeys.Count}");
 Console.WriteLine("IDOR/cross-scope/unsafe-delete negative checks: PASS");
 return;
 
-static HashSet<string> ResourceKeys(XDocument document) => document
-    .Root!
+static HashSet<string> ResourceKeys(XDocument document) => document.Root!
     .Elements("data")
     .Select(element => element.Attribute("name")?.Value ?? string.Empty)
     .Where(name => name.Length > 0)
@@ -165,10 +166,7 @@ static HashSet<string> ResourceKeys(XDocument document) => document
 
 static void Check(bool condition, string message)
 {
-    if (!condition)
-    {
-        throw new InvalidOperationException(message);
-    }
+    if (!condition) throw new InvalidOperationException(message);
 }
 
 static string FindRepositoryRoot()
@@ -176,10 +174,7 @@ static string FindRepositoryRoot()
     var directory = new DirectoryInfo(AppContext.BaseDirectory);
     while (directory is not null)
     {
-        if (Directory.Exists(Path.Combine(directory.FullName, "src", "GSIP.Web")))
-        {
-            return directory.FullName;
-        }
+        if (Directory.Exists(Path.Combine(directory.FullName, "src", "GSIP.Web"))) return directory.FullName;
         directory = directory.Parent;
     }
     throw new DirectoryNotFoundException("Repository root was not found.");
@@ -216,10 +211,11 @@ sealed record SecurityFixture(
             "Synthetic Profile",
             AuthProfileType.ApiKeyHeader,
             true,
+            1,
             "acceptance",
             now,
             now,
-            [new AuthProfileSecretDescriptor(secretName, secretReference)],
+            [new AuthProfileSecretDescriptor(secretName, secretReference, 1)],
             [new AuthProfileBindingDescriptor(serviceAId, environmentId, false, "acceptance", "OwnerBinding", now)]);
 
         var entityA = new CatalogEntity { Id = entityAId, Code = "A", NameAr = "جهة أ", NameEn = "Entity A", Active = true };
@@ -238,11 +234,8 @@ sealed record SecurityFixture(
             [
                 new ServiceEnvironmentConfig
                 {
-                    Id = Guid.NewGuid(),
-                    ServiceId = serviceAId,
-                    EnvironmentId = environmentId,
-                    Active = true,
-                    AuthProfileId = profileId
+                    Id = Guid.NewGuid(), ServiceId = serviceAId, EnvironmentId = environmentId,
+                    Active = true, AuthProfileId = profileId
                 }
             ]
         };
@@ -259,27 +252,17 @@ sealed record SecurityFixture(
             [
                 new ServiceEnvironmentConfig
                 {
-                    Id = Guid.NewGuid(),
-                    ServiceId = serviceBId,
-                    EnvironmentId = environmentId,
-                    Active = true,
-                    AuthProfileId = null
+                    Id = Guid.NewGuid(), ServiceId = serviceBId, EnvironmentId = environmentId,
+                    Active = true, AuthProfileId = null
                 }
             ]
         };
 
         var snapshot = new MetadataCatalogSnapshot([entityA, entityB], [serviceA, serviceB], [environment]);
         return new SecurityFixture(
-            entityAId,
-            entityBId,
-            serviceAId,
-            serviceBId,
-            environmentId,
+            entityAId, entityBId, serviceAId, serviceBId, environmentId,
             $"{entityBId:D}|{serviceBId:D}|{environmentId:D}",
-            secretName,
-            secretReference,
-            profile,
-            snapshot);
+            secretName, secretReference, profile, snapshot);
     }
 }
 
@@ -325,28 +308,78 @@ sealed class FakeAuthProfiles(AuthProfileDescriptor profile) : IAuthProfileServi
     public Task<AuthProfileDescriptor> SetSecretReferenceAsync(Guid authProfileId, string secretName, SecretRef secretRef, CancellationToken cancellationToken = default) =>
         Task.FromResult(profile);
 
+    public Task<bool> ActivateSecretReferenceAsync(
+        Guid serviceId,
+        Guid environmentId,
+        Guid authProfileId,
+        string secretName,
+        SecretRef expectedCurrentReference,
+        int expectedGeneration,
+        SecretRef stagedReference,
+        CancellationToken cancellationToken = default) => Task.FromResult(false);
+
     public Task<AuthProfileDescriptor> SetEnabledAsync(Guid authProfileId, bool enabled, CancellationToken cancellationToken = default) =>
         Task.FromResult(profile);
 }
 
-sealed class FakeVault(SecretRef reference) : ISecretVault
+sealed class FakeVault(SecretRef reference, Guid serviceId, Guid environmentId, Guid profileId, string secretName) : ISecretVault
 {
     public int CreateCalls { get; private set; }
+    public int StagedCalls { get; private set; }
     public int RevokeCalls { get; private set; }
 
-    public Task<SecretDescriptor> CreateActiveAsync(ReadOnlyMemory<byte> secretMaterial, CancellationToken cancellationToken = default)
+    private SecretDescriptor Descriptor(SecretRef value, SecretLifecycleState state = SecretLifecycleState.Active, int generation = 1) =>
+        new(value, state, generation, serviceId, environmentId, profileId, secretName, DateTimeOffset.UtcNow,
+            state == SecretLifecycleState.Revoked ? DateTimeOffset.UtcNow : null);
+
+    public Task<SecretDescriptor> CreateActiveAsync(
+        Guid requestedServiceId,
+        Guid requestedEnvironmentId,
+        Guid? authProfileId,
+        string requestedSecretName,
+        ReadOnlyMemory<byte> secretMaterial,
+        CancellationToken cancellationToken = default)
     {
         CreateCalls++;
-        return Task.FromResult(new SecretDescriptor(reference, SecretLifecycleState.Active, 1, DateTimeOffset.UtcNow, null));
+        return Task.FromResult(Descriptor(reference));
     }
 
-    public Task<SecretDescriptor> GetDescriptorAsync(SecretRef secretRef, CancellationToken cancellationToken = default) =>
-        Task.FromResult(new SecretDescriptor(secretRef, SecretLifecycleState.Active, 1, DateTimeOffset.UtcNow, null));
+    public Task<SecretDescriptor> CreateStagedAsync(
+        Guid requestedServiceId,
+        Guid requestedEnvironmentId,
+        Guid authProfileId,
+        string requestedSecretName,
+        int generation,
+        ReadOnlyMemory<byte> secretMaterial,
+        CancellationToken cancellationToken = default)
+    {
+        StagedCalls++;
+        return Task.FromResult(Descriptor(reference, SecretLifecycleState.Staged, generation));
+    }
 
-    public Task<SecretDescriptor> RevokeAsync(SecretRef secretRef, CancellationToken cancellationToken = default)
+    public Task<SecretDescriptor> ClaimAsync(
+        Guid requestedServiceId,
+        Guid requestedEnvironmentId,
+        Guid authProfileId,
+        string requestedSecretName,
+        SecretRef secretRef,
+        CancellationToken cancellationToken = default) => Task.FromResult(Descriptor(secretRef));
+
+    public Task<SecretDescriptor> GetDescriptorAsync(SecretRef secretRef, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Descriptor(secretRef));
+
+    public Task DiscardStagedAsync(SecretRef secretRef, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+    public Task<SecretDescriptor> RevokeAsync(
+        Guid requestedServiceId,
+        Guid requestedEnvironmentId,
+        Guid authProfileId,
+        string requestedSecretName,
+        SecretRef secretRef,
+        CancellationToken cancellationToken = default)
     {
         RevokeCalls++;
-        return Task.FromResult(new SecretDescriptor(secretRef, SecretLifecycleState.Revoked, 1, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow));
+        return Task.FromResult(Descriptor(secretRef, SecretLifecycleState.Revoked));
     }
 }
 
