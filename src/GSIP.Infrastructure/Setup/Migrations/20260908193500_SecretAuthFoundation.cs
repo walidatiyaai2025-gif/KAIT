@@ -17,10 +17,29 @@ public sealed class SecretAuthFoundation : Migration
                 ProtectedPayload = table.Column<byte[]>(type: "varbinary(max)", nullable: false),
                 State = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
                 Generation = table.Column<int>(type: "int", nullable: false),
+                OwnerServiceId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                OwnerEnvironmentId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                OwnerAuthProfileId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                SecretName = table.Column<string>(type: "nvarchar(80)", maxLength: 80, nullable: false),
                 CreatedAtUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
                 RevokedAtUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true)
             },
-            constraints: table => table.PrimaryKey("PK_SecretVaultEntries", x => x.Reference));
+            constraints: table =>
+            {
+                table.PrimaryKey("PK_SecretVaultEntries", x => x.Reference);
+                table.ForeignKey(
+                    "FK_SecretVaultEntries_CatalogServices_OwnerServiceId",
+                    x => x.OwnerServiceId,
+                    "CatalogServices",
+                    "Id",
+                    onDelete: ReferentialAction.Restrict);
+                table.ForeignKey(
+                    "FK_SecretVaultEntries_CatalogEnvironments_OwnerEnvironmentId",
+                    x => x.OwnerEnvironmentId,
+                    "CatalogEnvironments",
+                    "Id",
+                    onDelete: ReferentialAction.Restrict);
+            });
 
         migrationBuilder.CreateTable(
             name: "AuthProfiles",
@@ -32,6 +51,7 @@ public sealed class SecretAuthFoundation : Migration
                 Name = table.Column<string>(type: "nvarchar(160)", maxLength: 160, nullable: false),
                 AuthType = table.Column<string>(type: "nvarchar(40)", maxLength: 40, nullable: false),
                 IsEnabled = table.Column<bool>(type: "bit", nullable: false),
+                Version = table.Column<long>(type: "bigint", nullable: false),
                 CreatedBy = table.Column<string>(type: "nvarchar(160)", maxLength: 160, nullable: false),
                 CreatedAtUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
                 UpdatedAtUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false)
@@ -52,6 +72,14 @@ public sealed class SecretAuthFoundation : Migration
                     "Id",
                     onDelete: ReferentialAction.Restrict);
             });
+
+        migrationBuilder.AddForeignKey(
+            name: "FK_SecretVaultEntries_AuthProfiles_OwnerAuthProfileId",
+            table: "SecretVaultEntries",
+            column: "OwnerAuthProfileId",
+            principalTable: "AuthProfiles",
+            principalColumn: "Id",
+            onDelete: ReferentialAction.Restrict);
 
         migrationBuilder.CreateTable(
             name: "AuthProfileBindings",
@@ -99,6 +127,7 @@ public sealed class SecretAuthFoundation : Migration
                 AuthProfileId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                 SecretName = table.Column<string>(type: "nvarchar(80)", maxLength: 80, nullable: false),
                 SecretReference = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
+                Generation = table.Column<int>(type: "int", nullable: false),
                 UpdatedAtUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false)
             },
             constraints: table =>
@@ -119,37 +148,44 @@ public sealed class SecretAuthFoundation : Migration
             });
 
         migrationBuilder.CreateIndex(
+            name: "IX_SecretVaultEntries_OwnerEnvironmentId",
+            table: "SecretVaultEntries",
+            column: "OwnerEnvironmentId");
+        migrationBuilder.CreateIndex(
+            name: "IX_SecretVaultEntries_OwnerAuthProfileId",
+            table: "SecretVaultEntries",
+            column: "OwnerAuthProfileId");
+        migrationBuilder.CreateIndex(
+            name: "IX_SecretVaultEntries_OwnerServiceId_OwnerEnvironmentId_OwnerAuthProfileId_SecretName_Generation",
+            table: "SecretVaultEntries",
+            columns: new[] { "OwnerServiceId", "OwnerEnvironmentId", "OwnerAuthProfileId", "SecretName", "Generation" });
+
+        migrationBuilder.CreateIndex(
             name: "IX_AuthProfiles_OwnerEnvironmentId",
             table: "AuthProfiles",
             column: "OwnerEnvironmentId");
-
         migrationBuilder.CreateIndex(
             name: "IX_AuthProfiles_OwnerServiceId_OwnerEnvironmentId_Name",
             table: "AuthProfiles",
             columns: new[] { "OwnerServiceId", "OwnerEnvironmentId", "Name" },
             unique: true);
-
         migrationBuilder.CreateIndex(
             name: "IX_AuthProfileBindings_AuthProfileId",
             table: "AuthProfileBindings",
             column: "AuthProfileId");
-
         migrationBuilder.CreateIndex(
             name: "IX_AuthProfileBindings_EnvironmentId",
             table: "AuthProfileBindings",
             column: "EnvironmentId");
-
         migrationBuilder.CreateIndex(
             name: "IX_AuthProfileBindings_ServiceId_EnvironmentId",
             table: "AuthProfileBindings",
             columns: new[] { "ServiceId", "EnvironmentId" },
             unique: true);
-
         migrationBuilder.CreateIndex(
             name: "IX_AuthProfileSecrets_SecretReference",
             table: "AuthProfileSecrets",
             column: "SecretReference");
-
         migrationBuilder.CreateIndex(
             name: "IX_ServiceEnvironmentConfigs_ServiceId_EnvironmentId_AuthProfileId",
             table: "ServiceEnvironmentConfigs",
@@ -162,6 +198,19 @@ public sealed class SecretAuthFoundation : Migration
             principalTable: "AuthProfileBindings",
             principalColumns: new[] { "ServiceId", "EnvironmentId", "AuthProfileId" },
             onDelete: ReferentialAction.Restrict);
+
+        migrationBuilder.AddCheckConstraint(
+            name: "CK_SecretVaultEntries_Generation_Positive",
+            table: "SecretVaultEntries",
+            sql: "[Generation] >= 1");
+        migrationBuilder.AddCheckConstraint(
+            name: "CK_AuthProfiles_Version_Positive",
+            table: "AuthProfiles",
+            sql: "[Version] >= 1");
+        migrationBuilder.AddCheckConstraint(
+            name: "CK_AuthProfileSecrets_Generation_Positive",
+            table: "AuthProfileSecrets",
+            sql: "[Generation] >= 1");
     }
 
     protected override void Down(MigrationBuilder migrationBuilder)
@@ -169,11 +218,9 @@ public sealed class SecretAuthFoundation : Migration
         migrationBuilder.DropForeignKey(
             name: "FK_ServiceEnvironmentConfigs_AuthProfileBindings_ServiceId_EnvironmentId_AuthProfileId",
             table: "ServiceEnvironmentConfigs");
-
         migrationBuilder.DropIndex(
             name: "IX_ServiceEnvironmentConfigs_ServiceId_EnvironmentId_AuthProfileId",
             table: "ServiceEnvironmentConfigs");
-
         migrationBuilder.DropTable("AuthProfileSecrets");
         migrationBuilder.DropTable("AuthProfileBindings");
         migrationBuilder.DropTable("SecretVaultEntries");
