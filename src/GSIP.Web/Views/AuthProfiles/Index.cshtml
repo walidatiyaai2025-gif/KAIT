@@ -1,0 +1,278 @@
+@using System.Globalization
+@model GSIP.Web.Models.AuthProfileAdminViewModel
+@inject IStringLocalizer<AuthProfileResource> L
+@{
+    ViewData["Title"] = L["PageTitle"];
+    var isRtl = CultureInfo.CurrentUICulture.TextInfo.IsRightToLeft;
+    var currentCulture = isRtl ? "ar-KW" : "en";
+    var availableBindings = Model.Entities
+        .SelectMany(entity => entity.Services.SelectMany(service => service.Environments
+            .Where(environment => environment.IsActive && !environment.AuthProfileId.HasValue)
+            .Select(environment => new
+            {
+                EntityId = entity.Id,
+                EntityCode = entity.Code,
+                EntityName = isRtl ? entity.NameAr : entity.NameEn,
+                ServiceId = service.Id,
+                ServiceCode = service.Code,
+                ServiceName = isRtl ? service.NameAr : service.NameEn,
+                EnvironmentId = environment.Id,
+                EnvironmentCode = environment.Code
+            })))
+        .OrderBy(target => target.EntityCode, StringComparer.OrdinalIgnoreCase)
+        .ThenBy(target => target.ServiceCode, StringComparer.OrdinalIgnoreCase)
+        .ThenBy(target => target.EnvironmentCode, StringComparer.OrdinalIgnoreCase)
+        .ToList();
+}
+<link rel="stylesheet" href="~/css/auth-profiles.css" asp-append-version="true" />
+<section class="auth-admin" aria-labelledby="auth-admin-title">
+    <header class="auth-hero">
+        <div>
+            <span class="auth-kicker">@L["SecurityKicker"]</span>
+            <h1 id="auth-admin-title">@L["PageTitle"]</h1>
+            <p>@L["Subtitle"]</p>
+        </div>
+        <div class="auth-security-note" role="note">
+            <span aria-hidden="true">●</span>
+            <strong>@L["SecretPlaintextNeverShown"]</strong>
+        </div>
+    </header>
+
+    @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+    {
+        <div class="auth-alert error" role="alert">@L["Error"]</div>
+    }
+    @if (!string.IsNullOrWhiteSpace(Model.SuccessMessage))
+    {
+        <div class="auth-alert success" role="status">@L["Success"]</div>
+    }
+
+    <div class="auth-stat-grid" aria-label="@L["PageTitle"]">
+        <article><strong>@Model.Profiles.Count</strong><span>@L["Profiles"]</span></article>
+        <article><strong>@Model.Profiles.Sum(profile => profile.BindingCount)</strong><span>@L["Bindings"]</span></article>
+        <article><strong>@Model.Profiles.Sum(profile => profile.Secrets.Count)</strong><span>@L["Secrets"]</span></article>
+        <article><strong>@Model.Profiles.Count(profile => profile.IsShared)</strong><span>@L["Shared"]</span></article>
+    </div>
+
+    <div class="auth-workspace">
+        <section class="auth-panel create-panel" aria-labelledby="create-profile-title">
+            <div class="panel-heading">
+                <div><h2 id="create-profile-title">@L["CreateProfile"]</h2><p>@L["OwnerBindingHelp"]</p></div>
+                <span class="isolation-badge isolated">@L["Isolated"]</span>
+            </div>
+            <form method="post" action="/auth-profiles" class="auth-form">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="culture" value="@currentCulture" />
+                <label>@L["ProfileName"]<input name="name" maxlength="160" required autocomplete="off" /></label>
+                <label>@L["AuthenticationType"]
+                    <select name="authenticationType" required>
+                        <option value="ApiKeyHeader">API Key Header</option>
+                        <option value="StaticBearer">Static Bearer</option>
+                        <option value="TokenEndpoint">Token Endpoint</option>
+                        <option value="ApiKeyPlusBearer">API Key + Bearer</option>
+                        <option value="CustomHeaders">Custom Headers</option>
+                    </select>
+                </label>
+                <label>@L["OwnerBinding"]
+                    <select name="ownerBinding" required>
+                        <option value="">@L["SelectOwnerBinding"]</option>
+                        @foreach (var target in availableBindings)
+                        {
+                            var targetValue = $"{target.EntityId:D}|{target.ServiceId:D}|{target.EnvironmentId:D}";
+                            <option value="@targetValue">@target.EntityName / @target.ServiceName / @target.EnvironmentCode</option>
+                        }
+                    </select>
+                </label>
+                <small>@L["OwnerBindingHelp"]</small>
+                <button class="auth-button" type="submit">@L["Create"]</button>
+            </form>
+        </section>
+
+        <section class="auth-panel hierarchy-panel" aria-labelledby="hierarchy-title">
+            <div class="panel-heading"><div><h2 id="hierarchy-title">@L["BindingHierarchy"]</h2><p>@L["SharedWarning"]</p></div></div>
+            @if (Model.Entities.Count == 0)
+            {
+                <div class="auth-empty">@L["NoEntities"]</div>
+            }
+            else
+            {
+                <div class="entity-stack">
+                @foreach (var entity in Model.Entities.OrderBy(entity => entity.Code, StringComparer.OrdinalIgnoreCase))
+                {
+                    <article class="hierarchy-entity">
+                        <header><span class="entity-code">@entity.Code</span><h3>@(isRtl ? entity.NameAr : entity.NameEn)</h3></header>
+                        <div class="service-stack">
+                        @foreach (var service in entity.Services.OrderBy(service => service.Code, StringComparer.OrdinalIgnoreCase))
+                        {
+                            <section class="hierarchy-service">
+                                <div class="service-heading"><span>@L["Service"]</span><strong>@(isRtl ? service.NameAr : service.NameEn)</strong><code>@service.Code</code></div>
+                                <div class="environment-grid">
+                                @foreach (var environment in service.Environments.OrderBy(environment => environment.Code, StringComparer.OrdinalIgnoreCase))
+                                {
+                                    <article class="environment-card">
+                                        <div class="environment-head">
+                                            <div><span>@L["Environment"]</span><strong>@environment.Code</strong></div>
+                                            <span class="state-dot @(environment.IsActive ? "on" : "off")">@(environment.IsActive ? L["Active"] : L["Disabled"])</span>
+                                        </div>
+                                        <div class="binding-current">
+                                            @if (environment.AuthProfileId.HasValue)
+                                            {
+                                                <span class="isolation-badge @(environment.IsSharedProfile ? "shared" : "isolated")">@(environment.IsSharedProfile ? L["Shared"] : L["Isolated"])</span>
+                                                <strong>@environment.AuthProfileName</strong>
+                                            }
+                                            else
+                                            {
+                                                <span class="muted">@L["NoBinding"]</span>
+                                            }
+                                        </div>
+                                    </article>
+                                }
+                                </div>
+                            </section>
+                        }
+                        </div>
+                    </article>
+                }
+                </div>
+            }
+        </section>
+    </div>
+
+    <section class="profile-catalog" aria-labelledby="profile-catalog-title">
+        <div class="section-heading"><div><span>@L["Profiles"]</span><h2 id="profile-catalog-title">@L["Profiles"]</h2></div></div>
+        @if (Model.Profiles.Count == 0)
+        {
+            <div class="auth-empty">@L["NoProfiles"]</div>
+        }
+        @foreach (var profile in Model.Profiles.OrderBy(profile => profile.Name, StringComparer.OrdinalIgnoreCase))
+        {
+            <article class="profile-card" id="profile-@profile.Id">
+                <header class="profile-head">
+                    <div>
+                        <div class="profile-meta"><code>@profile.AuthenticationType</code><span>·</span><span>@profile.BindingCount @L["BoundCount"]</span></div>
+                        <h3>@profile.Name</h3>
+                    </div>
+                    <div class="profile-status">
+                        <span class="isolation-badge @(profile.IsShared ? "shared" : "isolated")">@(profile.IsShared ? L["Shared"] : L["Isolated"])</span>
+                        <span class="state-dot @(profile.IsActive ? "on" : "off")">@(profile.IsActive ? L["Active"] : L["Disabled"])</span>
+                    </div>
+                </header>
+
+                <div class="binding-ledger" aria-label="@L["Bindings"]">
+                    @foreach (var entity in Model.Entities)
+                    {
+                        @foreach (var service in entity.Services)
+                        {
+                            @foreach (var environment in service.Environments.Where(environment => environment.AuthProfileId == profile.Id))
+                            {
+                                <div class="binding-chip">
+                                    <span class="isolation-badge @(environment.IsSharedProfile ? "shared" : "isolated")">@(environment.IsSharedProfile ? L["Shared"] : L["Isolated"])</span>
+                                    <span class="binding-label">@(isRtl ? entity.NameAr : entity.NameEn) / @(isRtl ? service.NameAr : service.NameEn) / @environment.Code</span>
+                                    @if (environment.IsSharedProfile)
+                                    {
+                                        <form method="post" action="/auth-profiles/@profile.Id/bindings/@service.Id/@environment.Id/unbind" class="binding-unbind-form">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="culture" value="@currentCulture" />
+                                            <button class="auth-button danger-outline" type="submit" aria-label="@L["UnbindSafety"]">@L["UnbindShared"]</button>
+                                        </form>
+                                    }
+                                </div>
+                            }
+                        }
+                    }
+                </div>
+
+                <details class="secure-details profile-settings">
+                    <summary>@L["EditMetadata"]</summary>
+                    <form method="post" action="/auth-profiles/@profile.Id" class="auth-form metadata-edit-form">
+                        @Html.AntiForgeryToken()
+                        <label>@L["ProfileName"]<input name="name" value="@profile.Name" maxlength="160" required autocomplete="off" /></label>
+                        <label>@L["AuthenticationType"]
+                            <select name="authenticationType" required>
+                                <option value="ApiKeyHeader" selected="@(profile.AuthenticationType == "ApiKeyHeader")">API Key Header</option>
+                                <option value="StaticBearer" selected="@(profile.AuthenticationType == "StaticBearer")">Static Bearer</option>
+                                <option value="TokenEndpoint" selected="@(profile.AuthenticationType == "TokenEndpoint")">Token Endpoint</option>
+                                <option value="ApiKeyPlusBearer" selected="@(profile.AuthenticationType == "ApiKeyPlusBearer")">API Key + Bearer</option>
+                                <option value="CustomHeaders" selected="@(profile.AuthenticationType == "CustomHeaders")">Custom Headers</option>
+                            </select>
+                        </label>
+                        <button class="auth-button secondary" type="submit">@L["Save"]</button>
+                    </form>
+                </details>
+
+                <details class="secure-details sharing-details">
+                    <summary>@L["ShareProfile"]</summary>
+                    <form method="post" action="/auth-profiles/@profile.Id/share" class="auth-form sharing-form">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="culture" value="@currentCulture" />
+                        <label>@L["TargetBinding"]
+                            <select name="targetBinding" required>
+                                <option value="">@L["SelectTargetBinding"]</option>
+                                @foreach (var target in availableBindings)
+                                {
+                                    var targetValue = $"{target.EntityId:D}|{target.ServiceId:D}|{target.EnvironmentId:D}";
+                                    <option value="@targetValue">@target.EntityName / @target.ServiceName / @target.EnvironmentCode</option>
+                                }
+                            </select>
+                        </label>
+                        <label>@L["SharingReason"]<input name="reason" maxlength="500" required autocomplete="off" /></label>
+                        <label class="confirm-share"><input type="checkbox" name="confirmShare" value="true" required /> @L["ConfirmShared"]</label>
+                        <small>@L["SharedWarning"]</small>
+                        <button class="auth-button secondary" type="submit">@L["ShareAction"]</button>
+                    </form>
+                </details>
+
+                <div class="profile-columns">
+                    <section class="profile-section">
+                        <h4>@L["Secrets"]</h4>
+                        @if (profile.Secrets.Count == 0)
+                        {
+                            <div class="auth-empty compact">@L["Secrets"] · 0</div>
+                        }
+                        @foreach (var secret in profile.Secrets.OrderBy(secret => secret.Label, StringComparer.OrdinalIgnoreCase))
+                        {
+                            <article class="secret-row">
+                                <div class="secret-summary">
+                                    <div><strong>@secret.Label</strong><span class="masked" aria-label="@L["MaskedState"]">@secret.MaskedState</span></div>
+                                    <div class="secret-meta"><span>@L["Generation"] @secret.Generation</span><span>@(secret.IsActive ? L["Active"] : L["Disabled"])</span></div>
+                                </div>
+                                <details class="secure-details">
+                                    <summary>@L["Rotate"]</summary>
+                                    <form method="post" action="/auth-profiles/@profile.Id/secrets/@secret.Id/rotate" class="auth-form compact-form">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="culture" value="@currentCulture" />
+                                        <label>@L["SecretValue"]<input name="secretValue" type="password" required minlength="8" maxlength="4096" autocomplete="new-password" spellcheck="false" /></label>
+                                        <small>@L["SecretWriteOnlyHelp"]</small>
+                                        <label class="choice"><input type="checkbox" name="confirmRotation" value="true" required /> @L["RotateConfirm"]</label>
+                                        <button class="auth-button danger" type="submit">@L["RotateAction"]</button>
+                                    </form>
+                                </details>
+                            </article>
+                        }
+                    </section>
+
+                    <section class="profile-section">
+                        <h4>@L["SetSecret"]</h4>
+                        <form method="post" action="/auth-profiles/@profile.Id/secrets" class="auth-form">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="culture" value="@currentCulture" />
+                            <label>@L["SecretLabel"]<input name="label" maxlength="80" required autocomplete="off" /></label>
+                            <label>@L["SecretValue"]<input name="secretValue" type="password" required minlength="8" maxlength="4096" autocomplete="new-password" spellcheck="false" /></label>
+                            <small>@L["SecretWriteOnlyHelp"]</small>
+                            <button class="auth-button" type="submit">@L["SetSecret"]</button>
+                        </form>
+                    </section>
+                </div>
+
+                <footer class="profile-actions">
+                    <form method="post" action="/auth-profiles/@profile.Id/state">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="culture" value="@currentCulture" />
+                        <input type="hidden" name="isActive" value="@(!profile.IsActive ? "true" : "false")" />
+                        <button class="auth-button secondary" type="submit">@(profile.IsActive ? L["Disable"] : L["Enable"])</button>
+                    </form>
+                </footer>
+            </article>
+        }
+    </section>
+</section>

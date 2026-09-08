@@ -1,0 +1,83 @@
+name: P06 AuthProfile Administration
+
+on:
+  push:
+    branches:
+      - main
+      - worker/p06-admin-authorization-ui
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  admin-ui-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact commit
+        uses: actions/checkout@v4
+
+      - name: Set up .NET from global.json
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore web project
+        run: dotnet restore src/GSIP.Web/GSIP.Web.csproj
+
+      - name: Release build web project
+        run: dotnet build src/GSIP.Web/GSIP.Web.csproj -c Release --no-restore
+
+      - name: Run P06 admin UI safety checks
+        run: dotnet run --project tests/GSIP.P06AdminChecks/GSIP.P06AdminChecks.csproj -c Release
+
+      - name: Run P06 shared-binding lifecycle checks
+        run: dotnet run --project tests/GSIP.P06AdminBindingChecks/GSIP.P06AdminBindingChecks.csproj -c Release
+
+  browser-evidence:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    needs: admin-ui-safety
+    steps:
+      - name: Checkout exact commit
+        uses: actions/checkout@v4
+
+      - name: Set up .NET from global.json
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore solution
+        run: dotnet restore GSIP.sln
+
+      - name: Release build solution
+        run: dotnet build GSIP.sln -c Release --no-restore
+
+      - name: Start SQL Server LocalDB
+        shell: pwsh
+        run: |
+          sqllocaldb start MSSQLLocalDB
+          sqllocaldb info MSSQLLocalDB
+
+      - name: Capture exact-candidate bilingual browser evidence
+        shell: pwsh
+        run: ./scripts/verify-p06-authprofile-ui.ps1
+
+      - name: Verify exact 390px responsive rendering
+        shell: pwsh
+        run: ./scripts/verify-p06-authprofile-mobile.ps1
+
+      - name: Validate execution plan and governance
+        run: python scripts/validate_execution_plan.py
+
+      - name: Upload P06 AuthProfile browser evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: P06-AuthProfile-Admin-Evidence-${{ github.sha }}
+          path: artifacts/p06-authprofile-admin/
+          if-no-files-found: error
+          retention-days: 30
