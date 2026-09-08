@@ -6,7 +6,7 @@
 - Repository: `walidatiyaai2025-gif/KAIT`
 - Default branch: `main`
 - Delivery model: phase-gated autonomous implementation
-- Current planned product state: P02 CLOSED; P03 Identity, MFA, sessions and account security is the next legal phase after transition exact-main verification
+- Current planned product state: P03 CLOSED; P04 RBAC and service-level permissions is the next legal phase after transition exact-main verification
 - Initial executable version: `0.1.0`
 - Pinned SDK / target framework: .NET SDK `10.0.400` / `net10.0`
 - Initial entity: Ministry of Justice (MOJ), Kuwait
@@ -16,17 +16,20 @@
 
 ## Last closed phase evidence
 
-P02 was closed from exact integrated `main` SHA `efa56808db13fa45f803131f7bcf2d65c485a66d` after:
+P03 was closed from exact integrated `main` SHA `20d2542427a388ac81e5249cc59f60dcbfa2ea91` after:
 
-- the P02 implementation lineage was normally integrated through PRs #6, #7, #8 and #9, with PR #9 closing the final Review/Health Check critical-failure gap;
-- Planning Integrity run `34228695674`: SUCCESS;
-- P00 Build Baseline regression run `34228695950`: SUCCESS;
-- P01 Architecture and UI Shell regression run `34228695746`: SUCCESS;
-- P02 First-run Setup Wizard run `34228695995`: SUCCESS;
-- Release build, SQL/setup/security checks, wrong-credential handling, migration failure/retry, protected/restart-safe setup state, post-Finish lock and bilingual browser verification all succeeded;
-- exact-main artifact `P02-Setup-Evidence-efa56808db13fa45f803131f7bcf2d65c485a66d` was produced at 390,868 bytes;
-- workflow artifact digest: `sha256:f03ad21356d2ba92308b2cff015d934d0ef23b9e78b02a4f0eb26c9cd06f8961`;
-- no owner-only or external evidence was deferred for P02.
+- the P03 security-header component was normally integrated through PR #12 and the recovered Identity/MFA/account-security implementation was normally integrated through PR #13;
+- Planning Integrity run `34239792230`: SUCCESS;
+- P00 Build Baseline regression run `34239792270`: SUCCESS;
+- P01 Architecture and UI Shell regression run `34239792297`: SUCCESS;
+- P02 First-run Setup Wizard regression run `34239792244`: SUCCESS;
+- P03 Web Security Headers run `34239792235`: SUCCESS;
+- P03 Identity and Account Security run `34239792740`: SUCCESS;
+- Identity persistence, login/logout, password/session/account controls, forced password change, MFA enrollment/verification, privileged-account MFA policy, lockout/rate limiting, CSRF, authenticated dashboard gating, production cookie/HSTS/security-header posture and sanitized authentication audit events were exercised by the P03 gate;
+- Arabic RTL / English LTR authentication browser evidence was produced at desktop and mobile viewports;
+- exact-main artifact `P03-Identity-Evidence-20d2542427a388ac81e5249cc59f60dcbfa2ea91` was produced at 330,634 bytes;
+- workflow artifact digest: `sha256:d12317bb99d8a3835bd0a4a34db0688af5c164e1e3865e13f76828b1bbac9245`;
+- no owner-only or external evidence was deferred for P03.
 
 ## Authoritative documents
 
@@ -48,7 +51,7 @@ No old prompt, screenshot caption, branch description, or stale ledger overrides
 ## Phase policy
 
 - Exactly one canonical current phase exists at a time.
-- P00, P01 and P02 are closed; P03 is the next phase after this transition is integrated and exact-main verified.
+- P00, P01, P02 and P03 are closed; P04 is the next phase after this transition is integrated and exact-main verified.
 - Future phases remain locked until the current phase is formally CLOSED.
 - Phase exit requires implementation + tests + evidence + documentation reconciliation + pushed commit + required CI + exact-main recheck.
 - Integration recovery and exact-main regressions take priority over new feature work.
@@ -70,6 +73,10 @@ P00 pinned .NET 10 LTS / `net10.0`, SDK `10.0.400`, initial version `0.1.0` and 
 ## Setup contract
 
 P02 established the protected first-run Setup boundary. Normal Login is illegal before first-run setup completes. Setup covers database connectivity, migrations, initial administrator, security baseline, organization/branding, integration environment, secrets placeholders, health review and Finish. Successful setup persists a protected completed state and prevents accidental public rerun.
+
+## Identity and account-security contract
+
+P03 established the authentication boundary required before detailed RBAC. Runtime access uses ASP.NET Core Identity persistence with protected login/logout, configurable password/session/remember-me and account controls, forced password change, MFA enrollment/verification, privileged-account MFA policy, lockout/rate limiting, server-side authentication challenge, CSRF protection, security headers/HSTS/cookie controls and sanitized authentication audit events. P04 authorization must preserve and build on this boundary rather than bypassing it.
 
 ## Service environment / Go-Live control
 

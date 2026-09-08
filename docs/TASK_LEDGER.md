@@ -7,8 +7,8 @@ This ledger is evidence-driven. Never mark a phase CLOSED because a prompt says 
 | P00 | CLOSED | Closed from exact-main SHA `8156c46ce8ce366424d955a6194d677c2da5055f`; Planning Integrity `34210899288` SUCCESS; P00 Build Baseline `34210899267` SUCCESS; exact-main baseline artifact produced and hashed |
 | P01 | CLOSED | Closed from exact-main SHA `34c665b12e910b6dfcb735f4978be6649e03d5c3`; Planning `34213985141`, P00 regression `34213985591`, P01 runtime/browser `34213985167` SUCCESS; exact-main bilingual UI evidence produced and hashed |
 | P02 | CLOSED | Closed from exact-main SHA `efa56808db13fa45f803131f7bcf2d65c485a66d`; Planning `34228695674`, P00 `34228695950`, P01 `34228695746`, P02 `34228695995` SUCCESS; protected first-run Setup, SQL negative/retry, Review/Health critical gate and bilingual browser evidence verified; exact-main artifact produced and hashed |
-| P03 | OPEN | Identity, MFA, sessions, lockout/rate limiting, account security and auth audit |
-| P04 | LOCKED | RBAC, server-side authorization, per-service permissions, high-fidelity permissions UI |
+| P03 | CLOSED | Closed from exact-main SHA `20d2542427a388ac81e5249cc59f60dcbfa2ea91`; Planning `34239792230`, P00 `34239792270`, P01 `34239792297`, P02 `34239792244`, P03 web security `34239792235`, P03 identity/account security `34239792740` SUCCESS; exact-main identity/browser/security artifact produced and hashed |
+| P04 | OPEN | RBAC, server-side authorization, Default Deny, per-service permissions, negative authorization/IDOR tests and high-fidelity bilingual Permissions UI |
 | P05 | LOCKED | Metadata-driven entities/services/fields/result mappings plus independent `ServiceEnvironmentConfig` per Service + UAT/Production environment; admin/versioning/import-export |
 | P06 | LOCKED | Secret vault, isolated authentication profiles/SecretRefs, explicit Shared AuthProfile support, rotation/redaction, cross-service-safe token cache keys |
 | P07 | LOCKED | Generic service execution engine resolving the exact Service + Environment + AuthProfile binding; high-fidelity dynamic Service Execution UI |
@@ -34,6 +34,14 @@ P01 implementation was integrated by PR #4 at exact `main` SHA `34c665b12e910b6d
 ## P02 closure record
 
 P02 implementation was integrated through PRs #6, #7, #8 and #9, culminating at exact `main` SHA `efa56808db13fa45f803131f7bcf2d65c485a66d`. Planning Integrity run `34228695674`, P00 Build Baseline regression run `34228695950`, P01 Architecture and UI Shell regression run `34228695746`, and P02 First-run Setup Wizard run `34228695995` all succeeded on that SHA. The exact-main artifact `P02-Setup-Evidence-efa56808db13fa45f803131f7bcf2d65c485a66d` is 390,868 bytes with workflow digest `sha256:f03ad21356d2ba92308b2cff015d934d0ef23b9e78b02a4f0eb26c9cd06f8961`. Acceptance includes pre-Login setup gating, protected restart-safe state, SQL Windows/SQL-auth paths, wrong credentials, create/use DB, migration failure/retry, bootstrap administrator, isolated inactive MOJ UAT/Production placeholders, critical Review/Health blocking, post-Finish lock and bilingual browser evidence. No owner-only evidence was deferred for P02.
+
+## P03 closure record
+
+P03 was integrated through the hardened web-security PR #12 and the recovered Identity/MFA/account-security PR #13, culminating at exact integrated `main` SHA `20d2542427a388ac81e5249cc59f60dcbfa2ea91`. On that same SHA, Planning Integrity run `34239792230`, P00 Build Baseline regression run `34239792270`, P01 Architecture and UI Shell regression run `34239792297`, P02 First-run Setup Wizard regression run `34239792244`, P03 Web Security Headers run `34239792235`, and P03 Identity and Account Security run `34239792740` all succeeded.
+
+The exact-main artifact `P03-Identity-Evidence-20d2542427a388ac81e5249cc59f60dcbfa2ea91` is 330,634 bytes with workflow digest `sha256:d12317bb99d8a3835bd0a4a34db0688af5c164e1e3865e13f76828b1bbac9245`. Acceptance covers Identity persistence, login/logout, configurable password/session/remember-me and account controls, forced password change, MFA enrollment/verification and privileged-account MFA policy, lockout/rate limiting, authenticated dashboard challenge, CSRF rejection, CSP/HSTS/security headers, secure cookie posture, sanitized authentication audit events and Arabic RTL / English LTR browser evidence at desktop and mobile viewports. No owner-only or external evidence was deferred for P03. Detailed evidence is recorded in `docs/evidence/P03_IDENTITY_ACCOUNT_SECURITY.md`.
+
+P04 is the next legal phase only after this P03 closure-reconciliation change is normally integrated to `main` and the resulting exact-main closed-phase regressions remain green.
 
 ## Cross-phase gates
 
