@@ -7,5 +7,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/GSIP.Application/GSIP.Application.csproj" />
+    <ProjectReference Include="../../src/GSIP.Domain/GSIP.Domain.csproj" />
   </ItemGroup>
 </Project>
