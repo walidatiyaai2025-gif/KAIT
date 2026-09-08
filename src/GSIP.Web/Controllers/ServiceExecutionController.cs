@@ -125,7 +125,7 @@ public sealed class ServiceExecutionController(
             }
         }
 
-        return View(new ServiceExecutionViewModel
+        var model = new ServiceExecutionViewModel
         {
             Entities = entities,
             Services = serviceOptions,
@@ -134,6 +134,7 @@ public sealed class ServiceExecutionController(
             SelectedServiceId = selectedService?.Id,
             SelectedEnvironmentId = selectedEnvironmentId,
             SelectedService = details
-        });
+        };
+        return View("~/Views/Execution/Index.cshtml", model);
     }
 }
