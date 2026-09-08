@@ -1,0 +1,35 @@
+name: P06 AuthProfile Administration
+
+on:
+  push:
+    branches:
+      - main
+      - worker/p06-admin-authorization-ui
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  admin-ui-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact commit
+        uses: actions/checkout@v4
+
+      - name: Set up .NET from global.json
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore web project
+        run: dotnet restore src/GSIP.Web/GSIP.Web.csproj
+
+      - name: Release build web project
+        run: dotnet build src/GSIP.Web/GSIP.Web.csproj -c Release --no-restore
+
+      - name: Run P06 admin UI safety checks
+        run: dotnet run --project tests/GSIP.P06AdminChecks/GSIP.P06AdminChecks.csproj -c Release
