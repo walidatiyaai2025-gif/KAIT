@@ -235,8 +235,7 @@ try
         var failureCandidate = await vault.CreateStagedAsync(
             serviceA.Id, CatalogEnvironmentCodes.UatId, profileAUat.Id, "api-key", afterSlot.Generation + 1, failureBytes);
         CryptographicOperations.ZeroMemory(failureBytes);
-        var quotedProfileId = profileAUat.Id.ToString("D");
-        await db.Database.ExecuteSqlRawAsync($"CREATE TRIGGER [TR_P06_ForceRotationFailure] ON [AuthProfiles] AFTER UPDATE AS BEGIN IF EXISTS (SELECT 1 FROM inserted WHERE [Id] = '{quotedProfileId}') THROW 51001, 'Synthetic profile version update failure', 1; END");
+        await db.Database.ExecuteSqlRawAsync("CREATE TRIGGER [TR_P06_ForceRotationFailure] ON [AuthProfiles] AFTER UPDATE AS BEGIN THROW 51001, 'Synthetic profile version update failure', 1; END");
         try
         {
             var safeFailure = await ExpectRotationPersistenceFailureAsync(() => profiles.ActivateSecretReferenceAsync(
