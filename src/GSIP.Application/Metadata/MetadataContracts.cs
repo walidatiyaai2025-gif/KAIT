@@ -88,13 +88,24 @@ public sealed class MetadataEntityPackage
 
 public sealed class MetadataServicePackage
 {
+    private List<ServiceEnvironmentInput> _environmentConfigs = [];
+
     public string Code { get; set; } = string.Empty;
     public string NameAr { get; set; } = string.Empty;
     public string NameEn { get; set; } = string.Empty;
     public string DescriptionAr { get; set; } = string.Empty;
     public string DescriptionEn { get; set; } = string.Empty;
     public bool Active { get; set; } = true;
-    public List<ServiceEnvironmentInput> EnvironmentConfigs { get; set; } = [];
+
+    public List<ServiceEnvironmentInput> EnvironmentConfigs
+    {
+        get => _environmentConfigs;
+        set => _environmentConfigs = (value ?? [])
+            .GroupBy(config => config.EnvironmentCode?.Trim() ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .ToList();
+    }
+
     public List<ServiceFieldInput> Fields { get; set; } = [];
     public List<ResultMappingInput> ResultMappings { get; set; } = [];
 }

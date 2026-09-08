@@ -13,46 +13,41 @@ permissions:
 jobs:
   metadata-catalog:
     runs-on: windows-latest
-    timeout-minutes: 25
+    timeout-minutes: 40
     env:
       GSIP_P05_SQL: 'Server=(localdb)\MSSQLLocalDB;Database=GSIP_P05_${{ github.run_id }}_${{ github.run_attempt }};Integrated Security=true;TrustServerCertificate=true;MultipleActiveResultSets=true'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup pinned .NET SDK
         uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
-
       - name: Restore solution
         run: dotnet restore GSIP.sln
-
       - name: Restore P05 checks
         run: dotnet restore tests/GSIP.P05Checks/GSIP.P05Checks.csproj
-
       - name: Build solution Release
         run: dotnet build GSIP.sln -c Release --no-restore
-
       - name: Build P05 checks Release
         run: dotnet build tests/GSIP.P05Checks/GSIP.P05Checks.csproj -c Release --no-restore
-
       - name: Start SQL Server LocalDB
         shell: pwsh
         run: |
           sqllocaldb start MSSQLLocalDB
           sqllocaldb info MSSQLLocalDB
-
       - name: Run P05 metadata, versioning and isolation checks
         run: dotnet run --project tests/GSIP.P05Checks/GSIP.P05Checks.csproj -c Release --no-build
-
+      - name: Verify protected bilingual metadata UI
+        shell: pwsh
+        run: ./scripts/verify-p05-metadata-ui.ps1
       - name: Validate execution plan and governance
         run: python scripts/validate_execution_plan.py
-
       - name: Upload P05 metadata evidence
-        if: github.event_name == 'push'
+        if: ${{ always() && github.event_name == 'push' }}
         uses: actions/upload-artifact@v4
         with:
           name: P05-Metadata-Evidence-${{ github.sha }}
-          path: artifacts/p05-evidence
+          path: artifacts/p05-evidence/
           if-no-files-found: error
+          retention-days: 30
