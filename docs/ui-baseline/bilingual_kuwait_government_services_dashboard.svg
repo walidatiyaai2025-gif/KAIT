@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <defs>
+    <style>
+      .ar{font-family:Arial,'Noto Sans Arabic',sans-serif;font-weight:700;fill:#0b3560}.en{font-family:Arial,sans-serif;fill:#355c7d}.small{font-size:12px}.med{font-size:16px}.big{font-size:25px}.white{fill:#fff}.muted{fill:#7690aa}.card{fill:#fff;stroke:#dbe6f0;stroke-width:1}.shadow{filter:url(#s)}
+    </style>
+    <filter id="s"><feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#193b5c" flood-opacity=".12"/></filter>
+    <linearGradient id="h" x1="0" x2="1"><stop stop-color="#0b4e78"/><stop offset="1" stop-color="#082f55"/></linearGradient>
+  </defs>
+  <rect width="1280" height="720" fill="#f4f8fc"/>
+  <rect x="0" y="0" width="1280" height="72" fill="url(#h)"/>
+  <rect x="1110" y="72" width="170" height="648" fill="#07345d"/>
+  <line x1="1110" y1="72" x2="1110" y2="720" stroke="#17a6d9" stroke-width="4"/>
+  <circle cx="1230" cy="34" r="25" fill="#fff" opacity=".96"/><text x="1230" y="39" text-anchor="middle" class="ar med">🇰🇼</text>
+  <text x="1190" y="30" text-anchor="end" class="ar med white">بوابة تكامل الخدمات الحكومية</text><text x="1190" y="50" text-anchor="end" class="en small white">Government Services Integration Portal</text>
+  <text x="640" y="29" text-anchor="middle" class="ar small white">معاً نحو كويت رقمية أكثر تقدماً</text><text x="640" y="49" text-anchor="middle" class="en small white">Towards a Smarter Digital Kuwait</text>
+  <circle cx="54" cy="36" r="20" fill="#d7e7f3"/><text x="82" y="29" class="ar small white">أحمد محمد</text><text x="82" y="49" class="en small white">Ahmed Mohammed</text><text x="220" y="40" class="en small white">EN  |  AR</text>
+  <!-- sidebar -->
+  <g class="white" font-family="Arial" font-size="13" text-anchor="middle">
+    <rect x="1120" y="88" width="150" height="55" rx="7" fill="#0b5f91"/><text x="1195" y="111" class="ar med white">الرئيسية</text><text x="1195" y="130" class="en small white">Home</text>
+    <text x="1195" y="180" class="ar med white">الجهات</text><text x="1195" y="198" class="en small white">Entities</text>
+    <text x="1195" y="245" class="ar med white">الخدمات</text><text x="1195" y="263" class="en small white">Services</text>
+    <text x="1195" y="310" class="ar med white">الطلبات</text><text x="1195" y="328" class="en small white">Requests</text>
+    <text x="1195" y="375" class="ar med white">سجل التدقيق</text><text x="1195" y="393" class="en small white">Audit Logs</text>
+    <text x="1195" y="440" class="ar med white">الصلاحيات</text><text x="1195" y="458" class="en small white">Permissions</text>
+    <text x="1195" y="505" class="ar med white">الإعدادات</text><text x="1195" y="523" class="en small white">Settings</text>
+  </g>
+  <!-- main title/search -->
+  <text x="55" y="115" class="ar big">مرحباً بك في بوابة تكامل الخدمات الحكومية</text><text x="55" y="139" class="en med">Welcome to the Government Services Integration Portal</text>
+  <rect x="785" y="94" width="280" height="47" rx="8" class="card"/><text x="1045" y="117" text-anchor="end" class="ar small muted">البحث عن جهة أو خدمة ...</text><text x="1045" y="134" text-anchor="end" class="en small muted">Search for an entity or service ...</text>
+  <!-- KPI cards -->
+  <g class="shadow">
+    <rect x="55" y="166" width="235" height="76" rx="8" class="card"/><circle cx="85" cy="204" r="22" fill="#fde5e5"/><text x="126" y="195" class="ar med">12</text><text x="126" y="216" class="en small">Failed Requests Today</text>
+    <rect x="305" y="166" width="235" height="76" rx="8" class="card"/><circle cx="335" cy="204" r="22" fill="#e0f1ff"/><text x="376" y="195" class="ar med">156</text><text x="376" y="216" class="en small">Total Requests Today</text>
+    <rect x="555" y="166" width="235" height="76" rx="8" class="card"/><circle cx="585" cy="204" r="22" fill="#dff8ee"/><text x="626" y="195" class="ar med">25</text><text x="626" y="216" class="en small">Active Services</text>
+    <rect x="805" y="166" width="260" height="76" rx="8" class="card"/><circle cx="835" cy="204" r="22" fill="#fff1d9"/><text x="876" y="195" class="ar med">6</text><text x="876" y="216" class="en small">Active Entities</text>
+  </g>
+  <!-- entity card -->
+  <rect x="55" y="260" width="1010" height="135" rx="10" class="card shadow"/><rect x="55" y="260" width="1010" height="4" fill="#c99a2e"/>
+  <circle cx="125" cy="327" r="45" fill="#eef5fb" stroke="#d2dfeb"/><text x="125" y="334" text-anchor="middle" class="big">⚖</text>
+  <text x="195" y="302" class="ar big">وزارة العدل</text><text x="195" y="328" class="en med">Ministry of Justice (MOJ)</text>
+  <rect x="330" y="283" width="82" height="28" rx="14" fill="#dff5e5"/><text x="371" y="302" text-anchor="middle" class="ar small" fill="#16844d">مفعلة / Active</text>
+  <text x="195" y="354" class="ar small">تاريخ الإنشاء: الثلاثاء، 8 سبتمبر 2026</text><text x="195" y="374" class="en small">Created On: Tuesday, September 8, 2026</text>
+  <text x="650" y="310" class="ar small">خدمات إلكترونية متكاملة عبر واجهات برمجة التطبيقات بشكل آمن وموثوق.</text><text x="650" y="334" class="en small">Secure and reliable integration services through APIs.</text>
+  <!-- services title -->
+  <text x="55" y="435" class="ar big">خدمات وزارة العدل</text><text x="55" y="458" class="en med">Ministry of Justice Services</text>
+  <!-- service cards -->
+  <g class="shadow">
+    <rect x="55" y="480" width="190" height="205" rx="9" class="card"/><text x="150" y="520" text-anchor="middle" class="big">☷</text><text x="150" y="550" text-anchor="middle" class="ar med">خدمة قضايا الزواج</text><text x="150" y="571" text-anchor="middle" class="en small">Marriage Cases Service</text><text x="150" y="600" text-anchor="middle" class="en small muted">API Key + Bearer</text><rect x="70" y="635" width="160" height="34" rx="6" fill="#0b4f7d"/><text x="150" y="657" text-anchor="middle" class="white small">Open Service</text>
+    <rect x="257" y="480" width="190" height="205" rx="9" class="card"/><text x="352" y="520" text-anchor="middle" class="big">✓</text><text x="352" y="550" text-anchor="middle" class="ar med">التحقق من الحالة الاجتماعية</text><text x="352" y="571" text-anchor="middle" class="en small">Is Single Basic Service</text><text x="352" y="600" text-anchor="middle" class="en small muted">API Key + Bearer</text><rect x="272" y="635" width="160" height="34" rx="6" fill="#0b4f7d"/><text x="352" y="657" text-anchor="middle" class="white small">Open Service</text>
+    <rect x="459" y="480" width="190" height="205" rx="9" class="card"/><text x="554" y="520" text-anchor="middle" class="big">◉</text><text x="554" y="550" text-anchor="middle" class="ar med">آخر قضية زواج للزوجين</text><text x="554" y="571" text-anchor="middle" class="en small">Marriage Couple Last Case</text><text x="554" y="600" text-anchor="middle" class="en small muted">API Key + Bearer</text><rect x="474" y="635" width="160" height="34" rx="6" fill="#0b4f7d"/><text x="554" y="657" text-anchor="middle" class="white small">Open Service</text>
+    <rect x="661" y="480" width="190" height="205" rx="9" class="card"/><text x="756" y="520" text-anchor="middle" class="big">§</text><text x="756" y="550" text-anchor="middle" class="ar med">نص حكم الأسرة</text><text x="756" y="571" text-anchor="middle" class="en small">Family Judgment Text</text><text x="756" y="600" text-anchor="middle" class="en small muted">API Key + Bearer</text><rect x="676" y="635" width="160" height="34" rx="6" fill="#0b4f7d"/><text x="756" y="657" text-anchor="middle" class="white small">Open Service</text>
+    <rect x="863" y="480" width="202" height="205" rx="9" class="card"/><text x="964" y="520" text-anchor="middle" class="big">▤</text><text x="964" y="550" text-anchor="middle" class="ar med">حالة الوكالة</text><text x="964" y="571" text-anchor="middle" class="en small">Procuration Status Service</text><text x="964" y="600" text-anchor="middle" class="en small muted">API Key + Bearer</text><rect x="878" y="635" width="172" height="34" rx="6" fill="#0b4f7d"/><text x="964" y="657" text-anchor="middle" class="white small">Open Service</text>
+  </g>
+</svg>
