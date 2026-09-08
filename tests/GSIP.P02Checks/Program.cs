@@ -28,7 +28,7 @@ if (failures.Count > 0)
     return 1;
 }
 
-Console.WriteLine("P02 checks passed: setup gate, regression-bypass isolation, protected/restart-safe state, SQL negative/retry/provisioning paths, bootstrap administrator and per-service environment placeholders are valid.");
+Console.WriteLine("P02 checks passed: setup gate, regression-bypass isolation, protected/restart-safe state, SQL wrong-credentials and migration-failure/retry paths, provisioning, bootstrap administrator and per-service environment placeholders are valid.");
 return 0;
 
 static string FindRepositoryRoot()
@@ -96,6 +96,7 @@ static async Task CheckRuntimeAsync(string sqlServer, List<string> failures)
     var keys = Path.Combine(temporaryRoot, "keys");
     Directory.CreateDirectory(keys);
     var databaseName = "GSIP_P02_CI_" + Guid.NewGuid().ToString("N")[..12];
+    var migrationRetryDatabaseName = "GSIP_P02_MIG_" + Guid.NewGuid().ToString("N")[..12];
     const string bootstrapPassword = "P02!StrongPass123";
 
     var environment = new TestHostEnvironment
@@ -153,8 +154,75 @@ static async Task CheckRuntimeAsync(string sqlServer, List<string> failures)
         var credentialsResult = await service.TestDatabaseAsync(missingSqlCredentials);
         Expect(!credentialsResult.Success && credentialsResult.Code == "SQL_CREDENTIALS_REQUIRED", $"Missing SQL-credentials negative path returned {credentialsResult.Code}.", failures);
 
+        var wrongSqlCredentials = new DatabaseSetupOptions
+        {
+            Server = sqlServer,
+            DatabaseName = databaseName,
+            UseWindowsAuthentication = false,
+            Username = "gsip_invalid_login_" + Guid.NewGuid().ToString("N")[..8],
+            Password = "WrongP02!Credential123",
+            Encrypt = false,
+            TrustServerCertificate = true,
+            TimeoutSeconds = 3,
+            CreateDatabase = false
+        };
+        var wrongCredentialsResult = await service.TestDatabaseAsync(wrongSqlCredentials);
+        Expect(!wrongCredentialsResult.Success && wrongCredentialsResult.Code == "SQL_CONNECTION_FAILED", $"Wrong SQL-credentials negative path returned {wrongCredentialsResult.Code}.", failures);
+
         var connection = await service.TestDatabaseAsync(database);
         Expect(connection.Success, $"SQL connection test failed: {connection.Code}", failures);
+
+        var migrationRetryDatabase = new DatabaseSetupOptions
+        {
+            Server = sqlServer,
+            DatabaseName = migrationRetryDatabaseName,
+            UseWindowsAuthentication = true,
+            Encrypt = false,
+            TrustServerCertificate = true,
+            TimeoutSeconds = 30,
+            CreateDatabase = false
+        };
+        var masterConnectionString = new SqlConnectionStringBuilder
+        {
+            DataSource = sqlServer,
+            InitialCatalog = "master",
+            IntegratedSecurity = true,
+            Encrypt = false,
+            TrustServerCertificate = true
+        }.ConnectionString;
+        await using (var migrationMaster = new SqlConnection(masterConnectionString))
+        {
+            await migrationMaster.OpenAsync();
+            await using var createMigrationDatabase = migrationMaster.CreateCommand();
+            createMigrationDatabase.CommandText = $"CREATE DATABASE [{migrationRetryDatabaseName}]";
+            await createMigrationDatabase.ExecuteNonQueryAsync();
+        }
+        var migrationTargetConnectionString = new SqlConnectionStringBuilder
+        {
+            DataSource = sqlServer,
+            InitialCatalog = migrationRetryDatabaseName,
+            IntegratedSecurity = true,
+            Encrypt = false,
+            TrustServerCertificate = true
+        }.ConnectionString;
+        await using (var migrationTarget = new SqlConnection(migrationTargetConnectionString))
+        {
+            await migrationTarget.OpenAsync();
+            await using var createConflict = migrationTarget.CreateCommand();
+            createConflict.CommandText = "CREATE TABLE [SystemSetup] ([Id] int NOT NULL PRIMARY KEY)";
+            await createConflict.ExecuteNonQueryAsync();
+        }
+        var migrationFailure = await service.ProvisionDatabaseAsync(migrationRetryDatabase);
+        Expect(!migrationFailure.Success && migrationFailure.Code == "DATABASE_PROVISION_FAILED", $"Migration-failure negative path returned {migrationFailure.Code}.", failures);
+        await using (var migrationTarget = new SqlConnection(migrationTargetConnectionString))
+        {
+            await migrationTarget.OpenAsync();
+            await using var removeConflict = migrationTarget.CreateCommand();
+            removeConflict.CommandText = "DROP TABLE [SystemSetup]";
+            await removeConflict.ExecuteNonQueryAsync();
+        }
+        var migrationRetry = await service.ProvisionDatabaseAsync(migrationRetryDatabase);
+        Expect(migrationRetry.Success, $"Migration retry failed after removing the blocking schema conflict: {migrationRetry.Code}", failures);
 
         var missingDatabase = await service.ProvisionDatabaseAsync(database);
         Expect(!missingDatabase.Success && missingDatabase.Code == "DATABASE_NOT_FOUND", $"Existing-database negative path returned {missingDatabase.Code} instead of DATABASE_NOT_FOUND.", failures);
@@ -272,25 +340,28 @@ static async Task CheckRuntimeAsync(string sqlServer, List<string> failures)
     finally
     {
         SqlConnection.ClearAllPools();
-        try
+        foreach (var cleanupDatabase in new[] { databaseName, migrationRetryDatabaseName })
         {
-            var masterConnectionString = new SqlConnectionStringBuilder
+            try
             {
-                DataSource = sqlServer,
-                InitialCatalog = "master",
-                IntegratedSecurity = true,
-                Encrypt = false,
-                TrustServerCertificate = true
-            }.ConnectionString;
-            await using var master = new SqlConnection(masterConnectionString);
-            await master.OpenAsync();
-            await using var drop = master.CreateCommand();
-            drop.CommandText = $"IF DB_ID('{databaseName}') IS NOT NULL BEGIN ALTER DATABASE [{databaseName}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [{databaseName}]; END";
-            await drop.ExecuteNonQueryAsync();
-        }
-        catch (SqlException)
-        {
-            failures.Add("P02 test database cleanup failed.");
+                var masterConnectionString = new SqlConnectionStringBuilder
+                {
+                    DataSource = sqlServer,
+                    InitialCatalog = "master",
+                    IntegratedSecurity = true,
+                    Encrypt = false,
+                    TrustServerCertificate = true
+                }.ConnectionString;
+                await using var master = new SqlConnection(masterConnectionString);
+                await master.OpenAsync();
+                await using var drop = master.CreateCommand();
+                drop.CommandText = $"IF DB_ID('{cleanupDatabase}') IS NOT NULL BEGIN ALTER DATABASE [{cleanupDatabase}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [{cleanupDatabase}]; END";
+                await drop.ExecuteNonQueryAsync();
+            }
+            catch (SqlException)
+            {
+                failures.Add($"P02 test database cleanup failed for {cleanupDatabase}.");
+            }
         }
         try { Directory.Delete(temporaryRoot, recursive: true); } catch (IOException) { }
     }
