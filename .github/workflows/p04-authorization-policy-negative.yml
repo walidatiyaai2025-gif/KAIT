@@ -1,0 +1,50 @@
+name: P04 Authorization Policy Negative Gate
+
+on:
+  push:
+    branches:
+      - main
+      - 'worker/p04-authorization-policy-negative-gate'
+    paths:
+      - 'tests/GSIP.P04AuthorizationChecks/**'
+      - '.github/workflows/p04-authorization-policy-negative.yml'
+      - 'src/GSIP.Application/Authorization/**'
+      - 'src/GSIP.Infrastructure/Authorization/**'
+      - 'src/GSIP.Infrastructure/Setup/**'
+  pull_request:
+    paths:
+      - 'tests/GSIP.P04AuthorizationChecks/**'
+      - '.github/workflows/p04-authorization-policy-negative.yml'
+      - 'src/GSIP.Application/Authorization/**'
+      - 'src/GSIP.Infrastructure/Authorization/**'
+      - 'src/GSIP.Infrastructure/Setup/**'
+
+permissions:
+  contents: read
+
+jobs:
+  authorization-negative:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      GSIP_P04_AUTHZ_SQL: 'Server=(localdb)\MSSQLLocalDB;Database=GSIP_P04_AUTHZ_${{ github.run_id }}_${{ github.run_attempt }};Integrated Security=true;TrustServerCertificate=true;MultipleActiveResultSets=true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup pinned .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Restore authorization gate
+        run: dotnet restore tests/GSIP.P04AuthorizationChecks/GSIP.P04AuthorizationChecks.csproj
+      - name: Build authorization gate
+        run: dotnet build tests/GSIP.P04AuthorizationChecks/GSIP.P04AuthorizationChecks.csproj -c Release --no-restore
+      - name: Start SQL Server LocalDB
+        shell: pwsh
+        run: |
+          sqllocaldb start MSSQLLocalDB
+          sqllocaldb info MSSQLLocalDB
+      - name: Run negative authorization and service-scope checks
+        run: dotnet run --project tests/GSIP.P04AuthorizationChecks/GSIP.P04AuthorizationChecks.csproj -c Release --no-build
+      - name: Validate execution plan and governance
+        run: python scripts/validate_execution_plan.py
