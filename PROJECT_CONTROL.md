@@ -6,7 +6,7 @@
 - Repository: `walidatiyaai2025-gif/KAIT`
 - Default branch: `main`
 - Delivery model: phase-gated autonomous implementation
-- Current planned product state: P00 CLOSED; P01 solution architecture and bilingual shell is the next legal phase after transition exact-main verification
+- Current planned product state: P01 CLOSED; P02 complete first-run Setup Wizard is the next legal phase after transition exact-main verification
 - Initial executable version: `0.1.0`
 - Pinned SDK / target framework: .NET SDK `10.0.400` / `net10.0`
 - Initial entity: Ministry of Justice (MOJ), Kuwait
@@ -16,14 +16,16 @@
 
 ## Last closed phase evidence
 
-P00 was closed from exact integrated `main` SHA `8156c46ce8ce366424d955a6194d677c2da5055f` after:
+P01 was closed from exact integrated `main` SHA `34c665b12e910b6dfcb735f4978be6649e03d5c3` after:
 
-- normal integration through PR #2;
-- Planning Integrity run `34210899288`: SUCCESS;
-- P00 Build Baseline run `34210899267`: SUCCESS;
-- pinned SDK selection, restore, Release build, executable contract checks, publish/package/hash/upload all succeeded;
-- exact-main artifact `GSIP-P00-Baseline-0.1.0-8156c46ce8ce.zip` was produced;
-- workflow artifact digest: `sha256:455be98b93727c20646193da3682f92a20bbc9d373881ea6b3b4f443d967a731`;
+- normal integration through PR #4;
+- Planning Integrity run `34213985141`: SUCCESS;
+- P00 Build Baseline regression run `34213985591`: SUCCESS;
+- P01 Architecture and UI Shell run `34213985167`: SUCCESS;
+- Release build, P00 contracts, P01 architecture/design checks, runtime bilingual verification and browser screenshot capture all succeeded;
+- exact-main artifact `P01-UI-Evidence-34c665b12e910b6dfcb735f4978be6649e03d5c3` was produced;
+- workflow artifact digest: `sha256:11492dc4afa4d2257f410540cf757a40be91926e89a61611896bc3f30b06d09c`;
+- the evidence manifest contains English/Arabic Dashboard and Login screenshot hashes;
 - no owner-only or external evidence was deferred.
 
 ## Authoritative documents
@@ -46,7 +48,7 @@ No old prompt, screenshot caption, branch description, or stale ledger overrides
 ## Phase policy
 
 - Exactly one canonical current phase exists at a time.
-- P00 is closed; P01 is the next phase.
+- P00 and P01 are closed; P02 is the next phase after this transition is integrated and exact-main verified.
 - Future phases remain locked until the current phase is formally CLOSED.
 - Phase exit requires implementation + tests + evidence + documentation reconciliation + pushed commit + required CI + exact-main recheck.
 - Integration recovery and exact-main regressions take priority over new feature work.

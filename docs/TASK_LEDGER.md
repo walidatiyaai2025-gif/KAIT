@@ -5,8 +5,8 @@ This ledger is evidence-driven. Never mark a phase CLOSED because a prompt says 
 | Phase | Status | Scope / closure focus |
 |---|---|---|
 | P00 | CLOSED | Closed from exact-main SHA `8156c46ce8ce366424d955a6194d677c2da5055f`; Planning Integrity `34210899288` SUCCESS; P00 Build Baseline `34210899267` SUCCESS; exact-main baseline artifact produced and hashed |
-| P01 | OPEN | Solution architecture and bilingual shell; mandatory design-system baseline and P01 UI evidence |
-| P02 | LOCKED | Complete first-run Setup Wizard before Login, SQL Server test/create/use/migrations/admin/security/review/finish; create service/environment placeholders only, never source-coded live credentials |
+| P01 | CLOSED | Closed from exact-main SHA `34c665b12e910b6dfcb735f4978be6649e03d5c3`; Planning `34213985141`, P00 regression `34213985591`, P01 runtime/browser `34213985167` SUCCESS; exact-main bilingual UI evidence produced and hashed |
+| P02 | OPEN | Complete first-run Setup Wizard before Login, SQL Server test/create/use/migrations/admin/security/review/finish; create service/environment placeholders only, never source-coded live credentials |
 | P03 | LOCKED | Identity, MFA, sessions, lockout/rate limiting, account security and auth audit |
 | P04 | LOCKED | RBAC, server-side authorization, per-service permissions, high-fidelity permissions UI |
 | P05 | LOCKED | Metadata-driven entities/services/fields/result mappings plus independent `ServiceEnvironmentConfig` per Service + UAT/Production environment; admin/versioning/import-export |
@@ -26,6 +26,10 @@ This ledger is evidence-driven. Never mark a phase CLOSED because a prompt says 
 ## P00 closure record
 
 P00 implementation was integrated by PR #2. The exact integrated `main` SHA `8156c46ce8ce366424d955a6194d677c2da5055f` passed both required workflows and produced `GSIP-P00-Baseline-0.1.0-8156c46ce8ce.zip` with workflow artifact digest `sha256:455be98b93727c20646193da3682f92a20bbc9d373881ea6b3b4f443d967a731`. No owner-only evidence was deferred for P00.
+
+## P01 closure record
+
+P01 implementation was integrated by PR #4 at exact `main` SHA `34c665b12e910b6dfcb735f4978be6649e03d5c3`. Planning Integrity run `34213985141`, P00 Build Baseline regression run `34213985591`, and P01 Architecture and UI Shell run `34213985167` all succeeded on that SHA. The exact-main UI artifact `P01-UI-Evidence-34c665b12e910b6dfcb735f4978be6649e03d5c3` has workflow digest `sha256:11492dc4afa4d2257f410540cf757a40be91926e89a61611896bc3f30b06d09c`. It contains English/Arabic Dashboard and Login browser captures plus manifest hashes. No owner-only evidence was deferred for P01.
 
 ## Cross-phase gates
 
