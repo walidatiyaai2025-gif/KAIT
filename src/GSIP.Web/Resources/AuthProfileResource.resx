@@ -32,10 +32,20 @@
   <data name="BindProfile" xml:space="preserve"><value>Bind AuthProfile</value></data>
   <data name="SelectProfile" xml:space="preserve"><value>Select a permitted profile</value></data>
   <data name="SaveBinding" xml:space="preserve"><value>Save exact binding</value></data>
+  <data name="OwnerBinding" xml:space="preserve"><value>Owner Service + Environment</value></data>
+  <data name="SelectOwnerBinding" xml:space="preserve"><value>Select the exact owner binding</value></data>
+  <data name="OwnerBindingHelp" xml:space="preserve"><value>Every AuthProfile starts isolated to exactly one owner Service + Environment. Sharing is a separate explicit action.</value></data>
+  <data name="ShareProfile" xml:space="preserve"><value>Share profile explicitly</value></data>
+  <data name="TargetBinding" xml:space="preserve"><value>Target Service + Environment</value></data>
+  <data name="SelectTargetBinding" xml:space="preserve"><value>Select an unbound exact target</value></data>
+  <data name="SharingReason" xml:space="preserve"><value>Sharing reason</value></data>
+  <data name="ShareAction" xml:space="preserve"><value>Authorize shared binding</value></data>
+  <data name="UnbindShared" xml:space="preserve"><value>Remove shared binding</value></data>
+  <data name="UnbindSafety" xml:space="preserve"><value>Remove this explicit shared binding only. The owner binding cannot be removed here.</value></data>
   <data name="SecretLabel" xml:space="preserve"><value>Secret label</value></data>
   <data name="SecretValue" xml:space="preserve"><value>New secret value</value></data>
   <data name="SecretWriteOnlyHelp" xml:space="preserve"><value>Write-only input. The submitted value is sent directly to the vault and is never redisplayed.</value></data>
-  <data name="SetSecret" xml:space="preserve"><value>Create / replace secret</value></data>
+  <data name="SetSecret" xml:space="preserve"><value>Create secret</value></data>
   <data name="MaskedState" xml:space="preserve"><value>Masked state</value></data>
   <data name="Generation" xml:space="preserve"><value>Generation</value></data>
   <data name="Rotate" xml:space="preserve"><value>Rotate secret</value></data>

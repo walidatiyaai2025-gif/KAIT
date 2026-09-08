@@ -34,6 +34,9 @@ jobs:
       - name: Run P06 admin UI safety checks
         run: dotnet run --project tests/GSIP.P06AdminChecks/GSIP.P06AdminChecks.csproj -c Release
 
+      - name: Run P06 shared-binding lifecycle checks
+        run: dotnet run --project tests/GSIP.P06AdminBindingChecks/GSIP.P06AdminBindingChecks.csproj -c Release
+
   browser-evidence:
     runs-on: windows-latest
     timeout-minutes: 40

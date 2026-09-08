@@ -4,6 +4,7 @@
 @{
     ViewData["Title"] = L["PageTitle"];
     var isRtl = CultureInfo.CurrentUICulture.TextInfo.IsRightToLeft;
+    var currentCulture = isRtl ? "ar-KW" : "en";
     var availableBindings = Model.Entities
         .SelectMany(entity => entity.Services.SelectMany(service => service.Environments
             .Where(environment => environment.IsActive && !environment.AuthProfileId.HasValue)
@@ -61,6 +62,7 @@
             </div>
             <form method="post" action="/auth-profiles" class="auth-form">
                 @Html.AntiForgeryToken()
+                <input type="hidden" name="culture" value="@currentCulture" />
                 <label>@L["ProfileName"]<input name="name" maxlength="160" required autocomplete="off" /></label>
                 <label>@L["AuthenticationType"]
                     <select name="authenticationType" required>
@@ -165,7 +167,15 @@
                             {
                                 <div class="binding-chip">
                                     <span class="isolation-badge @(environment.IsSharedProfile ? "shared" : "isolated")">@(environment.IsSharedProfile ? L["Shared"] : L["Isolated"])</span>
-                                    <span>@(isRtl ? entity.NameAr : entity.NameEn) / @(isRtl ? service.NameAr : service.NameEn) / @environment.Code</span>
+                                    <span class="binding-label">@(isRtl ? entity.NameAr : entity.NameEn) / @(isRtl ? service.NameAr : service.NameEn) / @environment.Code</span>
+                                    @if (environment.IsSharedProfile)
+                                    {
+                                        <form method="post" action="/auth-profiles/@profile.Id/bindings/@service.Id/@environment.Id/unbind" class="binding-unbind-form">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="culture" value="@currentCulture" />
+                                            <button class="auth-button danger-outline" type="submit" aria-label="@L["UnbindSafety"]">@L["UnbindShared"]</button>
+                                        </form>
+                                    }
                                 </div>
                             }
                         }
@@ -194,6 +204,7 @@
                     <summary>@L["ShareProfile"]</summary>
                     <form method="post" action="/auth-profiles/@profile.Id/share" class="auth-form sharing-form">
                         @Html.AntiForgeryToken()
+                        <input type="hidden" name="culture" value="@currentCulture" />
                         <label>@L["TargetBinding"]
                             <select name="targetBinding" required>
                                 <option value="">@L["SelectTargetBinding"]</option>
@@ -229,6 +240,7 @@
                                     <summary>@L["Rotate"]</summary>
                                     <form method="post" action="/auth-profiles/@profile.Id/secrets/@secret.Id/rotate" class="auth-form compact-form">
                                         @Html.AntiForgeryToken()
+                                        <input type="hidden" name="culture" value="@currentCulture" />
                                         <label>@L["SecretValue"]<input name="secretValue" type="password" required minlength="8" maxlength="4096" autocomplete="new-password" spellcheck="false" /></label>
                                         <small>@L["SecretWriteOnlyHelp"]</small>
                                         <label class="choice"><input type="checkbox" name="confirmRotation" value="true" required /> @L["RotateConfirm"]</label>
@@ -243,6 +255,7 @@
                         <h4>@L["SetSecret"]</h4>
                         <form method="post" action="/auth-profiles/@profile.Id/secrets" class="auth-form">
                             @Html.AntiForgeryToken()
+                            <input type="hidden" name="culture" value="@currentCulture" />
                             <label>@L["SecretLabel"]<input name="label" maxlength="80" required autocomplete="off" /></label>
                             <label>@L["SecretValue"]<input name="secretValue" type="password" required minlength="8" maxlength="4096" autocomplete="new-password" spellcheck="false" /></label>
                             <small>@L["SecretWriteOnlyHelp"]</small>
@@ -254,13 +267,9 @@
                 <footer class="profile-actions">
                     <form method="post" action="/auth-profiles/@profile.Id/state">
                         @Html.AntiForgeryToken()
+                        <input type="hidden" name="culture" value="@currentCulture" />
                         <input type="hidden" name="isActive" value="@(!profile.IsActive ? "true" : "false")" />
                         <button class="auth-button secondary" type="submit">@(profile.IsActive ? L["Disable"] : L["Enable"])</button>
-                    </form>
-                    <form method="post" action="/auth-profiles/@profile.Id/delete">
-                        @Html.AntiForgeryToken()
-                        <button class="auth-button danger-outline" type="submit" aria-describedby="delete-help-@profile.Id">@L["Delete"]</button>
-                        <span id="delete-help-@profile.Id" class="sr-only">@L["DeleteSafety"]</span>
                     </form>
                 </footer>
             </article>

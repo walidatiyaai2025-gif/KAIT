@@ -32,10 +32,20 @@
   <data name="BindProfile" xml:space="preserve"><value>ربط ملف مصادقة</value></data>
   <data name="SelectProfile" xml:space="preserve"><value>اختر ملفًا مسموحًا</value></data>
   <data name="SaveBinding" xml:space="preserve"><value>حفظ الربط المحدد</value></data>
+  <data name="OwnerBinding" xml:space="preserve"><value>الخدمة والبيئة المالكة</value></data>
+  <data name="SelectOwnerBinding" xml:space="preserve"><value>اختر ربط المالك المحدد</value></data>
+  <data name="OwnerBindingHelp" xml:space="preserve"><value>يبدأ كل ملف مصادقة معزولًا لخدمة وبيئة مالكة واحدة فقط. المشاركة عملية منفصلة وصريحة.</value></data>
+  <data name="ShareProfile" xml:space="preserve"><value>مشاركة ملف المصادقة صراحة</value></data>
+  <data name="TargetBinding" xml:space="preserve"><value>الخدمة والبيئة المستهدفة</value></data>
+  <data name="SelectTargetBinding" xml:space="preserve"><value>اختر هدفًا محددًا غير مربوط</value></data>
+  <data name="SharingReason" xml:space="preserve"><value>سبب المشاركة</value></data>
+  <data name="ShareAction" xml:space="preserve"><value>تفويض الربط المشترك</value></data>
+  <data name="UnbindShared" xml:space="preserve"><value>إزالة الربط المشترك</value></data>
+  <data name="UnbindSafety" xml:space="preserve"><value>إزالة هذا الربط المشترك الصريح فقط. لا يمكن إزالة ربط المالك من هنا.</value></data>
   <data name="SecretLabel" xml:space="preserve"><value>اسم السر</value></data>
   <data name="SecretValue" xml:space="preserve"><value>قيمة السر الجديدة</value></data>
   <data name="SecretWriteOnlyHelp" xml:space="preserve"><value>حقل للكتابة فقط. تُرسل القيمة مباشرة إلى الخزنة ولا يتم إعادة عرضها.</value></data>
-  <data name="SetSecret" xml:space="preserve"><value>إنشاء / استبدال السر</value></data>
+  <data name="SetSecret" xml:space="preserve"><value>إنشاء سر</value></data>
   <data name="MaskedState" xml:space="preserve"><value>الحالة المحجوبة</value></data>
   <data name="Generation" xml:space="preserve"><value>الجيل</value></data>
   <data name="Rotate" xml:space="preserve"><value>تدوير السر</value></data>
