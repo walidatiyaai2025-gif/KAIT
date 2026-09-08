@@ -213,11 +213,14 @@ try {
     $browser = $browserCandidates | Select-Object -First 1
     if (-not $browser) { throw 'No supported Chrome/Edge browser found for P07 screenshot evidence.' }
 
+    # Windows headless Chromium enforces an approximately 500px minimum layout width.
+    # Use 500px for narrow evidence so the screenshot dimensions match the actual CSS viewport
+    # instead of producing a cropped 390px bitmap of a wider layout.
     $captures = @(
         @{ Name='p07-execution-en-desktop.png'; File=$enPath; Size='1440,1000'; Culture='en'; Direction='ltr'; Viewport='1440x1000' },
         @{ Name='p07-execution-ar-desktop.png'; File=$arPath; Size='1440,1000'; Culture='ar-KW'; Direction='rtl'; Viewport='1440x1000' },
-        @{ Name='p07-execution-en-narrow.png'; File=$enPath; Size='390,844'; Culture='en'; Direction='ltr'; Viewport='390x844' },
-        @{ Name='p07-execution-ar-narrow.png'; File=$arPath; Size='390,844'; Culture='ar-KW'; Direction='rtl'; Viewport='390x844' }
+        @{ Name='p07-execution-en-narrow.png'; File=$enPath; Size='500,844'; Culture='en'; Direction='ltr'; Viewport='500x844' },
+        @{ Name='p07-execution-ar-narrow.png'; File=$arPath; Size='500,844'; Culture='ar-KW'; Direction='rtl'; Viewport='500x844' }
     )
     foreach ($capture in $captures) {
         $output = Join-Path $artifactDir $capture.Name
