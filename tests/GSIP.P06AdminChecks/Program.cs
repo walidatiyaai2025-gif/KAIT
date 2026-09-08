@@ -10,6 +10,7 @@ using GSIP.Web.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 
 var root = FindRepositoryRoot();
 var viewPath = Path.Combine(root, "src", "GSIP.Web", "Views", "AuthProfiles", "Index.cshtml");
@@ -65,6 +66,7 @@ Check(layout.Contains("isAuthProfiles", StringComparison.Ordinal)
 Check(!controllerSource.Contains("ILogger", StringComparison.Ordinal), "The secret administration controller must not log submitted secret material.");
 Check(controllerSource.Contains("CryptographicOperations.ZeroMemory(clearBytes)", StringComparison.Ordinal), "Submitted secret bytes must be cleared after vault persistence.");
 Check(controllerSource.Contains("ModelState.Remove(nameof(secretValue))", StringComparison.Ordinal), "Secret inputs must be removed from validation state before rendering/redirect paths.");
+Check(controllerSource.Contains("authProfiles.UpdateAsync", StringComparison.Ordinal), "AuthProfile metadata updates must use the canonical foundation lifecycle operation.");
 
 var enKeys = ResourceKeys(en);
 var arKeys = ResourceKeys(ar);
@@ -116,11 +118,14 @@ var controller = new AuthProfilesController(fakeCatalog, fakeProfiles, fakeVault
         }
     }
 };
+controller.TempData = new TempDataDictionary(controller.HttpContext, new FakeTempDataProvider());
 
 var forgedProfileId = Guid.NewGuid();
 Check(await controller.Delete(forgedProfileId, CancellationToken.None) is NotFoundResult, "Forged AuthProfile ID must return NotFound.");
 Check(await controller.SetState(forgedProfileId, true, null, CancellationToken.None) is NotFoundResult, "Forged AuthProfile state mutation must return NotFound.");
 Check(await controller.RotateSecret(forgedProfileId, Guid.NewGuid(), "synthetic-secret-value", true, null, CancellationToken.None) is NotFoundResult, "Forged AuthProfile rotation must return NotFound.");
+Check(await controller.UpdateMetadata(forgedProfileId, "Forged", nameof(AuthProfileType.StaticBearer), CancellationToken.None) is NotFoundResult,
+    "Forged AuthProfile metadata mutation must return NotFound.");
 
 var crossEntityTarget = $"{fixture.EntityAId:D}|{fixture.ServiceBId:D}|{fixture.EnvironmentId:D}";
 var shareCallsBefore = fakeProfiles.ShareCalls;
@@ -149,14 +154,50 @@ Check(await controller.CreateSecret(fixture.Profile.Id, fixture.SecretName, "syn
     "Existing secret replacement must require atomic rotation instead of unconditional replacement.");
 Check(fakeVault.CreateCalls == 0, "Rejected replacement must not stage a new secret.");
 
-Check(await controller.UpdateMetadata(fixture.Profile.Id, "Renamed", nameof(AuthProfileType.StaticBearer), CancellationToken.None) is ConflictObjectResult,
-    "Metadata mutation must fail closed until the canonical foundation owns that persistence operation.");
+var versionBeforeMetadataUpdate = fakeProfiles.Current.Version;
+Check(await controller.UpdateMetadata(fixture.Profile.Id, "Renamed", nameof(AuthProfileType.StaticBearer), CancellationToken.None) is RedirectToActionResult,
+    "Valid metadata mutation must flow through the canonical foundation and redirect safely.");
+Check(fakeProfiles.UpdateCalls == 1
+    && fakeProfiles.Current.Name == "Renamed"
+    && fakeProfiles.Current.AuthType == AuthProfileType.StaticBearer
+    && fakeProfiles.Current.Version == versionBeforeMetadataUpdate + 1,
+    "Canonical metadata update must mutate only safe metadata and advance profile version.");
+
+var ownerBindingsBefore = fakeProfiles.Current.Bindings.Count;
+var ownerUnbindRejected = false;
+try
+{
+    await fakeProfiles.UnbindAsync(
+        new UnbindAuthProfileCommand(fakeProfiles.Current.Id, fakeProfiles.Current.OwnerServiceId, fakeProfiles.Current.OwnerEnvironmentId),
+        CancellationToken.None);
+}
+catch (InvalidOperationException)
+{
+    ownerUnbindRejected = true;
+}
+Check(ownerUnbindRejected && fakeProfiles.Current.Bindings.Count == ownerBindingsBefore,
+    "Owner AuthProfile binding must reject unbind with zero mutation.");
+
+var shared = await fakeProfiles.ShareAsync(
+    new ShareAuthProfileCommand(fakeProfiles.Current.Id, fixture.ServiceBId, fixture.EnvironmentId, "acceptance", "explicit shared acceptance"),
+    CancellationToken.None);
+Check(shared.Bindings.Any(binding => binding.ServiceId == fixture.ServiceBId && binding.EnvironmentId == fixture.EnvironmentId && binding.IsShared),
+    "Explicit shared binding must be represented before unbind acceptance.");
+var versionBeforeUnbind = fakeProfiles.Current.Version;
+await fakeProfiles.UnbindAsync(
+    new UnbindAuthProfileCommand(fakeProfiles.Current.Id, fixture.ServiceBId, fixture.EnvironmentId),
+    CancellationToken.None);
+Check(fakeProfiles.Current.Bindings.Count == 1
+    && fakeProfiles.Current.Bindings.Single().ServiceId == fixture.ServiceAId
+    && !fakeProfiles.Current.Bindings.Single().IsShared
+    && fakeProfiles.Current.Version == versionBeforeUnbind + 1,
+    "Unbind must remove only the explicit shared binding, preserve owner binding and advance profile version.");
 
 Console.WriteLine("P06 admin controller/security checks: PASS");
 Console.WriteLine($"Anti-forgery forms: {view.CountOccurrences("@Html.AntiForgeryToken()")}");
 Console.WriteLine($"Write-only password inputs: {view.CountOccurrences("type=\"password\"")}");
 Console.WriteLine($"AuthProfile localization keys: {enKeys.Count}");
-Console.WriteLine("IDOR/cross-scope/unsafe-delete negative checks: PASS");
+Console.WriteLine("IDOR/cross-scope/unsafe-delete and canonical metadata/unbind lifecycle checks: PASS");
 return;
 
 static HashSet<string> ResourceKeys(XDocument document) => document.Root!
@@ -273,33 +314,109 @@ sealed class FakeCatalog(MetadataCatalogSnapshot snapshot) : IMetadataCatalogSer
 
 sealed class FakeAuthProfiles(AuthProfileDescriptor profile) : IAuthProfileService
 {
+    private AuthProfileDescriptor current = profile;
+
+    public AuthProfileDescriptor Current => current;
     public int CreateCalls { get; private set; }
     public int ShareCalls { get; private set; }
+    public int UpdateCalls { get; private set; }
+    public int UnbindCalls { get; private set; }
 
     public Task<AuthProfileDescriptor> CreateAsync(CreateAuthProfileCommand command, CancellationToken cancellationToken = default)
     {
         CreateCalls++;
-        return Task.FromResult(profile);
+        return Task.FromResult(current);
     }
 
     public Task<AuthProfileDescriptor> GetAsync(Guid authProfileId, CancellationToken cancellationToken = default) =>
-        authProfileId == profile.Id ? Task.FromResult(profile) : Task.FromException<AuthProfileDescriptor>(new KeyNotFoundException());
+        authProfileId == current.Id ? Task.FromResult(current) : Task.FromException<AuthProfileDescriptor>(new KeyNotFoundException());
 
     public Task<AuthProfileDescriptor?> ResolveAsync(Guid serviceId, Guid environmentId, CancellationToken cancellationToken = default) =>
-        Task.FromResult<AuthProfileDescriptor?>(serviceId == profile.OwnerServiceId && environmentId == profile.OwnerEnvironmentId ? profile : null);
+        Task.FromResult<AuthProfileDescriptor?>(current.Bindings.Any(binding => binding.ServiceId == serviceId && binding.EnvironmentId == environmentId) && current.IsEnabled ? current : null);
 
     public Task<AuthProfileDescriptor> ShareAsync(ShareAuthProfileCommand command, CancellationToken cancellationToken = default)
     {
+        if (command.AuthProfileId != current.Id)
+            return Task.FromException<AuthProfileDescriptor>(new KeyNotFoundException());
+        if (current.OwnerServiceId == command.TargetServiceId && current.OwnerEnvironmentId == command.TargetEnvironmentId)
+            return Task.FromException<AuthProfileDescriptor>(new InvalidOperationException());
+        if (current.Bindings.Any(binding => binding.ServiceId == command.TargetServiceId && binding.EnvironmentId == command.TargetEnvironmentId))
+            return Task.FromException<AuthProfileDescriptor>(new InvalidOperationException());
+
         ShareCalls++;
-        return Task.FromResult(profile);
+        var now = DateTimeOffset.UtcNow;
+        current = current with
+        {
+            Version = current.Version + 1,
+            UpdatedAtUtc = now,
+            Bindings = current.Bindings
+                .Append(new AuthProfileBindingDescriptor(command.TargetServiceId, command.TargetEnvironmentId, true, command.Actor, command.Reason, now))
+                .ToList()
+        };
+        return Task.FromResult(current);
     }
 
-    public Task<AuthProfileDescriptor> SetSecretReferenceAsync(Guid authProfileId, string secretName, SecretRef secretRef, CancellationToken cancellationToken = default) => Task.FromResult(profile);
+    public Task<AuthProfileDescriptor> UpdateAsync(UpdateAuthProfileCommand command, CancellationToken cancellationToken = default)
+    {
+        if (command.AuthProfileId != current.Id)
+            return Task.FromException<AuthProfileDescriptor>(new KeyNotFoundException());
+
+        UpdateCalls++;
+        var name = command.Name.Trim();
+        if (!string.Equals(current.Name, name, StringComparison.Ordinal) || current.AuthType != command.AuthType)
+        {
+            current = current with
+            {
+                Name = name,
+                AuthType = command.AuthType,
+                Version = current.Version + 1,
+                UpdatedAtUtc = DateTimeOffset.UtcNow
+            };
+        }
+        return Task.FromResult(current);
+    }
+
+    public Task<AuthProfileDescriptor> UnbindAsync(UnbindAuthProfileCommand command, CancellationToken cancellationToken = default)
+    {
+        if (command.AuthProfileId != current.Id)
+            return Task.FromException<AuthProfileDescriptor>(new KeyNotFoundException());
+        if (current.OwnerServiceId == command.ServiceId && current.OwnerEnvironmentId == command.EnvironmentId)
+            return Task.FromException<AuthProfileDescriptor>(new InvalidOperationException());
+
+        var binding = current.Bindings.SingleOrDefault(candidate => candidate.ServiceId == command.ServiceId && candidate.EnvironmentId == command.EnvironmentId);
+        if (binding is null || !binding.IsShared)
+            return Task.FromException<AuthProfileDescriptor>(new KeyNotFoundException());
+
+        UnbindCalls++;
+        current = current with
+        {
+            Version = current.Version + 1,
+            UpdatedAtUtc = DateTimeOffset.UtcNow,
+            Bindings = current.Bindings.Where(candidate => candidate != binding).ToList()
+        };
+        return Task.FromResult(current);
+    }
+
+    public Task<AuthProfileDescriptor> SetSecretReferenceAsync(Guid authProfileId, string secretName, SecretRef secretRef, CancellationToken cancellationToken = default) => Task.FromResult(current);
 
     public Task<bool> ActivateSecretReferenceAsync(Guid serviceId, Guid environmentId, Guid authProfileId, string secretName,
         SecretRef expectedCurrentReference, int expectedGeneration, SecretRef stagedReference, CancellationToken cancellationToken = default) => Task.FromResult(false);
 
-    public Task<AuthProfileDescriptor> SetEnabledAsync(Guid authProfileId, bool enabled, CancellationToken cancellationToken = default) => Task.FromResult(profile);
+    public Task<AuthProfileDescriptor> SetEnabledAsync(Guid authProfileId, bool enabled, CancellationToken cancellationToken = default)
+    {
+        if (authProfileId != current.Id)
+            return Task.FromException<AuthProfileDescriptor>(new KeyNotFoundException());
+        if (current.IsEnabled != enabled)
+        {
+            current = current with
+            {
+                IsEnabled = enabled,
+                Version = current.Version + 1,
+                UpdatedAtUtc = DateTimeOffset.UtcNow
+            };
+        }
+        return Task.FromResult(current);
+    }
 }
 
 sealed class FakeVault(SecretRef reference, Guid serviceId, Guid environmentId, Guid profileId, string secretName) : ISecretVault
@@ -338,6 +455,12 @@ sealed class FakeVault(SecretRef reference, Guid serviceId, Guid environmentId, 
         RevokeCalls++;
         return Task.FromResult(Descriptor(secretRef, SecretLifecycleState.Revoked));
     }
+}
+
+sealed class FakeTempDataProvider : ITempDataProvider
+{
+    public IDictionary<string, object> LoadTempData(HttpContext context) => new Dictionary<string, object>();
+    public void SaveTempData(HttpContext context, IDictionary<string, object> values) { }
 }
 
 static class StringExtensions
