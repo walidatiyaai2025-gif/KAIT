@@ -1,4 +1,7 @@
 using GSIP.Application.Abstractions;
+using GSIP.Application.Setup;
+using GSIP.Infrastructure.Setup;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GSIP.Infrastructure;
@@ -9,6 +12,8 @@ public static class DependencyInjection
     {
         ArgumentNullException.ThrowIfNull(services);
         services.AddSingleton<ISystemClock, SystemClock>();
+        services.AddScoped<ISetupService, SetupService>();
+        services.AddScoped<IPasswordHasher<BootstrapAdministrator>, PasswordHasher<BootstrapAdministrator>>();
         return services;
     }
 
