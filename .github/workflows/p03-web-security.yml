@@ -1,0 +1,44 @@
+name: P03 Web Security Headers
+
+on:
+  push:
+    branches:
+      - main
+      - 'worker/p03-security-headers-*'
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  web-security-headers:
+    runs-on: windows-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pinned .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore solution
+        run: dotnet restore GSIP.sln
+
+      - name: Build solution Release
+        run: dotnet build GSIP.sln --configuration Release --no-restore
+
+      - name: Restore focused security checks
+        run: dotnet restore tests/GSIP.P03SecurityChecks/GSIP.P03SecurityChecks.csproj
+
+      - name: Build focused security checks
+        run: dotnet build tests/GSIP.P03SecurityChecks/GSIP.P03SecurityChecks.csproj --configuration Release --no-restore
+
+      - name: Run focused security checks
+        run: dotnet run --project tests/GSIP.P03SecurityChecks/GSIP.P03SecurityChecks.csproj --configuration Release --no-build
+
+      - name: Validate execution plan and governance
+        shell: pwsh
+        run: ./scripts/validate-plan.ps1
