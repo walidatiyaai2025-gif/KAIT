@@ -63,6 +63,10 @@ jobs:
         shell: pwsh
         run: ./scripts/verify-p06-authprofile-ui.ps1
 
+      - name: Verify exact 390px responsive rendering
+        shell: pwsh
+        run: ./scripts/verify-p06-authprofile-mobile.ps1
+
       - name: Validate execution plan and governance
         run: python scripts/validate_execution_plan.py
 
