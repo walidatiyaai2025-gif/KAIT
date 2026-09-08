@@ -22,7 +22,7 @@ builder.Services
     .AddControllersWithViews()
     .AddViewLocalization();
 builder.Services.Configure<PortalShellOptions>(builder.Configuration.GetSection(PortalShellOptions.SectionName));
-builder.Services.AddGsipInfrastructure();
+builder.Services.AddGsipInfrastructure(builder.Configuration, builder.Environment);
 builder.Services.AddGsipIntegrations();
 builder.Services.AddHealthChecks();
 
