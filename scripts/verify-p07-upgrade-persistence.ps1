@@ -285,7 +285,7 @@ var expectedProdTimeout = manifest.GetProperty("ProductionTimeoutSeconds").GetIn
 var options = new DbContextOptionsBuilder<GsipDbContext>().UseSqlServer(upgradeConnection).Options;
 await using (var db = new GsipDbContext(options))
 {
-    var currentKnownMigrations = (await db.Database.GetMigrationsAsync()).ToArray();
+    var currentKnownMigrations = db.Database.GetMigrations().ToArray();
     Assert(currentKnownMigrations.SequenceEqual(expectedMigrations, StringComparer.Ordinal),
         "P07 introduced an unexpected schema migration; durable execution/history persistence is not P07 scope.");
     var pendingBeforeUpgrade = (await db.Database.GetPendingMigrationsAsync()).ToArray();
