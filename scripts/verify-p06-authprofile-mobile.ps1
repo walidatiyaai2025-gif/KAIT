@@ -149,15 +149,19 @@ foreach ($case in $cases) {
         $null = Invoke-CdpCommand -Socket $socket -Id $commandId -Method 'Page.navigate' -Params @{ url = $fileUrl }; $commandId++
 
         $ready = $false
-        for ($attempt = 0; $attempt -lt 50; $attempt++) {
+        $lastReadyState = '<unknown>'
+        for ($attempt = 0; $attempt -lt 200; $attempt++) {
             Start-Sleep -Milliseconds 100
             $result = Invoke-CdpCommand -Socket $socket -Id $commandId -Method 'Runtime.evaluate' -Params @{
                 expression = 'document.readyState'
                 returnByValue = $true
             }; $commandId++
-            if ($result.result.value -eq 'complete') { $ready = $true; break }
+            $lastReadyState = [string]$result.result.value
+            if ($lastReadyState -eq 'complete') { $ready = $true; break }
         }
-        if (-not $ready) { throw "Responsive page did not finish loading for $($case.Culture)." }
+        if (-not $ready) {
+            throw "Responsive page did not finish loading for $($case.Culture) within 20 seconds (last readyState='$lastReadyState')."
+        }
 
         $metricsResult = Invoke-CdpCommand -Socket $socket -Id $commandId -Method 'Runtime.evaluate' -Params @{
             expression = 'JSON.stringify({innerWidth:window.innerWidth,clientWidth:document.documentElement.clientWidth,scrollWidth:document.documentElement.scrollWidth,innerHeight:window.innerHeight})'
