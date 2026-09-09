@@ -21,7 +21,8 @@ public sealed class AuditController(
         string? serviceCode = null,
         Guid? actorUserId = null,
         bool? succeeded = null,
-        string? action = null,
+        [FromQuery(Name = "eventAction")] string? eventAction = null,
+        [FromQuery(Name = "action")] string? legacyAction = null,
         Guid? selectedId = null,
         string? integrityResult = null,
         int page = 1,
@@ -37,7 +38,7 @@ public sealed class AuditController(
                 Bound(serviceCode, 120),
                 actorUserId,
                 succeeded,
-                Bound(action, 64),
+                Bound(eventAction ?? legacyAction, 64),
                 Math.Clamp(page, 1, 100_000),
                 Math.Clamp(pageSize, 1, 100));
 
@@ -79,7 +80,8 @@ public sealed class AuditController(
         string? serviceCode = null,
         Guid? actorUserId = null,
         bool? succeeded = null,
-        string? action = null,
+        [FromQuery(Name = "eventAction")] string? eventAction = null,
+        [FromQuery(Name = "action")] string? legacyAction = null,
         CancellationToken cancellationToken = default)
     {
         try
@@ -91,7 +93,7 @@ public sealed class AuditController(
                 Bound(serviceCode, 120),
                 actorUserId,
                 succeeded,
-                Bound(action, 64),
+                Bound(eventAction ?? legacyAction, 64),
                 1,
                 100);
             var export = await auditTrail.ExportAsync(User, filter, cancellationToken);

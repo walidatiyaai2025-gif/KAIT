@@ -41,7 +41,7 @@
                    asp-route-serviceCode="@Model.Filter.ServiceCode"
                    asp-route-actorUserId="@Model.Filter.ActorUserId"
                    asp-route-succeeded="@Model.Filter.Succeeded"
-                   asp-route-action="@Model.Filter.Action"
+                   asp-route-eventAction="@Model.Filter.Action"
                    data-testid="audit-export">@(ar ? "تصدير CSV" : "Export CSV")</a>
             }
         </div>
@@ -86,7 +86,7 @@
         </div>
         <label>
             <span>@(ar ? "الإجراء" : "Action")</span>
-            <input name="action" value="@Model.Filter.Action" maxlength="64" autocomplete="off" />
+            <input name="eventAction" value="@Model.Filter.Action" maxlength="64" autocomplete="off" />
         </label>
         <label>
             <span>@(ar ? "الخدمة" : "Service")</span>
@@ -207,7 +207,7 @@
                                    asp-route-serviceCode="@Model.Filter.ServiceCode"
                                    asp-route-actorUserId="@Model.Filter.ActorUserId"
                                    asp-route-succeeded="@Model.Filter.Succeeded"
-                                   asp-route-action="@Model.Filter.Action">@(ar ? "تفاصيل" : "Details")</a>
+                                   asp-route-eventAction="@Model.Filter.Action">@(ar ? "تفاصيل" : "Details")</a>
                             </td>
                         </tr>
                     }
@@ -220,14 +220,14 @@
                 <a class="audit-btn audit-btn-ghost" asp-action="Index" asp-route-page="@(Model.Page.Page - 1)" asp-route-pageSize="@Model.Page.PageSize"
                    asp-route-fromUtc="@Model.Filter.FromUtc" asp-route-toUtc="@Model.Filter.ToUtc" asp-route-entityCode="@Model.Filter.EntityCode"
                    asp-route-serviceCode="@Model.Filter.ServiceCode" asp-route-actorUserId="@Model.Filter.ActorUserId" asp-route-succeeded="@Model.Filter.Succeeded"
-                   asp-route-action="@Model.Filter.Action">@(ar ? "السابق" : "Previous")</a>
+                   asp-route-eventAction="@Model.Filter.Action">@(ar ? "السابق" : "Previous")</a>
             }
             @if (Model.Page.Page * Model.Page.PageSize < Model.Page.TotalCount)
             {
                 <a class="audit-btn audit-btn-ghost" asp-action="Index" asp-route-page="@(Model.Page.Page + 1)" asp-route-pageSize="@Model.Page.PageSize"
                    asp-route-fromUtc="@Model.Filter.FromUtc" asp-route-toUtc="@Model.Filter.ToUtc" asp-route-entityCode="@Model.Filter.EntityCode"
                    asp-route-serviceCode="@Model.Filter.ServiceCode" asp-route-actorUserId="@Model.Filter.ActorUserId" asp-route-succeeded="@Model.Filter.Succeeded"
-                   asp-route-action="@Model.Filter.Action">@(ar ? "التالي" : "Next")</a>
+                   asp-route-eventAction="@Model.Filter.Action">@(ar ? "التالي" : "Next")</a>
             }
         </nav>
     </section>

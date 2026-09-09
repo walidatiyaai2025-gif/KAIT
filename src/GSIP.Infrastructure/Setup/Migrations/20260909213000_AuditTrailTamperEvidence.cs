@@ -20,7 +20,7 @@ public partial class AuditTrailTamperEvidence : Migration
         migrationBuilder.AddColumn<string>(name: "Source", table: "AuthenticationAuditEvents", type: "nvarchar(120)", maxLength: 120, nullable: true);
         migrationBuilder.AddColumn<string>(name: "Device", table: "AuthenticationAuditEvents", type: "nvarchar(160)", maxLength: 160, nullable: true);
         migrationBuilder.AddColumn<string>(name: "MetadataJson", table: "AuthenticationAuditEvents", type: "nvarchar(max)", nullable: true);
-        migrationBuilder.AddColumn<string>(name: "PreviousHash", table: "AuthenticationAuditEvents", type: "char(64)", maxLength: 64, nullable: true);
+        migrationBuilder.AddColumn<string>(name: "PreviousHash", table: "AuthenticationAuditEvents", type: "nvarchar(64)", maxLength: 64, nullable: true);
         migrationBuilder.AddColumn<string>(name: "RecordHash", table: "AuthenticationAuditEvents", type: "char(64)", maxLength: 64, nullable: true);
         migrationBuilder.AddColumn<DateTimeOffset>(name: "RetainUntilUtc", table: "AuthenticationAuditEvents", type: "datetimeoffset", nullable: true);
 

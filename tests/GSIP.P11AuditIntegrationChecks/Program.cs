@@ -3,6 +3,7 @@ using GSIP.Application.Abstractions;
 using GSIP.Application.Auditing;
 using GSIP.Application.Authorization;
 using GSIP.Infrastructure.Auditing;
+using GSIP.Infrastructure.Identity;
 using GSIP.Infrastructure.Setup;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
@@ -35,7 +36,7 @@ var permissions = new FakePermissionEvaluator(actorId,
     GsipPermissions.AuditExport,
     GsipPermissions.DiagnosticsRun);
 
-await ResetDatabaseAsync(dbOptions);
+await ResetDatabaseAsync(dbOptions, actorId);
 
 await using (var db = new GsipDbContext(dbOptions))
 {
@@ -77,7 +78,7 @@ await using (var db = new GsipDbContext(dbOptions))
         "Monitoring snapshot did not expose verified healthy state.");
 }
 
-await ResetDatabaseAsync(dbOptions);
+await ResetDatabaseAsync(dbOptions, actorId);
 
 var concurrentWrites = Enumerable.Range(0, 4).Select(async index =>
 {
@@ -108,7 +109,7 @@ await using (var db = new GsipDbContext(dbOptions))
         "Retention checkpoint did not preserve verifiable chain state after prefix purge.");
 }
 
-await ResetDatabaseAsync(dbOptions);
+await ResetDatabaseAsync(dbOptions, actorId);
 clock.UtcNow = new DateTimeOffset(2026, 9, 9, 19, 0, 0, TimeSpan.Zero);
 
 await using (var db = new GsipDbContext(dbOptions))
@@ -133,7 +134,7 @@ await using (var db = new GsipDbContext(dbOptions))
         "Tail deletion was not detected against AuditChainState tail evidence.");
 }
 
-await ResetDatabaseAsync(dbOptions);
+await ResetDatabaseAsync(dbOptions, actorId);
 clock.UtcNow = new DateTimeOffset(2026, 9, 9, 20, 0, 0, TimeSpan.Zero);
 
 await using (var db = new GsipDbContext(dbOptions))
@@ -158,7 +159,7 @@ await using (var db = new GsipDbContext(dbOptions))
         "Full-record field mutation was not detected by integrity verification.");
 }
 
-await ResetDatabaseAsync(dbOptions);
+await ResetDatabaseAsync(dbOptions, actorId);
 Console.WriteLine("P11_LOCALDB_MIGRATION_DISCOVERY=PASS");
 Console.WriteLine("P11_APPEND_ONLY_DB_TRIGGER=PASS");
 Console.WriteLine("P11_CONCURRENT_HASH_CHAIN_SERIALIZATION=PASS");
@@ -195,11 +196,27 @@ static AuditTrailEvent Event(
 static ClaimsPrincipal Principal(Guid actorId) => new(new ClaimsIdentity(
     new[] { new Claim(ClaimTypes.NameIdentifier, actorId.ToString("D")) }, "P11Synthetic"));
 
-static async Task ResetDatabaseAsync(DbContextOptions<GsipDbContext> options)
+static async Task ResetDatabaseAsync(DbContextOptions<GsipDbContext> options, Guid actorId)
 {
     await using var db = new GsipDbContext(options);
     await db.Database.EnsureDeletedAsync();
     await db.Database.MigrateAsync();
+    db.Users.Add(new ApplicationUser
+    {
+        Id = actorId,
+        UserName = "p11.synthetic",
+        NormalizedUserName = "P11.SYNTHETIC",
+        Email = "p11.synthetic@example.invalid",
+        NormalizedEmail = "P11.SYNTHETIC@EXAMPLE.INVALID",
+        EmailConfirmed = true,
+        DisplayName = "P11 Synthetic Actor",
+        IsEnabled = true,
+        MustChangePassword = false,
+        CreatedAtUtc = new DateTimeOffset(2026, 9, 9, 17, 0, 0, TimeSpan.Zero),
+        SecurityStamp = "P11-SYNTHETIC-SECURITY-STAMP",
+        ConcurrencyStamp = "P11-SYNTHETIC-CONCURRENCY-STAMP"
+    });
+    await db.SaveChangesAsync();
 }
 
 static async Task AssertDatabaseMutationRejectedAsync(GsipDbContext db, string sql, string message)
