@@ -60,3 +60,51 @@ jobs:
           path: artifacts/p02-setup/
           if-no-files-found: error
           retention-days: 30
+
+  sql-authentication-acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pinned .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Generate ephemeral SQL credential
+        shell: bash
+        run: |
+          password="GsipP02!$(openssl rand -hex 16)Aa1"
+          echo "::add-mask::$password"
+          echo "GSIP_P02_SQL_PASSWORD=$password" >> "$GITHUB_ENV"
+
+      - name: Start ephemeral SQL Server 2022
+        shell: bash
+        run: |
+          docker run --name gsip-p02-sql \
+            -e ACCEPT_EULA=Y \
+            -e MSSQL_PID=Developer \
+            -e MSSQL_SA_PASSWORD="$GSIP_P02_SQL_PASSWORD" \
+            -p 1433:1433 \
+            -d mcr.microsoft.com/mssql/server:2022-latest
+
+      - name: Build dedicated SQL Authentication acceptance
+        shell: bash
+        run: |
+          dotnet restore tests/GSIP.P02SqlAuthChecks/GSIP.P02SqlAuthChecks.csproj
+          dotnet build tests/GSIP.P02SqlAuthChecks/GSIP.P02SqlAuthChecks.csproj --configuration Release --no-restore
+
+      - name: Run SQL Authentication success and negative acceptance
+        shell: bash
+        env:
+          GSIP_P02_SQL_SERVER: 'tcp:127.0.0.1,1433'
+          GSIP_P02_SQL_USERNAME: 'sa'
+        run: dotnet run --project tests/GSIP.P02SqlAuthChecks/GSIP.P02SqlAuthChecks.csproj --configuration Release --no-build
+
+      - name: Remove ephemeral SQL Server
+        if: always()
+        shell: bash
+        run: docker rm -f gsip-p02-sql >/dev/null 2>&1 || true
