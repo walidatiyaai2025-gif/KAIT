@@ -1,0 +1,139 @@
+name: P11 Audit Tamper Evidence and Monitoring
+
+on:
+  push:
+    branches:
+      - main
+      - 'worker/p11-audit-tamper-monitoring'
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  audit-security-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          fetch-depth: 0
+      - name: Assert exact candidate SHA
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+      - name: Setup pinned .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Restore
+        run: |
+          dotnet restore GSIP.sln
+          dotnet restore tests/GSIP.P11AuditChecks/GSIP.P11AuditChecks.csproj
+      - name: Build Release
+        run: |
+          dotnet build GSIP.sln -c Release --no-restore
+          dotnet build tests/GSIP.P11AuditChecks/GSIP.P11AuditChecks.csproj -c Release --no-restore
+      - name: Run independent leakage and hash acceptance
+        shell: bash
+        run: |
+          mkdir -p artifacts/p11-audit-monitoring
+          dotnet run --project tests/GSIP.P11AuditChecks/GSIP.P11AuditChecks.csproj -c Release --no-build | tee artifacts/p11-audit-monitoring/security-contract.txt
+      - name: Reject forbidden audit evidence patterns
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          text = '\n'.join(p.read_text(encoding='utf-8', errors='ignore') for p in Path('artifacts/p11-audit-monitoring').rglob('*') if p.is_file())
+          forbidden = [
+              r'Authorization\s*:\s*Bearer\s+\S+',
+              r'x-api-key\s*[:=]\s*\S+',
+              r'(?i)password\s*[:=]\s*(?!\[REDACTED\])\S+',
+              r'\b\d{12}\b',
+          ]
+          for pattern in forbidden:
+              if re.search(pattern, text):
+                  raise SystemExit(f'forbidden evidence pattern: {pattern}')
+          PY
+      - name: Preserve planning integrity
+        run: python scripts/validate_execution_plan.py
+      - name: Upload P11 security evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: P11-Audit-Security-${{ env.CANDIDATE_SHA }}
+          path: artifacts/p11-audit-monitoring/
+          if-no-files-found: error
+          retention-days: 30
+
+  localdb-tamper-retention-monitoring:
+    runs-on: windows-latest
+    timeout-minutes: 35
+    env:
+      CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+      GSIP_P11_SQL: 'Server=(localdb)\MSSQLLocalDB;Database=GSIP_P11_AUDIT_${{ github.run_id }}_${{ github.run_attempt }};Integrated Security=true;TrustServerCertificate=true;MultipleActiveResultSets=true'
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          fetch-depth: 0
+      - name: Assert exact candidate SHA
+        shell: pwsh
+        run: |
+          $actual = (git rev-parse HEAD).Trim()
+          if ($actual -ne $env:CANDIDATE_SHA) { throw 'Exact candidate mismatch.' }
+      - name: Setup pinned .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Restore LocalDB acceptance
+        run: dotnet restore tests/GSIP.P11AuditIntegrationChecks/GSIP.P11AuditIntegrationChecks.csproj
+      - name: Build LocalDB acceptance
+        run: dotnet build tests/GSIP.P11AuditIntegrationChecks/GSIP.P11AuditIntegrationChecks.csproj -c Release --no-restore
+      - name: Start SQL Server LocalDB
+        shell: pwsh
+        run: |
+          sqllocaldb start MSSQLLocalDB
+          sqllocaldb info MSSQLLocalDB
+      - name: Run append-only, integrity, concurrency, retention and monitoring acceptance
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force artifacts/p11-audit-monitoring | Out-Null
+          dotnet run --project tests/GSIP.P11AuditIntegrationChecks/GSIP.P11AuditIntegrationChecks.csproj -c Release --no-build | Tee-Object artifacts/p11-audit-monitoring/localdb-acceptance.txt
+      - name: Build exact-candidate evidence manifest
+        shell: pwsh
+        run: |
+          @'
+          import hashlib, json, os, pathlib
+          root = pathlib.Path('artifacts/p11-audit-monitoring')
+          files = []
+          for p in sorted(x for x in root.rglob('*') if x.is_file()):
+              data = p.read_bytes()
+              files.append({'path': p.as_posix(), 'bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest()})
+          manifest = {
+              'CandidateSha': os.environ['CANDIDATE_SHA'],
+              'Unit': 'P11::audit-tamper-monitoring',
+              'AppendOnlyDatabaseEnforcement': 'TESTED',
+              'TamperDetection': 'TESTED',
+              'ConcurrentSerialization': 'TESTED',
+              'RetentionCheckpoint': 'TESTED',
+              'MonitoringHealth': 'TESTED',
+              'RealCredentials': False,
+              'PersonalData': False,
+              'Files': files,
+          }
+          (root / 'manifest.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
+          '@ | python -
+      - name: Upload P11 LocalDB evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: P11-Audit-LocalDB-${{ env.CANDIDATE_SHA }}
+          path: artifacts/p11-audit-monitoring/
+          if-no-files-found: error
+          retention-days: 30
