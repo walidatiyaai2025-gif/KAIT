@@ -1,0 +1,57 @@
+@using GSIP.Application.Execution
+@model RequestHistoryDetail
+@{
+    var isArabic = (bool?)(ViewData["IsArabic"]) == true;
+    string T(string en, string ar) => isArabic ? ar : en;
+    ViewData["Title"] = T("Request details", "تفاصيل الطلب");
+}
+
+<section class="execution-hero" aria-labelledby="request-detail-title">
+    <div>
+        <span class="eyebrow">GSIP · P10</span>
+        <h1 id="request-detail-title">@T("Request details", "تفاصيل الطلب")</h1>
+        <p dir="ltr">@Model.Summary.RequestId</p>
+    </div>
+</section>
+
+<section class="execution-card">
+    <dl class="request-metadata-card">
+        <div><dt>Request ID</dt><dd dir="ltr">@Model.Summary.RequestId</dd></div>
+        <div><dt>Correlation ID</dt><dd dir="ltr">@Model.Summary.CorrelationId</dd></div>
+        <div><dt>@T("Entity", "الجهة")</dt><dd>@Model.Summary.EntityCode</dd></div>
+        <div><dt>@T("Service", "الخدمة")</dt><dd>@Model.Summary.ServiceCode · v@Model.Summary.ServiceVersion</dd></div>
+        <div><dt>@T("Environment", "البيئة")</dt><dd>@Model.Summary.EnvironmentCode</dd></div>
+        <div><dt>@T("Status", "الحالة")</dt><dd>@Model.Summary.Status · @Model.Summary.OutcomeCode</dd></div>
+        <div><dt>HTTP</dt><dd>@(Model.Summary.HttpStatusCode?.ToString() ?? "—")</dd></div>
+        <div><dt>@T("Duration", "المدة")</dt><dd>@Model.Summary.DurationMilliseconds ms</dd></div>
+        <div><dt>@T("Attempts", "المحاولات")</dt><dd>@Model.Summary.Attempts</dd></div>
+        <div><dt>@T("Started", "بدأ")</dt><dd dir="ltr">@Model.Summary.StartedAtUtc.ToString("u")</dd></div>
+        <div><dt>@T("Completed", "اكتمل")</dt><dd dir="ltr">@(Model.Summary.CompletedAtUtc?.ToString("u") ?? "—")</dd></div>
+    </dl>
+</section>
+
+<section class="execution-card">
+    <h2>@T("Masked request input", "بيانات الطلب بعد الإخفاء")</h2>
+    <pre dir="ltr">@Model.Summary.MaskedInputJson</pre>
+</section>
+
+@if (!string.IsNullOrWhiteSpace(Model.StructuredResultJson))
+{
+    <section class="execution-card">
+        <h2>@T("Protected structured result", "النتيجة المنظمة المحمية")</h2>
+        <pre dir="auto">@Model.StructuredResultJson</pre>
+    </section>
+}
+@if (!string.IsNullOrWhiteSpace(Model.RawResponse))
+{
+    <section class="execution-card">
+        <h2>@T("Stored masked raw response", "الاستجابة الخام المخزنة بعد الإخفاء")</h2>
+        <pre dir="auto">@Model.RawResponse</pre>
+    </section>
+}
+@if (Model.Summary.ResultSuppressedByBound)
+{
+    <p role="status">@T("A stored result was suppressed because it exceeded the configured safe bound.", "تم حجب نتيجة مخزنة لأنها تجاوزت الحد الآمن المحدد.")</p>
+}
+
+<p><a href="/requests">@T("Back to request history", "العودة إلى سجل الطلبات")</a></p>
