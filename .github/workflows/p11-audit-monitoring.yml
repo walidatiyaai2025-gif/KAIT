@@ -76,7 +76,7 @@ jobs:
 
   localdb-tamper-retention-monitoring:
     runs-on: windows-latest
-    timeout-minutes: 35
+    timeout-minutes: 50
     env:
       CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       GSIP_P11_SQL: 'Server=(localdb)\MSSQLLocalDB;Database=GSIP_P11_AUDIT_${{ github.run_id }}_${{ github.run_attempt }};Integrated Security=true;TrustServerCertificate=true;MultipleActiveResultSets=true'
@@ -95,10 +95,16 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
-      - name: Restore LocalDB acceptance
-        run: dotnet restore tests/GSIP.P11AuditIntegrationChecks/GSIP.P11AuditIntegrationChecks.csproj
-      - name: Build LocalDB acceptance
-        run: dotnet build tests/GSIP.P11AuditIntegrationChecks/GSIP.P11AuditIntegrationChecks.csproj -c Release --no-restore
+      - name: Restore LocalDB and protected runtime acceptance
+        shell: pwsh
+        run: |
+          dotnet restore GSIP.sln
+          dotnet restore tests/GSIP.P11AuditIntegrationChecks/GSIP.P11AuditIntegrationChecks.csproj
+      - name: Build LocalDB and web runtime acceptance
+        shell: pwsh
+        run: |
+          dotnet build GSIP.sln -c Release --no-restore
+          dotnet build tests/GSIP.P11AuditIntegrationChecks/GSIP.P11AuditIntegrationChecks.csproj -c Release --no-restore
       - name: Start SQL Server LocalDB
         shell: pwsh
         run: |
@@ -109,16 +115,22 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force artifacts/p11-audit-monitoring | Out-Null
           dotnet run --project tests/GSIP.P11AuditIntegrationChecks/GSIP.P11AuditIntegrationChecks.csproj -c Release --no-build | Tee-Object artifacts/p11-audit-monitoring/localdb-acceptance.txt
+      - name: Run protected bilingual Audit runtime and browser acceptance
+        shell: pwsh
+        run: ./scripts/verify-p11-audit-runtime-ui.ps1
       - name: Build exact-candidate evidence manifest
         shell: pwsh
         run: |
           @'
           import hashlib, json, os, pathlib
-          root = pathlib.Path('artifacts/p11-audit-monitoring')
+          roots = [pathlib.Path('artifacts/p11-audit-monitoring'), pathlib.Path('artifacts/p11-audit-runtime-ui')]
           files = []
-          for p in sorted(x for x in root.rglob('*') if x.is_file()):
-              data = p.read_bytes()
-              files.append({'path': p.as_posix(), 'bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest()})
+          for root in roots:
+              if not root.exists():
+                  raise SystemExit(f'missing P11 evidence directory: {root}')
+              for p in sorted(x for x in root.rglob('*') if x.is_file()):
+                  data = p.read_bytes()
+                  files.append({'path': p.as_posix(), 'bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest()})
           manifest = {
               'CandidateSha': os.environ['CANDIDATE_SHA'],
               'Unit': 'P11::audit-tamper-monitoring',
@@ -127,16 +139,30 @@ jobs:
               'ConcurrentSerialization': 'TESTED',
               'RetentionCheckpoint': 'TESTED',
               'MonitoringHealth': 'TESTED',
+              'ProtectedAuditRuntime': 'TESTED',
+              'ArabicRtlEnglishLtrBrowserRegression': 'TESTED',
+              'AuditExportAndIntegrityPost': 'TESTED',
+              'AntiforgeryNegative': 'TESTED',
+              'BrowserData': 'SYNTHETIC_ONLY',
               'RealCredentials': False,
               'PersonalData': False,
               'Files': files,
           }
-          (root / 'manifest.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
+          pathlib.Path('artifacts/p11-audit-monitoring/manifest.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
           '@ | python -
-      - name: Upload P11 LocalDB evidence
+      - name: Reject forbidden protected runtime evidence
+        shell: pwsh
+        run: |
+          $text = Get-ChildItem artifacts/p11-audit-monitoring,artifacts/p11-audit-runtime-ui -File -Recurse | Where-Object { $_.Extension -in @('.html','.json','.log','.txt') } | Get-Content -Raw | Out-String
+          if ($text -match 'Authorization\s*:\s*Bearer\s+\S+' -or $text -match 'x-api-key\s*[:=]\s*\S+' -or $text -match '\b\d{12}\b' -or $text -match 'Synthetic-P11-Audit-Only!8427') {
+            throw 'P11 protected runtime evidence contains a forbidden secret/personal-data pattern.'
+          }
+      - name: Upload P11 LocalDB and protected runtime evidence
         uses: actions/upload-artifact@v4
         with:
-          name: P11-Audit-LocalDB-${{ env.CANDIDATE_SHA }}
-          path: artifacts/p11-audit-monitoring/
+          name: P11-Audit-LocalDB-Runtime-${{ env.CANDIDATE_SHA }}
+          path: |
+            artifacts/p11-audit-monitoring/
+            artifacts/p11-audit-runtime-ui/
           if-no-files-found: error
           retention-days: 30
