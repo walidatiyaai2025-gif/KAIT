@@ -102,8 +102,6 @@ else
                                        pattern="@(string.IsNullOrWhiteSpace(field.Regex) ? null : field.Regex)"
                                        required="@field.Required"
                                        autocomplete="off"
-                                       inputmode="@(field.Key.Contains("CIVIL", StringComparison.OrdinalIgnoreCase) ? "numeric" : null)"
-                                       dir="@(field.Key.Contains("CIVIL", StringComparison.OrdinalIgnoreCase) ? "ltr" : null)"
                                        aria-invalid="@(errorCode is null ? null : "true")"
                                        aria-describedby="@(field.Sensitive ? $"{inputId}-hint" : errorCode is not null ? $"{inputId}-error" : null)" />
                                 @if (field.Sensitive)
@@ -119,8 +117,8 @@ else
                     }
                 </div>
                 <div class="execution-action-row">
-                    <button class="run-request-button" type="submit">@L["RunRequest"]</button>
-                    <p class="execution-pending-note">@L["ExecutionReady"]</p>
+                    <button class="run-request-button" type="submit" disabled="@(!details.CanExecute)">@L["RunRequest"]</button>
+                    <p class="execution-pending-note">@(details.CanExecute ? L["ExecutionReady"] : L["NotExecuted"])</p>
                 </div>
             </form>
         </section>
@@ -162,7 +160,7 @@ else
                 {
                     <div class="result-empty-state" role="status">
                         <span class="result-status-icon" aria-hidden="true">✓</span>
-                        <div><strong>@L["NoResult"]</strong><small>@L["ExecutionReady"]</small></div>
+                        <div><strong>@L["NoResult"]</strong><small>@(details.CanExecute ? L["ExecutionReady"] : L["NotExecuted"])</small></div>
                     </div>
                 }
                 else
@@ -208,6 +206,7 @@ else
                 <dl>
                     <div><dt>@L["RequestId"]</dt><dd dir="ltr">@(result?.RequestId ?? "—")</dd></div>
                     <div><dt>@L["CorrelationId"]</dt><dd dir="ltr">@(result?.CorrelationId ?? "—")</dd></div>
+                    <div><dt>@L["Endpoint"]</dt><dd dir="ltr">@(result?.EndpointAlias ?? "—")</dd></div>
                     <div><dt>@L["Status"]</dt><dd><span class="@(result is null ? "pending-chip" : result.Outcome == ServiceExecutionOutcome.Success ? "success-chip" : "error-chip")">@(result is null ? L["NotExecuted"] : L[$"Outcome{result.MessageCode}"])</span></dd></div>
                     <div><dt>@L["Duration"]</dt><dd>@(result is null ? "—" : $"{result.DurationMilliseconds} {L["Milliseconds"]}")</dd></div>
                     <div><dt>@L["Attempts"]</dt><dd>@(result?.Attempts.ToString(CultureInfo.InvariantCulture) ?? "—")</dd></div>
