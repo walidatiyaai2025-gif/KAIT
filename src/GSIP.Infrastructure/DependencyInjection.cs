@@ -8,6 +8,7 @@ using GSIP.Application.Secrets;
 using GSIP.Application.Setup;
 using GSIP.Infrastructure.Authentication;
 using GSIP.Infrastructure.Authorization;
+using GSIP.Infrastructure.Execution;
 using GSIP.Infrastructure.Identity;
 using GSIP.Infrastructure.Metadata;
 using GSIP.Infrastructure.Secrets;
@@ -37,6 +38,9 @@ public static class DependencyInjection
         services.AddScoped<ISetupService, SetupService>();
         services.AddScoped<IMetadataCatalogService, MetadataCatalogService>();
         services.AddScoped<IServiceExecutionSecurityGate, ServiceExecutionSecurityGate>();
+        services.Configure<ServiceExecutionRuntimeOptions>(configuration.GetSection("ServiceExecutionRuntime"));
+        services.AddHttpClient("GSIP.Execution");
+        services.AddScoped<IServiceExecutionEngine, GenericServiceExecutionEngine>();
         services.AddScoped<DataProtectionSecretVault>();
         services.AddScoped<ISecretVault>(serviceProvider => serviceProvider.GetRequiredService<DataProtectionSecretVault>());
         services.AddScoped<ISecretMaterialResolver>(serviceProvider => serviceProvider.GetRequiredService<DataProtectionSecretVault>());
