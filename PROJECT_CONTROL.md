@@ -6,7 +6,7 @@
 - Repository: `walidatiyaai2025-gif/KAIT`
 - Default branch: `main`
 - Delivery model: phase-gated autonomous implementation
-- Current planned product state: P08 CLOSED from exact integrated evidence; P09 five-service MOJ contract implementation is the canonical current phase and is OPEN / READY, with closed-baseline regressions repaired before new payload work
+- Current planned product state: P10 CLOSED from exact integrated and repaired evidence; P11 tamper-evident audit/monitoring is the canonical current phase and is OPEN / READY
 - Initial executable version: `0.1.0`
 - Pinned SDK / target framework: .NET SDK `10.0.400` / `net10.0`
 - Initial entity: Ministry of Justice (MOJ), Kuwait
@@ -16,25 +16,11 @@
 
 ## Last closed phase evidence
 
-P08 is CLOSED from exact integrated implementation baseline `67968a9230dae453b36f48549eda138d7b5401c7` after normal integration of the authoritative MOJ authentication convergence through PR #47. The exact implementation baseline passed **17/17** `main` push workflow runs with zero failed, queued or in-progress runs after completion; PR #47 passed **22/22** exact-head workflows before normal merge.
+P10 is CLOSED from exact integrated `main` SHA `b7e81cece985b566c9c3222a2c495b83e800e080` after normal integration of PR #62 followed by closed-baseline pagination-filter regression repair PR #65. PR #65 passed **32/32 exact-head workflows** before merge. The resulting exact integrated main completed **29/29 push workflows SUCCESS**, with failure=0, queued=0 and in-progress=0 after completion.
 
-Closure evidence on that exact SHA includes:
+P10 closure includes canonical request/result lifecycle persistence, masked/protected bounded result storage, Own/Department/All authorization plus current service visibility, IDOR rejection, filters/search with date-range and other active filters preserved across pagination, retention/migration/concurrency acceptance, permissioned CSV/XLSX/PDF/Print exports with injection defense and export audit events, and bilingual reachable History UI. The pagination repair is protected by executable regression coverage. Detailed evidence: `docs/evidence/P10_CLOSURE.md`.
 
-- P08 Security Acceptance run `34318032200`: SUCCESS;
-- artifact `P08-Security-Acceptance-67968a9230dae453b36f48549eda138d7b5401c7`, 2,314 bytes, digest `sha256:b39ea805fec25b5a45a35c2eb445074e64622f48a44dc7c7e3ccd6a0ea8b3d98`;
-- MOJ runtime acceptance PASS, including metadata-driven token-path behavior, documented form token acquisition, Bearer attachment and malformed/failure cases supported by the evidence then available;
-- P08 Auth Scope Isolation PASS for forged/stale profile/ref, cross-service/environment, Production→UAT fallback and stale/wrong-scope token paths;
-- protected administration Test Authentication PASS;
-- secret/token leakage acceptance PASS;
-- all closed P00–P07 regressions remained green on the integrated baseline.
-
-At original P08 closure, exact operation-level `ApiKeyAuth` applicability to `/genToken` was correctly `DEFERRED_EXTERNAL`, not PASS, because authenticated CAIT/MOJ operation evidence or authorized UAT proof had not yet been supplied. That remains the historical closure record and is not rewritten retroactively.
-
-After closure, owner-supplied authenticated official CAIT Swagger evidence for Marriage Cases API 129 and an owner-executed successful UAT token call proved the observed UAT Marriage contract: `/genToken` requires transient `x-api-key` plus form-urlencoded username/password, then the Marriage target requires the same `x-api-key` plus the acquired Bearer token. PR #50 / `P08-REGRESSION::moj-composite-auth-real-contract` repairs that newly proven closed-baseline contract through the existing canonical runtime, SecretRef/Vault, token cache and protected Test Authentication flow. The observed UAT status is `UAT_PROVEN`.
-
-Production is not inferred from UAT. Owner evidence proves only the Production gateway prefix `https://moj.api.cait.gov.kw`; unproven Production Marriage path suffixes and operation-level auth/payload applicability remain `PRODUCTION_DEFERRED_EXTERNAL — NOT PASS`. No Production→UAT fallback is permitted.
-
-The original P08 final closure reconciliation introduced no P09 service payload implementation; the post-closure PR #50 repair likewise must not introduce unrelated P09 payload work. New P09 payload implementation may proceed only after the regression repair is normally integrated and exact-new-main verification is green.
+Historical P08/P09 owner/external classifications remain unchanged. Evidence proven for UAT is not promoted to Production. `DEFERRED_EXTERNAL` remains NOT PASS and Production→UAT fallback is forbidden.
 
 ## Authoritative documents
 
@@ -56,12 +42,13 @@ No old prompt, screenshot caption, branch description, stale ledger or supersede
 ## Phase policy
 
 - Exactly one canonical current phase exists at a time.
-- P00, P01, P02, P03, P04, P05, P06, P07 and P08 are CLOSED.
-- P09 is the canonical current legal implementation phase and is OPEN / READY.
-- P10–P17 remain locked until P09 is formally CLOSED.
+- P00 through P10 are CLOSED.
+- P11 is the canonical current legal implementation phase and is OPEN / READY.
+- P12–P17 remain locked until P11 is formally CLOSED.
 - Phase exit requires implementation + tests + evidence + documentation reconciliation + pushed commit + required CI + exact-main recheck.
 - Integration recovery and exact-main regressions take priority over new feature work.
 - A phase-transition branch does not authorize new-phase implementation until that transition is integrated and the resulting exact-main gate is green.
+- Legitimate future-phase recovery work may repair a known real defect only under the explicit owner non-stop exception; it remains DO NOT MERGE and does not change canonical phase authority.
 - Deferred external evidence remains explicitly deferred and must never be converted to PASS without real evidence.
 - Evidence proven for one environment or operation must not be promoted to another environment or operation without official support.
 
@@ -110,7 +97,7 @@ The post-closure UAT Marriage evidence adds a proven composite specialization wi
 
 ## P09 MOJ five-service contract boundary
 
-P09 may seed/implement only these five services from official OpenAPI/Swagger or equivalent approved MOJ evidence:
+P09 seeded/implemented only these five services from repository-approved official evidence:
 
 1. Marriage Cases Service
 2. Is Single Basic Service
@@ -118,7 +105,15 @@ P09 may seed/implement only these five services from official OpenAPI/Swagger or
 4. Family Judgment Text Service
 5. Procuration Status Service
 
-Do not invent request/response fields, validation, paths or per-operation auth rules. Unconfirmed schema details remain blocked/deferred until official evidence is available. Any authorized UAT smoke must be limited, non-destructive and secret-safe.
+Unconfirmed Production details remain deferred and fail closed rather than being inferred.
+
+## P10 request/history contract boundary
+
+P10 established canonical request/result history with bounded protected persistence, scoped Own/Department/All access plus current service visibility, filtering with active filter preservation across pagination, retention/migration/concurrency safety and permissioned export/print behavior. Export operations are auditable and sensitive data remains governed by the existing masking/protection policies. Closed-baseline regression repair PR #65 added executable coverage for pagination filter preservation.
+
+## P11 audit/monitoring contract boundary
+
+P11 is the current phase. It must converge the canonical tamper-evident audit trail and monitoring boundary: append-only database enforcement, chained integrity evidence, mutation/tail-deletion detection, safe concurrent append, verifiable retention checkpointing, sanitized monitoring, protected high-fidelity Audit administration, bilingual UI and executable security/LocalDB/UI evidence. P11 must preserve all closed P00-P10 controls.
 
 ## Service environment / Go-Live control
 

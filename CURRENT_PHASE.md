@@ -2,68 +2,54 @@
 
 ## Canonical current phase
 
-**P10 — Requests, result history and exports**
+**P11 — Tamper-evident audit trail and monitoring**
 
 Status: **OPEN / READY**
 
-P09 — Seed and implement the five MOJ services is **CLOSED** from exact integrated `main` SHA `42b3b7af073efe6bd933f473b707333df8924346` after normal convergence of PRs #58, #59 and #60 and preservation of the closed P00–P08 baselines through the later P02 Setup Wizard regression repair PR #61.
+P10 — Requests, result history and exports is **CLOSED** from exact integrated `main` SHA `b7e81cece985b566c9c3222a2c495b83e800e080` after normal integration of PR #62 followed by closed-baseline pagination-filter regression repair PR #65.
 
-On exact `main` SHA `42b3b7af073efe6bd933f473b707333df8924346`, all **29/29 push workflow runs succeeded**, with failure=0, queued=0 and in-progress=0 after completion. P09 exact-main evidence includes official-contract snapshots, all five service gates, token-contract variants, independent contract/security acceptance and execution UI/UAT-readiness acceptance.
+On that exact integrated SHA, all **29/29 push workflow runs completed successfully**, with failure=0, queued=0 and in-progress=0 after completion. PR #65 itself also passed **32/32 exact-head workflows** before normal merge. Detailed closure evidence is recorded in `docs/evidence/P10_CLOSURE.md`.
 
-Detailed P09 closure evidence is recorded in `docs/evidence/P09_CLOSURE.md`.
+## P10 closure truth
 
-## P09 closure truth
+The integrated P10 baseline provides:
 
-The five canonical MOJ services are represented from repository-approved official CAIT/MOJ contract evidence:
+- canonical request/result history persistence for RequestId, actor/department, Entity/Service/version, masked inputs, status, duration, CorrelationId and timestamps;
+- bounded/protected structured and raw-result persistence with raw storage disableable;
+- Own / Department / All authorization plus current service-visibility isolation and IDOR rejection;
+- search/filter/date/status/entity/service history, with date-range and all other active filters preserved across pagination;
+- permissioned CSV/XLSX/PDF/Print exports with spreadsheet-injection defense and export audit events;
+- retention, migration and concurrency acceptance;
+- bilingual Arabic/English history list/detail UI and canonical Requests navigation reachability;
+- executable regression coverage that prevents pagination from dropping `fromUtc`, `toUtc` or the other active history filters.
 
-1. Marriage Cases Service — API 129
-2. Is Single Basic Service — API 132
-3. Marriage Couple Last Case Service — API 130
-4. Family Judgment Text Service — API 196
-5. Procuration Status Service — API 134
-
-P09 preserves exact Service + Environment + AuthProfile isolation, secret/token redaction, no Production→UAT fallback, metadata-driven request/result mapping and the closed P00–P08 security/runtime controls.
-
-Authorized live UAT execution that requires owner-controlled credentials or personal test records remains **DEFERRED_EXTERNAL_NOT_PASS** where unavailable. It is not called PASS. Unproven Production full paths, operation details and credentials remain **PRODUCTION_DEFERRED_EXTERNAL_NOT_PASS** and fail closed.
-
-Representative exact-main P09 runs on `42b3b7af073efe6bd933f473b707333df8924346`:
-
-- P09 Official Contract Snapshots `34390738947` — SUCCESS.
-- P09 Marriage Cases Service `34390739120` — SUCCESS.
-- P09 MOJ Token Contract Variants `34390739231` — SUCCESS.
-- P09 Independent Contract Security Acceptance `34390739078` — SUCCESS.
-- P09 Execution UI and UAT Readiness `34390739312` — SUCCESS.
+No plaintext credentials, API keys, bearer tokens, Civil IDs or personal MOJ data were added to Git/evidence.
 
 ## Legal work now
 
-P10 only, plus any repair required to preserve closed P00–P09 baselines and repository controls.
+P11 only, plus any repair required to preserve closed P00-P10 baselines and repository controls.
 
-Canonical P10 scope from `execution/GSIP_Full_Execution.json`:
+Canonical P11 scope from repository authority:
 
-- persist execution RequestId, actor/user, department, Entity/Service/version, masked input snapshot, status code, duration, CorrelationId and timestamps;
-- configurable per-service structured-result/raw-response storage; sensitive stored result data protected at rest and raw storage disableable;
-- Own history by default, Department/All only by permission and current `Services.View` scope;
-- search/filter/date range/status/entity/service;
-- permissioned export/print/PDF/CSV/Excel with an Audit Event for every export;
-- no unmasked Civil IDs or sensitive payload leakage;
-- executable user/department/service isolation and IDOR-negative acceptance;
-- retention, bounds, concurrency and migration safety required by the canonical implementation.
+- tamper-evident canonical audit records with append-only database enforcement;
+- verifiable hash-chain integrity and tail-deletion/field-mutation detection;
+- bounded retention with verifiable checkpoint continuity;
+- safe concurrent append behavior;
+- monitoring/integrity health and actionable, sanitized evidence;
+- high-fidelity protected Audit dashboard, filters/details/export and server-side authorization;
+- bilingual Arabic RTL / English LTR responsive presentation;
+- executable leakage, migration, LocalDB tamper/retention/concurrency and UI contract acceptance.
 
 ## Locked future work
 
-P11–P17 remain locked. Tamper-evident audit/monitoring, broader operations/diagnostics, final UI convergence, security hardening, installer, full automated acceptance and final release convergence must not begin before their canonical phase opens.
+P12–P17 remain locked. Admin operations/diagnostics, full UI convergence, security hardening, installer, full automated acceptance and final release convergence must not begin before their canonical phase opens.
 
-## P08 historical closure boundary
+Legitimate already-started future-phase recovery branches may be repaired only under the documented owner non-stop exception when necessary to remove a known real failure; they remain **DO NOT MERGE** and do not change canonical phase authority until preceding phases close normally.
 
-P08 remains CLOSED. Its historical closure baseline is `67968a9230dae453b36f48549eda138d7b5401c7`; later authenticated owner evidence proved the observed Marriage UAT composite authentication contract and the closed-baseline repair was integrated without reopening P08. Historical evidence remains in:
+## Deferred boundaries
 
-- `docs/evidence/P08_MOJ_AUTHENTICATION_INTEGRATION.md`
-- `docs/evidence/P08_CONTRACT_RECONCILIATION.md`
-- `docs/evidence/P08_POST_CLOSURE_COMPOSITE_AUTH_REPAIR.md`
-- `docs/moj-api-reference/P08_AUTH_CONTRACT_MATRIX.md`
+Historical owner/external classifications from earlier phases remain unchanged. `DEFERRED_EXTERNAL` is never PASS. Production details are never inferred from UAT, and no Production→UAT fallback is allowed.
 
-Historical deferred classifications are not rewritten retroactively.
+## P11 exit condition
 
-## P10 exit condition
-
-P10 may be marked CLOSED only when the canonical request/history persistence and lifecycle, masked/protected result handling, Own/Department/All authorization, service visibility isolation, filtering, retention, migration/concurrency safety, permissioned exports with injection defense and export audit events, bilingual UI and required regression tests are integrated; exact-main evidence must be green. Any genuinely owner-only/external evidence must remain explicitly deferred rather than being called PASS.
+P11 may be marked CLOSED only when the canonical audit trail, append-only enforcement, integrity verification, retention checkpointing, concurrency behavior, monitoring, high-fidelity Audit dashboard, bilingual UI and required security/LocalDB/UI acceptance are integrated; exact-main evidence must be green. Any genuinely owner-only/external evidence must remain explicitly deferred rather than being called PASS.

@@ -14,8 +14,8 @@ This ledger is evidence-driven. Never mark a phase CLOSED because a prompt says 
 | P07 | CLOSED | Closed from exact integrated implementation baseline `9535fa158441160ab7c7d204863776e38e560a33`; runtime/UI/upgrade/security evidence verified and hashed |
 | P08 | CLOSED | Historical closure baseline `67968a9230dae453b36f48549eda138d7b5401c7`; canonical x-api-key + `/genToken` + Bearer runtime, exact scope isolation, protected Test Authentication and independent security acceptance; later authenticated Marriage UAT evidence integrated through closed-baseline repair without reopening P08 |
 | P09 | CLOSED | Closed from exact integrated main `42b3b7af073efe6bd933f473b707333df8924346`; PRs #58/#59/#60 integrated official contracts for APIs 129/132/130/196/134, five canonical services, token variants, independent security acceptance and execution UI/UAT readiness; exact-main **29/29 SUCCESS**; unavailable owner live UAT remains `DEFERRED_EXTERNAL_NOT_PASS` |
-| P10 | OPEN / READY | Canonical current phase: Request/result history, masked/protected persistence, Own/Department/All + service isolation, filters, retention/concurrency and permissioned CSV/XLSX/PDF/Print exports with export Audit Event |
-| P11 | LOCKED | Tamper-evident audit trail, monitoring, high-fidelity Audit dashboard and evidence |
+| P10 | CLOSED | Closed from exact integrated and repaired main `b7e81cece985b566c9c3222a2c495b83e800e080`; PR #62 integrated request/result history and exports; closed-baseline repair PR #65 preserved `fromUtc`/`toUtc` and all active filters across pagination and added executable regression coverage; PR #65 exact-head **32/32 SUCCESS** and resulting exact-main **29/29 SUCCESS** |
+| P11 | OPEN / READY | Canonical current phase: tamper-evident append-only audit trail, hash-chain verification, retention checkpoint, monitoring, high-fidelity protected Audit dashboard, bilingual UI and executable security/LocalDB/UI acceptance |
 | P12 | LOCKED | Admin operations for Entity -> Service -> Environments -> UAT/Production, Edit/Test Connection/Test Authentication/Activate/Disable/Rotate Secret, health/diagnostics and operational alerts |
 | P13 | LOCKED | Full Arabic/English RTL/LTR UX convergence + UI DESIGN PARITY GATE for all four reference screens |
 | P14 | LOCKED | Security hardening, resilience, authorization/IDOR/CSRF/XSS/rate-limit/fuzz/dependency checks including cross-service endpoint/secret/token isolation |
@@ -94,16 +94,24 @@ Exact-main `42b3b7af073efe6bd933f473b707333df8924346` completed **29/29 push wor
 - Official Contract Snapshots `34390738947` — SUCCESS.
 - Marriage Cases Service `34390739120` — SUCCESS.
 - MOJ Token Contract Variants `34390739231` — SUCCESS.
-- Independent Contract Security Acceptance `34390739078` — SUCCESS.
-- Execution UI and UAT Readiness `34390739312` — SUCCESS.
+- P09 Independent Contract Security Acceptance `34390739078` — SUCCESS.
+- P09 Execution UI and UAT Readiness `34390739312` — SUCCESS.
 
 Authorized live UAT requiring owner-controlled credentials or personal test records remains **DEFERRED_EXTERNAL_NOT_PASS** where unavailable; this is not called PASS. Detailed closure evidence: `docs/evidence/P09_CLOSURE.md`.
 
-## P10 opening record
+## P10 closure record
 
-P10 is **OPEN / READY** after P09 closure and exact-main regression verification.
+P10 is **CLOSED** from exact integrated and repaired `main` SHA `b7e81cece985b566c9c3222a2c495b83e800e080` after normal integration of PR #62 and closed-baseline regression repair PR #65.
 
-Canonical P10 scope is the authoritative execution-plan unit: persist RequestId, user/department, Entity/Service/version, masked input snapshot, status code, duration, CorrelationId and timestamps; protect configurable structured/raw result persistence at rest with raw storage disableable; enforce Own/Department/All permissions plus current `Services.View`; support search/filter/date/status/entity/service; provide permissioned Print/PDF/CSV/Excel exports with export Audit Event; prevent unmasked Civil ID/sensitive-payload leakage; and prove migration, retention, concurrency, user/department/service isolation and IDOR-negative behavior.
+The canonical baseline persists the required request lifecycle and masked input facts; protects bounded configurable structured/raw result storage; enforces Own/Department/All scope plus current service visibility and IDOR rejection; supports filters/search; preserves `fromUtc`, `toUtc`, scope, search, status, entity, service and page-size filters across pagination; enforces retention/migration/concurrency safety; and provides permissioned Print/PDF/CSV/XLSX exports with injection defense and export audit events. Arabic/English history list/detail surfaces are integrated and Requests is reachable from canonical navigation.
+
+PR #65 repaired the post-PR-#62 pagination defect and added executable UI/static regression coverage for filter preservation. PR #65 completed **32/32 exact-head workflows SUCCESS** before normal merge. Resulting exact-main `b7e81cece985b566c9c3222a2c495b83e800e080` completed **29/29 push workflows SUCCESS**, with failure=0, queued=0 and in-progress=0 after completion. The exact-main P10 workflow included successful build/security checks and Windows LocalDB migration, scope/IDOR, export/audit/injection-defense, concurrency and retention acceptance. No P10 owner-only requirement was fabricated as PASS. Detailed evidence: `docs/evidence/P10_CLOSURE.md`.
+
+## P11 opening record
+
+P11 is **OPEN / READY** after P10 closure and exact-main regression verification, subject to normal integration of this reconciliation and a green exact-new-main recheck before P11 implementation is treated as canonical.
+
+Canonical scope is tamper-evident append-only audit persistence, hash-chain verification, mutation/tail-deletion detection, safe concurrent append, verifiable retention checkpoint continuity, monitoring/integrity health, high-fidelity protected Audit dashboard, bilingual Arabic RTL / English LTR UI and executable leakage/LocalDB/UI acceptance. P12 and later remain locked until P11 closes normally.
 
 ## Cross-phase gates
 
