@@ -39,11 +39,14 @@ jobs:
         run: |
           dotnet build GSIP.sln -c Release --no-restore
           dotnet build tests/GSIP.P11AuditChecks/GSIP.P11AuditChecks.csproj -c Release --no-restore
+      - name: Verify bilingual audit dashboard contract
+        run: python scripts/verify_p11_audit_ui.py
       - name: Run independent leakage and hash acceptance
         shell: bash
         run: |
           mkdir -p artifacts/p11-audit-monitoring
           dotnet run --project tests/GSIP.P11AuditChecks/GSIP.P11AuditChecks.csproj -c Release --no-build | tee artifacts/p11-audit-monitoring/security-contract.txt
+          python scripts/verify_p11_audit_ui.py | tee artifacts/p11-audit-monitoring/ui-contract.txt
       - name: Reject forbidden audit evidence patterns
         shell: bash
         run: |
