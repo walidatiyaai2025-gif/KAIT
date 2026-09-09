@@ -287,7 +287,8 @@ sealed class FakeSecurityGate(AuthorizedServiceExecutionBinding binding) : IServ
         Guid environmentId,
         CancellationToken cancellationToken = default)
     {
-        Check(serviceId == binding.ServiceId && environmentId == binding.EnvironmentId, "Security gate received wrong scope.");
+        if (serviceId != binding.ServiceId || environmentId != binding.EnvironmentId)
+            throw new InvalidOperationException("Security gate received wrong scope.");
         return Task.FromResult(binding);
     }
 }
