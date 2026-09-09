@@ -1,77 +1,72 @@
 # MOJ / CAIT API Reference Index
 
-This folder records the owner-supplied official CAIT Developer Portal references for the first Ministry of Justice integration. Workers must re-open the official documentation live during P08/P09 and preserve exact schemas/contracts. Do **not** invent fields from this index.
+This folder records the owner-supplied official CAIT Developer Portal references for the first Ministry of Justice integration. The machine-readable P09 snapshots under `docs/moj-api-reference/p09/` are the implementation authority for contract facts. Do **not** invent fields or promote historical descriptive notes beyond what those snapshots prove.
 
-## Services
+## Canonical services
 
-| Service | CAIT Developer Portal reference | Owner-supplied visible notes |
-|---|---|---|
-| Marriage Cases Service | `https://developer.api.cait.gov.kw/api/129` | Marriage service family; page exposes `/genToken` and a marriage-cases operation. |
-| Is Single Basic Service | `https://developer.api.cait.gov.kw/api/132` | Checks whether a person is single/unmarried for a specified Civil ID. |
-| Marriage Couple Last Case Service | `https://developer.api.cait.gov.kw/api/130` | Retrieves the last marriage case for a couple; owner screenshot shows male/female Civil ID request fields. |
-| Family Judgment Text Service | `https://developer.api.cait.gov.kw/api/196` | Retrieves family judgment text; owner screenshot indicates case number/type inputs. |
-| Procuration Status Service | `https://developer.api.cait.gov.kw/api/134` | Procuration status endpoint; official schema must be read live before seeding fields. |
+| API | Service | CAIT Developer Portal reference | Current P09 UAT contract status |
+|---|---|---|---|
+| 129 | Marriage Cases Service | `https://developer.api.cait.gov.kw/api/129` | `PROVEN_UAT_CONTRACT` |
+| 132 | Is Single Basic Service | `https://developer.api.cait.gov.kw/api/132` | `PROVEN_UAT_CONTRACT` |
+| 130 | Marriage Couple Last Case Service | `https://developer.api.cait.gov.kw/api/130` | `PROVEN_UAT_CONTRACT` |
+| 196 | Family Judgment Text Service | `https://developer.api.cait.gov.kw/api/196` | `PROVEN_UAT_CONTRACT` |
+| 134 | Procuration Status Service | `https://developer.api.cait.gov.kw/api/134` | `PROVEN_UAT_CONTRACT` |
 
-## Authentication behavior visible in the original owner-supplied screenshots
+Exactly these five services belong to the first MOJ entity in P09.
 
-The Marriage service documentation states that a consumer must first call a Token API to obtain an access token and include that token in the `Authorization` header as a Bearer token when calling other Marriage APIs.
+## Historical P08 authentication evidence
 
-The Token operation shown is:
+The original owner-supplied Marriage documentation established the common token flow:
 
-- `POST /genToken`
-- request content type: `application/x-www-form-urlencoded`
-- request fields shown: `username`, `password`
-- successful example shape shows `{ "data": "string" }`
+- `POST /genToken`;
+- `application/x-www-form-urlencoded` token request;
+- canonical secret names `username` and `password`;
+- token value returned from the documented `data` response field;
+- Bearer authorization on protected Marriage operations.
 
-The Swagger authorization dialog shown by the owner contains both:
+The original screenshots also exposed API-key and Bearer security schemes, but at initial P08 closure they did not prove operation-level API-key applicability. That uncertainty was correctly kept fail-closed at that time.
 
-- `ApiKeyAuth` in a header, with the exact header name displayed as `x-api-key`/the Swagger-defined casing;
-- `BearerAuth` for the JWT/access token obtained from the authentication endpoint.
+Subsequent authenticated owner evidence on 2026-09-09 proved the observed UAT Marriage Cases sequence:
 
-At original P08 closure, the screenshots above did not establish operation-level `ApiKeyAuth` applicability to `/genToken`, so that exact fact was correctly classified `DEFERRED_EXTERNAL` at that time.
+- gateway API-key header plus the documented form credentials for `/genToken`;
+- token returned from `data`;
+- gateway API-key header plus Bearer authorization for `/marriageCasesAPIGEE`.
 
-## Post-closure authenticated UAT evidence — 2026-09-09
+This historical progression is retained so later evidence does not rewrite what was known at P08 closure.
 
-Owner-supplied authenticated official CAIT Swagger evidence plus an owner-executed successful UAT token call now resolves the former operation-level question **for the observed UAT Marriage Cases contract only**:
+## P09 authoritative contract set
 
-- UAT Swagger base: `https://moj-uat.api-non-prod.cait.gov.kw/WSWEB/WS/v1/marriage`
-- `POST /genToken` requires header `x-api-key` plus form-urlencoded `username` and `password`;
-- successful token shape is `{ "data": "<token>" }`;
-- `POST /marriageCasesAPIGEE` requires `x-api-key` plus `Authorization: Bearer <token>`;
-- the target request is form-urlencoded and the supplied operation evidence proves required field `civilId`.
+`docs/moj-api-reference/p09/manifest.json` plus the five `api-*.contract.json` files now capture authoritative UAT contracts for all five services from owner-supplied authenticated official CAIT evidence. `scripts/validate_p09_contract_snapshots.py` is the executable drift gate.
 
-Current classification for this observed UAT fact: `UAT_PROVEN`.
+The captured facts include, where explicitly documented:
 
-Production remains deliberately separate. Owner evidence proves only the Production gateway prefix `https://moj.api.cait.gov.kw`; it does not prove a Marriage suffix or the same operation-level security/payload contract. Current classification for those unproven Production details: `PRODUCTION_DEFERRED_EXTERNAL`.
+1. UAT base/environment boundary;
+2. exact HTTP method and relative path;
+3. request content type;
+4. request field names, types, requiredness and documented validation status;
+5. authentication requirements and unresolved authentication applicability;
+6. success and documented error statuses/schemas;
+7. response fields and result-mapping candidates;
+8. documented token response paths/lifetimes;
+9. read-only/non-destructive classification only where official evidence supports it.
 
-See `docs/evidence/P08_POST_CLOSURE_COMPOSITE_AUTH_REPAIR.md` for the additive repair record. Do not reinterpret the historical P08 closure evidence as if this external fact had been known earlier.
+A `PROVEN_UAT_CONTRACT` status means the sanitized contract is authoritative for autonomous implementation and acceptance. It does **not** mean a live owner-operated UAT smoke test has passed.
 
-## Contract-capture requirement
+## Fail-closed / OWNER_LAST boundary
 
-During P08/P09 the worker must:
+The current authoritative manifest keeps these items `DEFERRED_EXTERNAL`, never PASS:
 
-1. open each official CAIT page live;
-2. record the selected server/base URL per environment;
-3. capture operation method/path/content type;
-4. capture required request fields and validation;
-5. capture authentication requirements;
-6. capture successful and documented error schemas/statuses;
-7. store a sanitized machine-readable contract snapshot (OpenAPI JSON/YAML where obtainable) under this folder;
-8. build contract fixtures/tests from those snapshots;
-9. ensure no real API key, username/password, Bearer token, Civil ID or personal result is committed.
+- service-specific Production operation URLs/authentication/payload contracts beyond the separately proven Production gateway prefix;
+- exact operation-level API-key applicability for API132, API130, API196 and API134 where the supplied operation evidence proves Bearer but does not prove the API-key header on that exact operation;
+- live backend-data validation for API196 and API134 because official CAIT identifies their UAT try-out targets as mocks;
+- any live UAT call that requires owner-held credentials and an approved test record when those inputs are unavailable to the worker.
 
-If the portal is unavailable or a schema is not visible, mark only that exact contract item `DEFERRED_EXTERNAL`; finish the generic engine, tests, metadata schema and sanitized fixtures that can be completed independently.
+There is no Production-to-UAT fallback and no implicit credential/token sharing between Service + Environment + AuthProfile scopes.
 
-## P09 authoritative snapshot set
+## Sanitization
 
-The P09 machine-readable capture is under `docs/moj-api-reference/p09/`. It is the implementation authority for P09 contract facts; the historical descriptive notes above must **not** be promoted into request/response metadata unless the corresponding P09 snapshot marks the item proven.
+Repository references, fixtures, tests, CI artifacts and screenshots must contain no real API key, consumer credential, username/password, Bearer/JWT token, Civil ID or personal MOJ result. Synthetic evidence must remain clearly synthetic and non-personal.
 
-Current capture status:
+If new official evidence conflicts with an existing snapshot, update the snapshot, validator, metadata/runtime representation and affected acceptance together. Never weaken the gate to make speculative behavior pass.
 
-- API 129 Marriage Cases: `PARTIAL_PROVEN` for the owner-supplied authenticated UAT facts recorded above; unproven response/error/Production/read-only details remain `DEFERRED_EXTERNAL`.
-- API 132 Is Single Basic: `DEFERRED_EXTERNAL`.
-- API 130 Marriage Couple Last Case: `DEFERRED_EXTERNAL`.
-- API 196 Family Judgment Text: `DEFERRED_EXTERNAL`.
-- API 134 Procuration Status: `DEFERRED_EXTERNAL`.
-
-CAIT public guidance requires sign-in to view API specifications/additional documents. The four fully deferred services therefore remain materially blocked for seed/runtime contract work until authorized operation-level evidence is captured. P09 is not eligible for closure from this partial capture.
+P09 is not closed merely because the five UAT contracts are captured; executable independent acceptance, UI/runtime readiness, owner-last classification and formal phase-exit evidence remain governed by the live ledger and acceptance criteria.
