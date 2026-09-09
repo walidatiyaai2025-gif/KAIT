@@ -1,0 +1,127 @@
+@using GSIP.Application.Execution
+@model GSIP.Web.Models.RequestHistoryViewModel
+@{
+    ViewData["Title"] = Model.Text("Request history", "سجل الطلبات");
+    var totalPages = Math.Max(1, (int)Math.Ceiling(Model.Page.TotalCount / (double)Model.Page.PageSize));
+}
+
+<section class="execution-hero" aria-labelledby="history-title">
+    <div>
+        <span class="eyebrow">GSIP · P10</span>
+        <h1 id="history-title">@Model.Text("Request history", "سجل الطلبات")</h1>
+        <p>@Model.Text("Authorized execution history with masked request data and protected results.", "سجل التنفيذ المصرح به مع إخفاء بيانات الطلب وحماية النتائج.")</p>
+    </div>
+</section>
+
+<form method="get" action="/requests" class="execution-selectors" aria-label="@Model.Text("History filters", "مرشحات السجل")">
+    <label class="selector-card">
+        <span>@Model.Text("Scope", "النطاق")</span>
+        <select name="scope">
+            @if (Model.CanViewOwn) { <option value="Own" selected="@(Model.Filter.Scope == RequestHistoryScope.Own)">@Model.Text("My requests", "طلباتي")</option> }
+            @if (Model.CanViewDepartment) { <option value="Department" selected="@(Model.Filter.Scope == RequestHistoryScope.Department)">@Model.Text("Department", "الإدارة")</option> }
+            @if (Model.CanViewAll) { <option value="All" selected="@(Model.Filter.Scope == RequestHistoryScope.All)">@Model.Text("All authorized", "كل المصرح به")</option> }
+        </select>
+    </label>
+    <label class="selector-card">
+        <span>@Model.Text("Search", "بحث")</span>
+        <input name="search" value="@Model.Filter.Search" maxlength="100" placeholder="Request ID / service / outcome" />
+    </label>
+    <label class="selector-card">
+        <span>@Model.Text("Status", "الحالة")</span>
+        <select name="status">
+            <option value="">@Model.Text("Any", "الكل")</option>
+            @foreach (var value in Enum.GetValues<RequestLifecycleStatus>())
+            {
+                <option value="@value" selected="@(Model.Filter.Status == value)">@value</option>
+            }
+        </select>
+    </label>
+    <label class="selector-card">
+        <span>@Model.Text("Entity", "الجهة")</span>
+        <input name="entityCode" value="@Model.Filter.EntityCode" maxlength="40" />
+    </label>
+    <label class="selector-card">
+        <span>@Model.Text("Service", "الخدمة")</span>
+        <input name="serviceCode" value="@Model.Filter.ServiceCode" maxlength="120" />
+    </label>
+    <label class="selector-card">
+        <span>@Model.Text("From (UTC)", "من (UTC)")</span>
+        <input type="datetime-local" name="fromUtc" value="@(Model.Filter.FromUtc?.ToString("yyyy-MM-ddTHH:mm"))" />
+    </label>
+    <label class="selector-card">
+        <span>@Model.Text("To (UTC)", "إلى (UTC)")</span>
+        <input type="datetime-local" name="toUtc" value="@(Model.Filter.ToUtc?.ToString("yyyy-MM-ddTHH:mm"))" />
+    </label>
+    <input type="hidden" name="pageSize" value="@Model.Page.PageSize" />
+    <div class="selector-card">
+        <span>@Model.Text("Actions", "الإجراءات")</span>
+        <button type="submit" class="btn btn-primary">@Model.Text("Apply filters", "تطبيق المرشحات")</button>
+    </div>
+</form>
+
+@if (Model.CanExport)
+{
+    <form method="get" action="/requests/export" class="execution-actions">
+        <input type="hidden" name="scope" value="@Model.Filter.Scope" />
+        <input type="hidden" name="search" value="@Model.Filter.Search" />
+        <input type="hidden" name="status" value="@Model.Filter.Status" />
+        <input type="hidden" name="entityCode" value="@Model.Filter.EntityCode" />
+        <input type="hidden" name="serviceCode" value="@Model.Filter.ServiceCode" />
+        <input type="hidden" name="fromUtc" value="@(Model.Filter.FromUtc?.ToString("O"))" />
+        <input type="hidden" name="toUtc" value="@(Model.Filter.ToUtc?.ToString("O"))" />
+        <button name="format" value="Csv" type="submit">CSV</button>
+        <button name="format" value="Excel" type="submit">Excel</button>
+        <button name="format" value="Pdf" type="submit">PDF</button>
+        <button name="format" value="Print" type="submit" formtarget="_blank">@Model.Text("Print", "طباعة")</button>
+    </form>
+}
+
+<section class="execution-card" aria-live="polite">
+    <div class="execution-card-heading">
+        <div>
+            <h2>@Model.Text("Results", "النتائج")</h2>
+            <p>@Model.Page.TotalCount @Model.Text("authorized records", "سجل مصرح به")</p>
+        </div>
+    </div>
+    @if (Model.Page.Items.Count == 0)
+    {
+        <p>@Model.Text("No request records match the current scope and filters.", "لا توجد طلبات مطابقة للنطاق والمرشحات الحالية.")</p>
+    }
+    else
+    {
+        <div style="overflow:auto">
+            <table class="permissions-matrix">
+                <thead><tr>
+                    <th>@Model.Text("Time", "الوقت")</th><th>Request ID</th><th>@Model.Text("Service", "الخدمة")</th>
+                    <th>@Model.Text("Status", "الحالة")</th><th>HTTP</th><th>@Model.Text("Duration", "المدة")</th><th></th>
+                </tr></thead>
+                <tbody>
+                @foreach (var item in Model.Page.Items)
+                {
+                    <tr>
+                        <td dir="ltr">@item.StartedAtUtc.ToString("u")</td>
+                        <td dir="ltr">@item.RequestId</td>
+                        <td>@item.ServiceCode <small>v@item.ServiceVersion</small></td>
+                        <td>@item.Status · @item.OutcomeCode</td>
+                        <td>@(item.HttpStatusCode?.ToString() ?? "—")</td>
+                        <td>@item.DurationMilliseconds ms</td>
+                        <td><a href="/requests/@Uri.EscapeDataString(item.RequestId)?scope=@Model.Filter.Scope">@Model.Text("Details", "التفاصيل")</a></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>
+
+<nav class="execution-actions" aria-label="@Model.Text("Pagination", "التنقل بين الصفحات")">
+    @if (Model.Page.Page > 1)
+    {
+        <a class="btn" href="?scope=@Model.Filter.Scope&search=@Uri.EscapeDataString(Model.Filter.Search ?? "")&status=@Model.Filter.Status&entityCode=@Uri.EscapeDataString(Model.Filter.EntityCode ?? "")&serviceCode=@Uri.EscapeDataString(Model.Filter.ServiceCode ?? "")&page=@(Model.Page.Page - 1)&pageSize=@Model.Page.PageSize">@Model.Text("Previous", "السابق")</a>
+    }
+    <span>@Model.Text("Page", "صفحة") @Model.Page.Page / @totalPages</span>
+    @if (Model.Page.Page < totalPages)
+    {
+        <a class="btn" href="?scope=@Model.Filter.Scope&search=@Uri.EscapeDataString(Model.Filter.Search ?? "")&status=@Model.Filter.Status&entityCode=@Uri.EscapeDataString(Model.Filter.EntityCode ?? "")&serviceCode=@Uri.EscapeDataString(Model.Filter.ServiceCode ?? "")&page=@(Model.Page.Page + 1)&pageSize=@Model.Page.PageSize">@Model.Text("Next", "التالي")</a>
+    }
+</nav>
