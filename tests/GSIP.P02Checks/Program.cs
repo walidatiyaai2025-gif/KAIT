@@ -10,6 +10,7 @@ using Microsoft.Extensions.Hosting;
 var root = FindRepositoryRoot();
 var failures = new List<string>();
 CheckSourceContract(root, failures);
+CheckAuthenticationModeBinding(failures);
 
 var sqlServer = Environment.GetEnvironmentVariable("GSIP_P02_SQL_SERVER");
 if (!string.IsNullOrWhiteSpace(sqlServer))
@@ -28,7 +29,7 @@ if (failures.Count > 0)
     return 1;
 }
 
-Console.WriteLine("P02 checks passed: setup gate, review health gate, regression-bypass isolation, protected/restart-safe state, SQL wrong-credentials and migration-failure/retry paths, provisioning, bootstrap administrator and per-service environment placeholders are valid.");
+Console.WriteLine("P02 checks passed: setup gate, explicit SQL/Windows auth binding, sanitized SQL diagnostics, review health gate, regression-bypass isolation, protected/restart-safe state, SQL wrong-credentials and migration-failure/retry paths, provisioning, bootstrap administrator and per-service environment placeholders are valid.");
 return 0;
 
 static string FindRepositoryRoot()
@@ -55,11 +56,18 @@ static void CheckSourceContract(string root, List<string> failures)
     Expect(program.Contains("PersistKeysToFileSystem", StringComparison.Ordinal), "Data Protection keys are not persisted for restart-safe setup state.", failures);
 
     var setupService = File.ReadAllText(Path.Combine(root, "src", "GSIP.Infrastructure", "Setup", "SetupService.cs"));
-    foreach (var required in new[] { "TestDatabaseAsync", "ProvisionDatabaseAsync", "RunHealthCheckAsync", "HEALTH_CHECK_FAILED", "MigrateAsync", "PasswordHasher", "ServiceEnvironmentPlaceholders", "UAT", "Production", "Protect(" })
+    foreach (var required in new[] { "TestDatabaseAsync", "ProvisionDatabaseAsync", "RunHealthCheckAsync", "HEALTH_CHECK_FAILED", "MigrateAsync", "PasswordHasher", "ServiceEnvironmentPlaceholders", "UAT", "Production", "Protect(", "BuildConnectionString(options, \"master\")", "builder.UserID", "builder.Password", "SetupSqlFailureClassifier.Classify" })
     {
         Expect(setupService.Contains(required, StringComparison.Ordinal), $"Setup service is missing required behavior: {required}.", failures);
     }
     Expect(!setupService.Contains("LogInformation", StringComparison.Ordinal) && !setupService.Contains("Console.WriteLine", StringComparison.Ordinal), "Setup service must not emit connection credentials to logs.", failures);
+
+    var diagnostics = File.ReadAllText(Path.Combine(root, "src", "GSIP.Infrastructure", "Setup", "SetupSqlFailureClassifier.cs"));
+    foreach (var code in new[] { "SQL_AUTHENTICATION_FAILED", "SQL_CONNECTION_TIMEOUT", "SQL_NETWORK_OR_INSTANCE_FAILED", "SQL_TLS_CERTIFICATE_FAILED", "SQL_CONNECTION_UNKNOWN" })
+    {
+        Expect(diagnostics.Contains(code, StringComparison.Ordinal), $"SQL diagnostic classifier is missing {code}.", failures);
+    }
+    Expect(!diagnostics.Contains("ConnectionString", StringComparison.Ordinal) && !diagnostics.Contains("Password=", StringComparison.OrdinalIgnoreCase), "SQL diagnostics must not expose raw connection strings or passwords.", failures);
 
     var controller = File.ReadAllText(Path.Combine(root, "src", "GSIP.Web", "Controllers", "SetupController.cs"));
     foreach (var action in new[] { "Welcome", "Preflight", "Database", "Provision", "Administrator", "Branding", "Security", "Integration", "Notifications", "Finish" })
@@ -68,9 +76,10 @@ static void CheckSourceContract(string root, List<string> failures)
     }
     Expect(controller.Contains("RunHealthCheckAsync", StringComparison.Ordinal) && controller.Contains("SetupStep.Review", StringComparison.Ordinal), "Review step does not execute the setup health gate.", failures);
     Expect(controller.Contains("ValidateAntiForgeryToken", StringComparison.Ordinal), "Setup POST actions must be antiforgery-protected.", failures);
+    Expect(controller.Contains("DatabaseAuthenticationBinding.Apply(authenticationMode, database)", StringComparison.Ordinal), "Database POST does not apply the explicit authentication mode binding.", failures);
 
     var wizard = File.ReadAllText(Path.Combine(root, "src", "GSIP.Web", "Views", "Setup", "Wizard.cshtml"));
-    foreach (var marker in new[] { "Test Connection", "SQL Authentication", "Encrypt", "TrustServerCertificate", "Production / Go Live", "Finish Setup" })
+    foreach (var marker in new[] { "Test Connection", "SQL Authentication", "Encrypt", "TrustServerCertificate", "Production / Go Live", "Finish Setup", "name=\"authenticationMode\"", "value=\"windows\"", "value=\"sql\"", "master database" })
     {
         Expect(wizard.Contains(marker, StringComparison.Ordinal), $"Setup UI is missing expected control/text: {marker}.", failures);
     }
@@ -88,6 +97,34 @@ static void CheckSourceContract(string root, List<string> failures)
     var laterCanonicalPhase = Enumerable.Range(3, 15).Any(number => currentPhase.Contains($"P{number:00} —", StringComparison.Ordinal));
     var p02Closed = ledger.Contains("| P02 | CLOSED |", StringComparison.Ordinal);
     Expect(p02StillCurrent || (laterCanonicalPhase && p02Closed), "P02 regression gate requires either active P02 or a later canonical phase with P02 CLOSED in the ledger.", failures);
+}
+
+static void CheckAuthenticationModeBinding(List<string> failures)
+{
+    var transientUsername = "synthetic-" + Guid.NewGuid().ToString("N");
+    var transientPassword = "synthetic-" + Guid.NewGuid().ToString("N");
+    var sqlOptions = new DatabaseSetupOptions
+    {
+        UseWindowsAuthentication = true,
+        Username = transientUsername,
+        Password = transientPassword
+    };
+    var sqlBinding = DatabaseAuthenticationBinding.Apply(DatabaseAuthenticationBinding.SqlMode, sqlOptions);
+    Expect(sqlBinding.Success && !sqlOptions.UseWindowsAuthentication, "Posted SQL authentication mode rebound to Windows Authentication.", failures);
+    Expect(sqlOptions.Username == transientUsername && sqlOptions.Password == transientPassword, "SQL authentication binding did not preserve the transient username/password for SqlConnectionStringBuilder.", failures);
+
+    var windowsOptions = new DatabaseSetupOptions
+    {
+        UseWindowsAuthentication = false,
+        Username = transientUsername,
+        Password = transientPassword
+    };
+    var windowsBinding = DatabaseAuthenticationBinding.Apply(DatabaseAuthenticationBinding.WindowsMode, windowsOptions);
+    Expect(windowsBinding.Success && windowsOptions.UseWindowsAuthentication, "Posted Windows authentication mode did not bind to Windows Authentication.", failures);
+    Expect(windowsOptions.Username.Length == 0 && windowsOptions.Password.Length == 0, "Windows Authentication binding retained SQL credentials.", failures);
+
+    var invalidBinding = DatabaseAuthenticationBinding.Apply("unexpected-mode", new DatabaseSetupOptions());
+    Expect(!invalidBinding.Success && invalidBinding.Code == "SQL_AUTH_MODE_INVALID", "Unknown authentication mode did not fail closed.", failures);
 }
 
 static async Task CheckRuntimeAsync(string sqlServer, List<string> failures)
@@ -168,7 +205,32 @@ static async Task CheckRuntimeAsync(string sqlServer, List<string> failures)
             CreateDatabase = false
         };
         var wrongCredentialsResult = await service.TestDatabaseAsync(wrongSqlCredentials);
-        Expect(!wrongCredentialsResult.Success && wrongCredentialsResult.Code == "SQL_CONNECTION_FAILED", $"Wrong SQL-credentials negative path returned {wrongCredentialsResult.Code}.", failures);
+        Expect(!wrongCredentialsResult.Success, "Wrong SQL-credentials negative path unexpectedly succeeded.", failures);
+
+        // LocalDB supports the generic integrated-security regression suite but does not model
+        // SQL Authentication login semantics. It can therefore fail at instance/transport before
+        // an authentication error exists. Exact wrong-password classification remains mandatory
+        // in the dedicated ephemeral SQL Server 2022 acceptance suite.
+        var isLocalDb = sqlServer.Contains("(localdb)", StringComparison.OrdinalIgnoreCase);
+        if (isLocalDb)
+        {
+            Expect(
+                wrongCredentialsResult.Code is "SQL_AUTHENTICATION_FAILED" or "SQL_NETWORK_OR_INSTANCE_FAILED",
+                $"LocalDB SQL-auth negative path returned unexpected code {wrongCredentialsResult.Code}.",
+                failures);
+        }
+        else
+        {
+            Expect(
+                wrongCredentialsResult.Code == "SQL_AUTHENTICATION_FAILED",
+                $"Wrong SQL-credentials negative path returned {wrongCredentialsResult.Code}.",
+                failures);
+        }
+        Expect(
+            !wrongCredentialsResult.Message.Contains(wrongSqlCredentials.Username, StringComparison.Ordinal)
+                && !wrongCredentialsResult.Message.Contains(wrongSqlCredentials.Password, StringComparison.Ordinal),
+            "Wrong SQL-credentials diagnostic exposed a runtime credential.",
+            failures);
 
         var connection = await service.TestDatabaseAsync(database);
         Expect(connection.Success, $"SQL connection test failed: {connection.Code}", failures);

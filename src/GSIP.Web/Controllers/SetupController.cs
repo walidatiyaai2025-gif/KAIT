@@ -75,9 +75,14 @@ public sealed class SetupController(ISetupService setupService) : Controller
 
     [HttpPost("database")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Database(DatabaseSetupOptions database, string command, CancellationToken cancellationToken)
+    public async Task<IActionResult> Database(DatabaseSetupOptions database, string? authenticationMode, string command, CancellationToken cancellationToken)
     {
         var draft = await GetDraftAsync(cancellationToken);
+        var authenticationBinding = DatabaseAuthenticationBinding.Apply(authenticationMode, database);
+        if (!authenticationBinding.Success)
+        {
+            return await RenderAsync(SetupStep.Database, authenticationBinding, cancellationToken);
+        }
 
         if (database.UseWindowsAuthentication)
         {
