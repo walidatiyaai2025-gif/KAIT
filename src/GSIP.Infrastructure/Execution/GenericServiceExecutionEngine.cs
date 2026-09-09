@@ -326,7 +326,7 @@ public sealed class GenericServiceExecutionEngine(
 
             var path = pathElement.GetString()?.Trim();
             if (string.IsNullOrWhiteSpace(path)
-                || !path.StartsWith('/', StringComparison.Ordinal)
+                || !path.StartsWith("/", StringComparison.Ordinal)
                 || path.StartsWith("//", StringComparison.Ordinal)
                 || path.Contains('\\')
                 || path.Contains('?')
