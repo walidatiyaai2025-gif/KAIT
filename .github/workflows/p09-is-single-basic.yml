@@ -1,0 +1,56 @@
+name: P09 Is Single Basic Service
+
+on:
+  push:
+    branches:
+      - main
+      - 'worker/p09-is-single-basic-*'
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  is-single-basic:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    env:
+      GSIP_P09_IS_SINGLE_SQL: 'Server=(localdb)\MSSQLLocalDB;Database=GSIP_P09_IS_SINGLE_${{ github.run_id }}_${{ github.run_attempt }};Integrated Security=true;TrustServerCertificate=true;MultipleActiveResultSets=true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup pinned .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Restore solution
+        run: dotnet restore GSIP.sln
+      - name: Restore P09 API132 checks
+        run: dotnet restore tests/GSIP.P09IsSingleBasicChecks/GSIP.P09IsSingleBasicChecks.csproj
+      - name: Build solution Release
+        run: dotnet build GSIP.sln -c Release --no-restore
+      - name: Build P09 API132 checks Release
+        run: dotnet build tests/GSIP.P09IsSingleBasicChecks/GSIP.P09IsSingleBasicChecks.csproj -c Release --no-restore
+      - name: Start SQL Server LocalDB
+        shell: pwsh
+        run: |
+          sqllocaldb start MSSQLLocalDB
+          sqllocaldb info MSSQLLocalDB
+      - name: Run P09 API132 fail-closed readiness acceptance
+        run: dotnet run --project tests/GSIP.P09IsSingleBasicChecks/GSIP.P09IsSingleBasicChecks.csproj -c Release --no-build
+      - name: Revalidate authoritative P09 contract snapshots
+        run: python scripts/validate_p09_contract_snapshots.py
+      - name: Run P06 token cache regression
+        run: dotnet run --project tests/GSIP.P06TokenCacheChecks/GSIP.P06TokenCacheChecks.csproj -c Release
+      - name: Run P07 execution security regression
+        run: dotnet run --project tests/GSIP.P07ExecutionSecurityChecks/GSIP.P07ExecutionSecurityChecks.csproj -c Release
+      - name: Validate execution plan and governance
+        run: python scripts/validate_execution_plan.py
+      - name: Upload P09 API132 evidence
+        if: ${{ always() && github.event_name == 'push' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: P09-Is-Single-Basic-Evidence-${{ github.sha }}
+          path: artifacts/p09-is-single-basic-evidence/
+          if-no-files-found: error
+          retention-days: 30
