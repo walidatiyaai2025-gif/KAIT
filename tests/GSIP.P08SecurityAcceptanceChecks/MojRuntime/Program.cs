@@ -4,6 +4,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using GSIP.Application.Abstractions;
+using GSIP.Application.Authentication;
 using GSIP.Application.Execution;
 using GSIP.Application.Metadata;
 using GSIP.Application.Secrets;
