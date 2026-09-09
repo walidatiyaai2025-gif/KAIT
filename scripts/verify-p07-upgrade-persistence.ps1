@@ -2,6 +2,7 @@ $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot
 $p06Sha = 'fef5882abf8a6f12990c3e7c0e9f849d08cd7947'
+$p07Sha = '9535fa158441160ab7c7d204863776e38e560a33'
 $migrationsPath = 'src/GSIP.Infrastructure/Setup/Migrations'
 $workId = [Guid]::NewGuid().ToString('N')
 $p06Root = Join-Path $env:TEMP "gsip-p07-p06-$workId"
@@ -23,11 +24,15 @@ function Invoke-Checked([string]$Label, [scriptblock]$Action) {
 Push-Location $root
 try {
     Invoke-Checked 'Resolve exact P06 commit' { git cat-file -e "$p06Sha^{commit}" }
+    Invoke-Checked 'Resolve exact P07 closure commit' { git cat-file -e "$p07Sha^{commit}" }
 
-    $migrationDiff = @(git diff --name-only "$p06Sha..HEAD" -- $migrationsPath)
-    if ($LASTEXITCODE -ne 0) { throw 'Could not compare P06 and P07 migration paths.' }
-    if ($migrationDiff.Count -ne 0) {
-        throw "P07 introduced database migration drift even though execution-history persistence is P10 scope: $($migrationDiff -join ', ')"
+    # P07 itself intentionally introduced no database migration. Validate that immutable
+    # closed-phase boundary against the exact P07 closure SHA, not against a later phase
+    # candidate that may legitimately introduce P10+ migrations.
+    $p07MigrationDiff = @(git diff --name-only "$p06Sha..$p07Sha" -- $migrationsPath)
+    if ($LASTEXITCODE -ne 0) { throw 'Could not compare exact P06 and P07 migration paths.' }
+    if ($p07MigrationDiff.Count -ne 0) {
+        throw "Closed P07 baseline introduced unexpected database migration drift: $($p07MigrationDiff -join ', ')"
     }
 
     New-Item -ItemType Directory -Path $helperRoot -Force | Out-Null
@@ -286,16 +291,19 @@ var options = new DbContextOptionsBuilder<GsipDbContext>().UseSqlServer(upgradeC
 await using (var db = new GsipDbContext(options))
 {
     var currentKnownMigrations = db.Database.GetMigrations().ToArray();
-    Assert(currentKnownMigrations.SequenceEqual(expectedMigrations, StringComparer.Ordinal),
-        "P07 introduced an unexpected schema migration; durable execution/history persistence is not P07 scope.");
+    Assert(currentKnownMigrations.Length >= expectedMigrations.Length
+           && currentKnownMigrations.Take(expectedMigrations.Length).SequenceEqual(expectedMigrations, StringComparer.Ordinal),
+        "Current candidate no longer preserves the exact closed-P06 migration prefix.");
+
+    var expectedPostP06Migrations = currentKnownMigrations.Skip(expectedMigrations.Length).ToArray();
     var pendingBeforeUpgrade = (await db.Database.GetPendingMigrationsAsync()).ToArray();
-    Assert(pendingBeforeUpgrade.Length == 0,
-        "Exact closed-P06 database has a pending P07 migration even though P07 requires no new durable schema.");
+    Assert(pendingBeforeUpgrade.SequenceEqual(expectedPostP06Migrations, StringComparer.Ordinal),
+        "Pending migration set does not match the current candidate's post-P06 migration suffix.");
 
     await db.Database.MigrateAsync();
     var appliedAfterUpgrade = (await db.Database.GetAppliedMigrationsAsync()).ToArray();
-    Assert(appliedAfterUpgrade.SequenceEqual(expectedMigrations, StringComparer.Ordinal),
-        "Opening/upgrading the P06 database on P07 changed the migration history.");
+    Assert(appliedAfterUpgrade.SequenceEqual(currentKnownMigrations, StringComparer.Ordinal),
+        "Upgrading the exact closed-P06 database did not produce the current candidate migration set.");
 
     var entity = await db.CatalogEntities.AsNoTracking().SingleOrDefaultAsync(x => x.Id == entityId);
     var service = await db.CatalogServices.AsNoTracking().SingleOrDefaultAsync(x => x.Id == serviceId);
@@ -306,39 +314,39 @@ await using (var db = new GsipDbContext(options))
     var slot = await db.AuthProfileSecrets.AsNoTracking().SingleOrDefaultAsync(x => x.AuthProfileId == profileId && x.SecretName == "api-key");
     var vault = await db.SecretVaultEntries.AsNoTracking().SingleOrDefaultAsync(x => x.Reference == secretReference);
 
-    Assert(entity is not null && entity.Code == "P07-UPGRADE-ENTITY", "P07 upgrade lost or mutated P06 entity metadata.");
+    Assert(entity is not null && entity.Code == "P07-UPGRADE-ENTITY", "Candidate upgrade lost or mutated P06 entity metadata.");
     Assert(service is not null && service.EntityId == entityId && service.Code == "P07-UPGRADE-SERVICE",
-        "P07 upgrade lost or mutated P06 service metadata.");
-    Assert(uat is not null && prod is not null, "P07 upgrade lost an environment configuration.");
+        "Candidate upgrade lost or mutated P06 service metadata.");
+    Assert(uat is not null && prod is not null, "Candidate upgrade lost an environment configuration.");
     Assert(uat.ServiceId == serviceId && prod.ServiceId == serviceId
            && uat.EnvironmentId == CatalogEnvironmentCodes.UatId
            && prod.EnvironmentId == CatalogEnvironmentCodes.ProductionId,
-        "P07 upgrade corrupted Service+Environment referential isolation.");
+        "Candidate upgrade corrupted Service+Environment referential isolation.");
     Assert(uat.BaseUrl == expectedUatBaseUrl && prod.BaseUrl == expectedProdBaseUrl
            && uat.BaseUrl != prod.BaseUrl
            && uat.TimeoutSeconds == expectedUatTimeout && prod.TimeoutSeconds == expectedProdTimeout,
-        "P07 upgrade mutated or collapsed independent UAT/Production configuration.");
+        "Candidate upgrade mutated or collapsed independent UAT/Production configuration.");
     Assert(profile is not null && profile.OwnerServiceId == serviceId
            && profile.OwnerEnvironmentId == CatalogEnvironmentCodes.UatId && profile.IsEnabled,
-        "P07 upgrade lost or changed the P06 AuthProfile owner scope.");
+        "Candidate upgrade lost or changed the P06 AuthProfile owner scope.");
     Assert(uat.AuthProfileId == profileId && prod.AuthProfileId is null,
-        "P07 upgrade leaked the UAT AuthProfile binding into Production.");
+        "Candidate upgrade leaked the UAT AuthProfile binding into Production.");
     Assert(binding is not null && binding.ServiceId == serviceId
            && binding.EnvironmentId == CatalogEnvironmentCodes.UatId,
-        "P07 upgrade broke AuthProfile binding referential integrity.");
+        "Candidate upgrade broke AuthProfile binding referential integrity.");
     Assert(slot is not null && slot.SecretReference == secretReference && slot.Generation == 1,
-        "P07 upgrade broke the AuthProfile secret slot/reference.");
+        "Candidate upgrade broke the AuthProfile secret slot/reference.");
     Assert(vault is not null && vault.State == SecretLifecycleState.Active
            && vault.OwnerServiceId == serviceId
            && vault.OwnerEnvironmentId == CatalogEnvironmentCodes.UatId
            && vault.OwnerAuthProfileId == profileId,
-        "P07 upgrade broke the protected vault ownership chain.");
+        "Candidate upgrade broke the protected vault ownership chain.");
     Assert(Convert.ToHexString(SHA256.HashData(vault.ProtectedPayload)) == protectedPayloadHash,
-        "P07 upgrade changed the protected vault payload bytes.");
+        "Candidate upgrade changed the protected vault payload bytes.");
     Assert(vault.ProtectedPayload.Length > 48,
-        "P07 upgrade left a vault payload that does not appear to be protected ciphertext.");
+        "Candidate upgrade left a vault payload that does not appear to be protected ciphertext.");
 
-    Console.WriteLine($"P07_UPGRADE_OK migrations={appliedAfterUpgrade.Length} entity={entityId} service={serviceId} profile={profileId}");
+    Console.WriteLine($"P07_UPGRADE_OK migrations={appliedAfterUpgrade.Length} postP06={expectedPostP06Migrations.Length} entity={entityId} service={serviceId} profile={profileId}");
     await db.Database.EnsureDeletedAsync();
 }
 
@@ -348,13 +356,17 @@ await using (var clean = new GsipDbContext(cleanOptions))
     await clean.Database.EnsureDeletedAsync();
     await clean.Database.MigrateAsync();
     var cleanApplied = (await clean.Database.GetAppliedMigrationsAsync()).ToArray();
-    Assert(cleanApplied.SequenceEqual(expectedMigrations, StringComparer.Ordinal),
-        "P07 clean install did not produce the exact expected schema migration set.");
+    var cleanKnown = clean.Database.GetMigrations().ToArray();
+    Assert(cleanApplied.SequenceEqual(cleanKnown, StringComparer.Ordinal),
+        "Current candidate clean install did not apply its complete known migration set.");
+    Assert(cleanApplied.Length >= expectedMigrations.Length
+           && cleanApplied.Take(expectedMigrations.Length).SequenceEqual(expectedMigrations, StringComparer.Ordinal),
+        "Current candidate clean install no longer preserves the exact closed-P06 migration prefix.");
     Assert(await clean.CatalogEnvironments.AsNoTracking().AnyAsync(x => x.Id == CatalogEnvironmentCodes.UatId)
            && await clean.CatalogEnvironments.AsNoTracking().AnyAsync(x => x.Id == CatalogEnvironmentCodes.ProductionId),
-        "P07 clean install schema is missing canonical UAT/Production environments.");
+        "Current candidate clean install schema is missing canonical UAT/Production environments.");
     Assert(await clean.AuthProfiles.CountAsync() == 0 && await clean.SecretVaultEntries.CountAsync() == 0,
-        "P07 clean install unexpectedly created AuthProfile or vault data.");
+        "Current candidate clean install unexpectedly created AuthProfile or vault data.");
     Console.WriteLine($"P07_CLEAN_INSTALL_OK migrations={cleanApplied.Length}");
     await clean.Database.EnsureDeletedAsync();
 }
@@ -363,7 +375,7 @@ await using (var clean = new GsipDbContext(cleanOptions))
     Invoke-Checked 'Seed exact closed-P06 database' {
         dotnet run --project (Join-Path $seedDir 'SeedExactP06.csproj') --configuration Release -- $upgradeConnection $keyDirectory $manifestPath
     }
-    Invoke-Checked 'Verify P06-to-P07 upgrade and clean install' {
+    Invoke-Checked 'Verify closed-P06 data survives current-candidate upgrade and clean install' {
         dotnet run --project (Join-Path $verifyDir 'VerifyP07.csproj') --configuration Release -- $upgradeConnection $cleanConnection $manifestPath
     }
 
@@ -374,7 +386,9 @@ await using (var clean = new GsipDbContext(cleanOptions))
 
     Write-Host "P07_UPGRADE_PERSISTENCE_ACCEPTANCE=PASS"
     Write-Host "SOURCE_P06_SHA=$p06Sha"
-    Write-Host "P07_SCHEMA_CHANGE=NONE"
+    Write-Host "SOURCE_P07_SHA=$p07Sha"
+    Write-Host "P07_SCHEMA_CHANGE=NONE_AT_P07_BASELINE"
+    Write-Host "POST_P07_MIGRATIONS=ALLOWED_WHEN_CURRENT_PHASE_REQUIRES"
     Write-Host "DATA_PRESERVATION=PASS"
     Write-Host "CONFIGURATION_ISOLATION=PASS"
     Write-Host "PROTECTED_VAULT_PAYLOAD_PRESERVED=PASS"
