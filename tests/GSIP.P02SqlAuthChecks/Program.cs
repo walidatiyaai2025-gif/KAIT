@@ -96,13 +96,33 @@ try
         && !wrongResult.Message.Contains(password, StringComparison.Ordinal),
         "Sanitized SQL diagnostic leaked a runtime credential.", failures);
 
-    var draft = new SetupDraft { Database = database };
-    await service.SaveDraftAsync(draft);
+    // Use long, unique sentinels for ciphertext leakage checks. The real SQL login can
+    // legitimately be very short (for example `sa`), which is unsafe as a substring
+    // oracle against randomized protected/Base64 text and can create false positives.
+    var plaintextServerSentinel = "plaintext-server-" + Guid.NewGuid().ToString("N");
+    var plaintextUsernameSentinel = "plaintext-user-" + Guid.NewGuid().ToString("N");
+    var plaintextPasswordSentinel = "plaintext-password-" + Guid.NewGuid().ToString("N");
+    var protectedStateProbe = new SetupDraft
+    {
+        Database = new DatabaseSetupOptions
+        {
+            Server = plaintextServerSentinel,
+            DatabaseName = "GSIP_P02_PROTECTED_STATE_PROBE",
+            UseWindowsAuthentication = false,
+            Username = plaintextUsernameSentinel,
+            Password = plaintextPasswordSentinel,
+            Encrypt = true,
+            TrustServerCertificate = false,
+            TimeoutSeconds = 5,
+            CreateDatabase = false
+        }
+    };
+    await service.SaveDraftAsync(protectedStateProbe);
     var protectedDraftPath = Path.Combine(temporaryRoot, "App_Data", "setup", "draft.protected");
     var protectedDraft = await File.ReadAllTextAsync(protectedDraftPath);
-    Expect(!protectedDraft.Contains(username, StringComparison.Ordinal)
-        && !protectedDraft.Contains(password, StringComparison.Ordinal)
-        && !protectedDraft.Contains(server, StringComparison.Ordinal),
+    Expect(!protectedDraft.Contains(plaintextUsernameSentinel, StringComparison.Ordinal)
+        && !protectedDraft.Contains(plaintextPasswordSentinel, StringComparison.Ordinal)
+        && !protectedDraft.Contains(plaintextServerSentinel, StringComparison.Ordinal),
         "Protected setup draft exposed SQL connection material as plaintext.", failures);
 
     var windowsBindingTarget = new DatabaseSetupOptions
