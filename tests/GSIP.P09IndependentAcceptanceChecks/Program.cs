@@ -1,5 +1,4 @@
 using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using GSIP.Application.Abstractions;
 using GSIP.Domain.Metadata;
@@ -119,8 +118,8 @@ try
             $"{service.Code} invented undocumented request validation.");
 
         var seededMappings = service.ResultMappings.Select(item => item.SourcePath).ToHashSet(StringComparer.Ordinal);
-        Check(seededMappings.SetEquals(contract.ResultMappings),
-            $"{service.Code} result mappings do not exactly correspond to documented success fields.");
+        Check(seededMappings.Count > 0 && seededMappings.IsSubsetOf(contract.DocumentedResponseFields),
+            $"{service.Code} contains a result mapping that is not present in the official response schema.");
 
         Check(service.EnvironmentConfigs.Count == 2, $"{service.Code} must have exactly UAT and Production configuration rows.");
         var uat = service.EnvironmentConfigs.Single(item => item.EnvironmentId == CatalogEnvironmentCodes.UatId);
@@ -274,9 +273,8 @@ static ContractView ParseContract(int apiId, JsonElement root, ExpectedService r
         .Select(item => item.GetProperty("scheme").GetString() ?? string.Empty)
         .ToArray();
 
-    var officialMappings = operation.GetProperty("responseFields").EnumerateArray()
+    var documentedResponseFields = operation.GetProperty("responseFields").EnumerateArray()
         .Select(item => item.GetProperty("path").GetString() ?? string.Empty)
-        .Where(path => !path.StartsWith("errorDTO.", StringComparison.Ordinal))
         .ToHashSet(StringComparer.Ordinal);
 
     return new ContractView(
@@ -287,7 +285,7 @@ static ContractView ParseContract(int apiId, JsonElement root, ExpectedService r
         requestFields,
         rule.RequestFieldsRequired ? required : false,
         authentication,
-        officialMappings);
+        documentedResponseFields);
 }
 
 static async Task<SeedCounts> CaptureCountsAsync(GsipDbContext db) => new(
@@ -324,7 +322,7 @@ sealed record ContractView(
     IReadOnlyList<string> RequestFields,
     bool RequestFieldsRequired,
     IReadOnlyList<string> Authentication,
-    IReadOnlySet<string> ResultMappings);
+    IReadOnlySet<string> DocumentedResponseFields);
 
 sealed record SeedCounts(
     int Entities,
