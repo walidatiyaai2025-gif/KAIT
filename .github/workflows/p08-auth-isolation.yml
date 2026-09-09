@@ -49,7 +49,9 @@ jobs:
         run: dotnet build GSIP.sln -c Release --no-restore
       - name: Build P08 isolation checks Release
         run: dotnet build tests/GSIP.P08AuthIsolationChecks/GSIP.P08AuthIsolationChecks.csproj -c Release --no-restore
-      - name: Run stale-binding secret-isolation negative check
+      - name: Run P08 MOJ auth isolation security matrix
         run: dotnet run --project tests/GSIP.P08AuthIsolationChecks/GSIP.P08AuthIsolationChecks.csproj -c Release --no-build
+      - name: Re-run P06 token-cache regression baseline
+        run: dotnet run --project tests/GSIP.P06TokenCacheChecks/GSIP.P06TokenCacheChecks.csproj -c Release --no-build
       - name: Validate execution plan and governance
         run: python scripts/validate_execution_plan.py
