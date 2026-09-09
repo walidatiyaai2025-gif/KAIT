@@ -21,7 +21,7 @@ public sealed class AuditController(
         string? serviceCode = null,
         Guid? actorUserId = null,
         bool? succeeded = null,
-        string? action = null,
+        [FromQuery(Name = "action")] string? action = null,
         Guid? selectedId = null,
         string? integrityResult = null,
         int page = 1,
@@ -79,7 +79,7 @@ public sealed class AuditController(
         string? serviceCode = null,
         Guid? actorUserId = null,
         bool? succeeded = null,
-        string? action = null,
+        [FromQuery(Name = "action")] string? action = null,
         CancellationToken cancellationToken = default)
     {
         try
