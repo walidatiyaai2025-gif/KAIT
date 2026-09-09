@@ -168,13 +168,15 @@ try
     Check(await db.AuthProfileSecrets.CountAsync() == 0 && await db.SecretVaultEntries.CountAsync() == 0,
         "P09 seed persisted secret references/material.");
 
-    var beforeIds = services.Select(item => item.Id).Order().ToArray();
+    var beforeIdentities = services.ToDictionary(item => item.Code, item => item.Id, StringComparer.Ordinal);
     var beforeCounts = await CaptureCountsAsync(db);
     await seed.SeedAsync();
-    var afterIds = await db.CatalogServices.AsNoTracking()
+    var afterIdentities = await db.CatalogServices.AsNoTracking()
         .Where(item => item.EntityId == entity.Id && item.IsCurrent)
-        .Select(item => item.Id).OrderBy(item => item).ToArrayAsync();
-    Check(beforeIds.SequenceEqual(afterIds), "Metadata seed idempotency changed stable service identities.");
+        .ToDictionaryAsync(item => item.Code, item => item.Id);
+    Check(beforeIdentities.Count == afterIdentities.Count
+        && beforeIdentities.All(pair => afterIdentities.TryGetValue(pair.Key, out var id) && id == pair.Value),
+        "Metadata seed idempotency changed stable service identities.");
     Check(beforeCounts == await CaptureCountsAsync(db), "Metadata seed idempotency changed persisted object counts.");
 
     var ownerEdited = await db.CatalogServices.SingleAsync(item => item.Id == services[0].Id);
