@@ -28,7 +28,7 @@ public sealed class GenericServiceExecutionEngine(
     ITokenCache? tokenCache = null) : IServiceExecutionEngine
 {
     private const string ClientName = "GSIP.Execution";
-    private const string MojTokenPath = "/genToken";
+    private const string MojTokenPathMetadataKey = "X-GSIP-TokenEndpointPath";
     private const int MaximumTokenResponseBytes = 64 * 1024;
     private static readonly HashSet<string> BodylessMethods = new(StringComparer.OrdinalIgnoreCase) { "GET", "HEAD", "OPTIONS" };
     private static readonly HashSet<string> ForbiddenConfiguredHeaders = new(StringComparer.OrdinalIgnoreCase)
@@ -243,6 +243,7 @@ public sealed class GenericServiceExecutionEngine(
         if (tokenCache is null)
             throw new AuthenticationUnavailableException();
 
+        var tokenPath = ResolveTokenEndpointPath(binding.ConfiguredHeadersJson);
         var usernameSecret = SingleSecret(profile, "username");
         var passwordSecret = SingleSecret(profile, "password");
         if (profile.Secrets.Count != 2)
@@ -274,14 +275,14 @@ public sealed class GenericServiceExecutionEngine(
                             Math.Max(usernameSecret.Generation, passwordSecret.Generation),
                             validityParameters: new Dictionary<string, string?>(StringComparer.Ordinal)
                             {
-                                ["token-path"] = MojTokenPath,
+                                ["token-path"] = tokenPath,
                                 ["username-generation"] = usernameSecret.Generation.ToString(CultureInfo.InvariantCulture),
                                 ["password-generation"] = passwordSecret.Generation.ToString(CultureInfo.InvariantCulture)
                             });
 
                         var cached = await tokenCache.GetOrRefreshAsync(
                             identity,
-                            refreshToken => AcquireMojTokenAsync(client, binding, username, password, refreshToken),
+                            refreshToken => AcquireMojTokenAsync(client, binding, tokenPath, username, password, refreshToken),
                             passwordToken);
                         var bearer = ValidateBearerToken(cached.AccessToken);
                         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearer);
@@ -310,9 +311,41 @@ public sealed class GenericServiceExecutionEngine(
         return matches[0];
     }
 
+    private static string ResolveTokenEndpointPath(string? configuredMetadataJson)
+    {
+        if (string.IsNullOrWhiteSpace(configuredMetadataJson))
+            throw new AuthenticationUnavailableException();
+
+        try
+        {
+            using var document = JsonDocument.Parse(configuredMetadataJson);
+            if (document.RootElement.ValueKind != JsonValueKind.Object
+                || !document.RootElement.TryGetProperty(MojTokenPathMetadataKey, out var pathElement)
+                || pathElement.ValueKind != JsonValueKind.String)
+                throw new AuthenticationUnavailableException();
+
+            var path = pathElement.GetString()?.Trim();
+            if (string.IsNullOrWhiteSpace(path)
+                || !path.StartsWith('/', StringComparison.Ordinal)
+                || path.StartsWith("//", StringComparison.Ordinal)
+                || path.Contains('\\')
+                || path.Contains('?')
+                || path.Contains('#')
+                || path.Any(character => char.IsControl(character)))
+                throw new AuthenticationUnavailableException();
+
+            return path;
+        }
+        catch (JsonException)
+        {
+            throw new AuthenticationUnavailableException();
+        }
+    }
+
     private static async Task<TokenCacheValue> AcquireMojTokenAsync(
         HttpClient client,
         AuthorizedServiceExecutionBinding binding,
+        string tokenPath,
         string username,
         string password,
         CancellationToken cancellationToken)
@@ -323,7 +356,7 @@ public sealed class GenericServiceExecutionEngine(
             if (!Uri.TryCreate(binding.BaseUrl, UriKind.Absolute, out var baseUri)
                 || baseUri.Scheme is not ("http" or "https"))
                 throw new AuthenticationUnavailableException();
-            tokenEndpoint = new Uri(baseUri, MojTokenPath);
+            tokenEndpoint = new Uri(baseUri, tokenPath);
         }
         catch (UriFormatException)
         {
@@ -723,6 +756,13 @@ public sealed class GenericServiceExecutionEngine(
                         JsonValueKind.String when bool.TryParse(property.Value.GetString(), out var parsed) => parsed,
                         _ => throw new ServiceExecutionRejectedException()
                     };
+                    continue;
+                }
+
+                if (string.Equals(property.Name, MojTokenPathMetadataKey, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (property.Value.ValueKind != JsonValueKind.String)
+                        throw new ServiceExecutionRejectedException();
                     continue;
                 }
 
