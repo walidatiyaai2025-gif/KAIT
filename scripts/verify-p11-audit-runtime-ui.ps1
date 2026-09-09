@@ -10,10 +10,18 @@ function Get-AntiForgeryToken([string]$Html) {
     return [System.Net.WebUtility]::HtmlDecode($match.Groups[1].Value)
 }
 
+function Normalize-PersonalDataScanText([string]$Text) {
+    $normalized = [regex]::Replace($Text, '(?i)\b[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}\b', '[GUID]')
+    $normalized = [regex]::Replace($normalized, '(?i)\b[0-9a-f]{32,64}\b', '[HEXID]')
+    $normalized = [regex]::Replace($normalized, '(?i)\bGSIP_P11_UI_[0-9a-f]{12}\b', 'GSIP_P11_UI_[ID]')
+    return $normalized
+}
+
 function Assert-NoForbiddenEvidence([string]$Text, [string]$SyntheticPassword) {
     if ($Text -match 'Authorization\s*:\s*Bearer\s+\S+') { throw 'Runtime UI evidence exposed a bearer authorization header.' }
     if ($Text -match 'x-api-key\s*[:=]\s*\S+') { throw 'Runtime UI evidence exposed an API key.' }
-    if ($Text -match '\b\d{12}\b') { throw 'Runtime UI evidence contains a 12-digit personal-data pattern.' }
+    $personalDataScan = Normalize-PersonalDataScanText $Text
+    if ($personalDataScan -match '\b\d{12}\b') { throw 'Runtime UI evidence contains a 12-digit personal-data pattern after technical identifiers are excluded.' }
     if ($Text.Contains($SyntheticPassword, [System.StringComparison]::Ordinal)) { throw 'Runtime UI evidence exposed the synthetic login password.' }
 }
 
