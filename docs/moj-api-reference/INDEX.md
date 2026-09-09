@@ -61,3 +61,17 @@ During P08/P09 the worker must:
 9. ensure no real API key, username/password, Bearer token, Civil ID or personal result is committed.
 
 If the portal is unavailable or a schema is not visible, mark only that exact contract item `DEFERRED_EXTERNAL`; finish the generic engine, tests, metadata schema and sanitized fixtures that can be completed independently.
+
+## P09 authoritative snapshot set
+
+The P09 machine-readable capture is under `docs/moj-api-reference/p09/`. It is the implementation authority for P09 contract facts; the historical descriptive notes above must **not** be promoted into request/response metadata unless the corresponding P09 snapshot marks the item proven.
+
+Current capture status:
+
+- API 129 Marriage Cases: `PARTIAL_PROVEN` for the owner-supplied authenticated UAT facts recorded above; unproven response/error/Production/read-only details remain `DEFERRED_EXTERNAL`.
+- API 132 Is Single Basic: `DEFERRED_EXTERNAL`.
+- API 130 Marriage Couple Last Case: `DEFERRED_EXTERNAL`.
+- API 196 Family Judgment Text: `DEFERRED_EXTERNAL`.
+- API 134 Procuration Status: `DEFERRED_EXTERNAL`.
+
+CAIT public guidance requires sign-in to view API specifications/additional documents. The four fully deferred services therefore remain materially blocked for seed/runtime contract work until authorized operation-level evidence is captured. P09 is not eligible for closure from this partial capture.

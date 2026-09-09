@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "apiId": 132,
+  "serviceName": "Is Single Basic Service",
+  "officialSource": "https://developer.api.cait.gov.kw/api/132",
+  "captureStatus": "DEFERRED_EXTERNAL",
+  "evidence": {
+    "classification": "OFFICIAL_CAIT_SPECIFICATION_NOT_RETRIEVABLE_WITHOUT_SIGN_IN",
+    "automatedPortalSpecificationRetrieval": "DEFERRED_EXTERNAL",
+    "missingDependency": "Authenticated CAIT Developer Portal operation specification/OpenAPI for this exact API.",
+    "retrievalDiscipline": "No method, path, field, validation, auth, response, error, or read-only property is inferred from service name or non-authoritative hints."
+  },
+  "contractItems": {
+    "uatServerBaseUrl":{"status":"DEFERRED_EXTERNAL","value":null},
+    "productionServerBaseUrl":{"status":"DEFERRED_EXTERNAL","value":null},
+    "httpMethod":{"status":"DEFERRED_EXTERNAL","value":null},
+    "relativePath":{"status":"DEFERRED_EXTERNAL","value":null},
+    "requestContentType":{"status":"DEFERRED_EXTERNAL","value":null},
+    "requestFields":{"status":"DEFERRED_EXTERNAL","fields":[]},
+    "operationAuthentication":{"status":"DEFERRED_EXTERNAL","requirements":[]},
+    "successStatusesAndSchema":{"status":"DEFERRED_EXTERNAL","responses":[]},
+    "errorStatusesAndSchemas":{"status":"DEFERRED_EXTERNAL","responses":[]},
+    "responseFields":{"status":"DEFERRED_EXTERNAL","fields":[]},
+    "resultMappingCandidates":{"status":"DEFERRED_EXTERNAL","fields":[]},
+    "readOnlyNonDestructive":{"status":"DEFERRED_EXTERNAL","value":null}
+  }
+}
