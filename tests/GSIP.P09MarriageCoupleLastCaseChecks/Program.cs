@@ -46,7 +46,7 @@ try
         .Include(item => item.ResultMappings)
         .SingleAsync(item => item.Code == "MARRIAGECOUPLELASTCASE" && item.IsCurrent);
     Check(service.Version == 2 && service.Active, "API130 current metadata version is not v2.");
-    Check(service.Fields.Select(item => item.Key).SequenceEqual(["male_civilId", "female_civilId"]),
+    Check(service.Fields.OrderBy(item => item.DisplayOrder).Select(item => item.Key).SequenceEqual(["male_civilId", "female_civilId"]),
         "API130 seed request keys/order drifted.");
     Check(service.Fields.All(item => item.Required && item.Sensitive && item.Masking == "Last4"),
         "API130 Civil ID request fields must be required and sensitive.");
