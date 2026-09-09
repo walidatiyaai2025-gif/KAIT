@@ -13,14 +13,17 @@ internal static class SetupSqlFailureClassifier
     {
         ArgumentNullException.ThrowIfNull(exception);
 
-        if (AuthenticationNumbers.Contains(exception.Number))
+        // SqlClient can surface a transport-level number as SqlException.Number while
+        // retaining the decisive login error in Errors. Classification must therefore
+        // consider the complete sanitized numeric error set and prioritize authentication.
+        if (ContainsAny(exception, AuthenticationNumbers))
         {
             return SetupOperationResult.Fail(
                 "SQL_AUTHENTICATION_FAILED",
                 "SQL Server rejected the login. Verify SQL Authentication mode, username and password.");
         }
 
-        if (exception.Number == -2)
+        if (ContainsNumber(exception, -2))
         {
             return SetupOperationResult.Fail(
                 "SQL_CONNECTION_TIMEOUT",
@@ -34,7 +37,7 @@ internal static class SetupSqlFailureClassifier
                 "SQL Server TLS/certificate validation failed. Verify the server certificate and the selected Encrypt/Trust Server Certificate settings; GSIP did not weaken TLS automatically.");
         }
 
-        if (NetworkNumbers.Contains(exception.Number))
+        if (ContainsAny(exception, NetworkNumbers))
         {
             return SetupOperationResult.Fail(
                 "SQL_NETWORK_OR_INSTANCE_FAILED",
@@ -44,6 +47,42 @@ internal static class SetupSqlFailureClassifier
         return SetupOperationResult.Fail(
             "SQL_CONNECTION_UNKNOWN",
             $"SQL Server returned an unclassified connection error (SQL error {exception.Number}). Review server-side SQL diagnostics without exposing credentials or connection strings.");
+    }
+
+    private static bool ContainsAny(SqlException exception, HashSet<int> numbers)
+    {
+        if (numbers.Contains(exception.Number))
+        {
+            return true;
+        }
+
+        foreach (SqlError error in exception.Errors)
+        {
+            if (numbers.Contains(error.Number))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool ContainsNumber(SqlException exception, int number)
+    {
+        if (exception.Number == number)
+        {
+            return true;
+        }
+
+        foreach (SqlError error in exception.Errors)
+        {
+            if (error.Number == number)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static bool IsTlsOrCertificateFailure(Exception exception)
