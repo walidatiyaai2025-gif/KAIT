@@ -51,13 +51,17 @@ The bilingual `/audit` dashboard is derived from the canonical audit service and
 
 The global navigation links the canonical request-history and audit surfaces; authorization remains server-side.
 
+P11 visual/runtime acceptance is bound to `docs/ui-baseline/kuwait_government_audit_dashboard.svg`. The Windows acceptance job now starts the real GSIP web application against an isolated synthetic SQL LocalDB database in the dedicated `RegressionTesting` environment, authenticates a synthetic System Administrator, exercises the protected `/audit` route in English LTR and Arabic RTL, verifies filtering and event detail, downloads the permissioned CSV export, performs authorized integrity verification, proves CSRF rejection without an anti-forgery token, and captures desktop and narrow Chrome/Edge screenshots. Runtime evidence is scanned for bearer/API-key patterns, 12-digit personal identifiers and the synthetic login password before upload.
+
+This runtime/browser path is a required candidate gate. Its presence in the workflow is not itself a PASS; only a terminal-success result bound to the exact final PR head is acceptance evidence.
+
 ## Recovered integrity regression
 
 The recovered historical P11 branch initially failed fresh-chain LocalDB integrity verification. Root cause was schema-level fixed-width padding: the migration declared `PreviousHash` as `char(64)`, while the first record stores the sentinel `GENESIS`. SQL Server returned that value padded to 64 characters, so the unchanged verifier correctly rejected the record.
 
 The canonical branch repair changed only `PreviousHash` storage to variable-length `nvarchar(64)`; `RecordHash` remains the fixed-width SHA-256 representation. No integrity, tamper, append-only, concurrency or retention assertion was weakened. On repaired head `0593d97c176cb76e855a3209c3413201f76d9a39`, both the P00 baseline workflow and the dedicated P11 workflow completed SUCCESS, including append-only, integrity, concurrency, retention, monitoring and tamper-detection acceptance.
 
-The branch was then reconciled with exact P10-closed main without force-push and stale closed-phase content was replaced by exact-main versions. Final PR-head acceptance must be rerun on the reconciled branch before integration.
+The branch was then reconciled with exact P10-closed main without force-push and stale closed-phase content was replaced by exact-main versions. The prior reconciled head passed the full existing matrix; the strengthened runtime/browser gate must now pass again on the new exact final candidate head before integration.
 
 ## Executable acceptance
 
@@ -67,20 +71,28 @@ The branch was then reconciled with exact P10-closed main without force-push and
    - exact-SHA checkout;
    - pinned SDK restore/build of the solution;
    - executable leakage/hash negative acceptance;
-   - bilingual Audit-dashboard contract verification;
+   - bilingual Audit-dashboard source contract verification;
    - forbidden evidence-pattern scan;
    - planning-integrity validation;
    - evidence artifact upload.
 
-2. Windows SQL LocalDB job:
+2. Windows SQL LocalDB + protected runtime/browser job:
    - exact-SHA checkout;
-   - build of the P11 integration executable;
-   - real migrations on LocalDB;
+   - pinned SDK restore/build of the solution and P11 integration executable;
+   - real migrations on isolated LocalDB;
    - append-only enforcement;
    - integrity/tamper/tail-deletion detection;
    - concurrent writer serialization;
    - retention checkpoint behavior;
    - monitoring snapshot behavior;
+   - real protected GSIP web runtime using synthetic-only LocalDB state;
+   - unauthenticated `/audit` challenge verification;
+   - authenticated English LTR / Arabic RTL `/audit` rendering;
+   - canonical LoginSuccess audit visibility, filter and detail verification;
+   - permissioned CSV export verification;
+   - authorized integrity POST plus missing-CSRF negative acceptance;
+   - desktop and narrow Chrome/Edge screenshots against the Audit dashboard baseline;
+   - forbidden secret/personal-data evidence scan;
    - exact-candidate evidence manifest and artifact upload.
 
 P00 build/package/hash and all closed-phase workflows remain independent regression baselines.
