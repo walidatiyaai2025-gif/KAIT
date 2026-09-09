@@ -1,0 +1,55 @@
+name: P08 Auth Scope Isolation
+
+on:
+  push:
+    branches:
+      - 'worker/p08-moj-auth-scope-isolation'
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  auth-scope-isolation:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    env:
+      CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+      GSIP_P08_SQL: Server=(localdb)\MSSQLLocalDB;Database=GSIP_P08_AuthIsolation_${{ github.run_id }}_${{ github.run_attempt }};Trusted_Connection=True;TrustServerCertificate=True
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          fetch-depth: 0
+      - name: Assert exact candidate SHA
+        shell: pwsh
+        run: |
+          $actual = (git rev-parse HEAD).Trim()
+          if ($actual -ne $env:CANDIDATE_SHA) {
+            throw "Exact candidate mismatch: expected=$env:CANDIDATE_SHA actual=$actual"
+          }
+          Write-Host "EXACT_CANDIDATE_SHA=$actual"
+      - name: Setup pinned .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Start SQL LocalDB
+        shell: pwsh
+        run: |
+          sqllocaldb start MSSQLLocalDB
+          sqllocaldb info MSSQLLocalDB
+      - name: Restore solution
+        run: dotnet restore GSIP.sln
+      - name: Restore P08 isolation checks
+        run: dotnet restore tests/GSIP.P08AuthIsolationChecks/GSIP.P08AuthIsolationChecks.csproj
+      - name: Build solution Release
+        run: dotnet build GSIP.sln -c Release --no-restore
+      - name: Build P08 isolation checks Release
+        run: dotnet build tests/GSIP.P08AuthIsolationChecks/GSIP.P08AuthIsolationChecks.csproj -c Release --no-restore
+      - name: Run stale-binding secret-isolation negative check
+        run: dotnet run --project tests/GSIP.P08AuthIsolationChecks/GSIP.P08AuthIsolationChecks.csproj -c Release --no-build
+      - name: Validate execution plan and governance
+        run: python scripts/validate_execution_plan.py
