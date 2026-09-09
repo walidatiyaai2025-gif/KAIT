@@ -573,7 +573,8 @@ sealed class FakeHttpClientFactory(HttpClient client) : IHttpClientFactory
 {
     public HttpClient CreateClient(string name)
     {
-        Check(name == "GSIP.Execution", "Runtime did not use canonical named HttpClient.");
+        if (!string.Equals(name, "GSIP.Execution", StringComparison.Ordinal))
+            throw new InvalidOperationException("Runtime did not use canonical named HttpClient.");
         return client;
     }
 }
