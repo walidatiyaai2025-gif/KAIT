@@ -4,129 +4,122 @@ Unit: `P08::contract-evidence-reconciliation`
 Role: independent contract auditor / evidence worker  
 Tracker: issue #1  
 Audit branch: `worker/p08-contract-evidence-reconciliation`  
-Live integrated base at reconciliation start: `e63e4ca7d5719404452791784709af8d509ea498`
+Integrated audit base: `main=e63e4ca7d5719404452791784709af8d509ea498`
 
-> This document is evidence/reconciliation only. It does **not** mark P08 CLOSED and does not authorize P09 work.
+> Evidence/reconciliation only. This document does **not** mark P08 CLOSED and does not authorize P09.
 
-## 1. Live-state findings
+## 1. Live state inspected
 
-### Current phase and governance
+- P08 is the sole OPEN / READY phase; P09–P17 remain locked.
+- PR #43 is integrated on current audit base and adds the P08 stale-binding Secret Vault fail-closed production guard.
+- PR #44 is OPEN and extends Worker 2 isolation acceptance only.
+- PR #45 is OPEN for Worker 1 MOJ auth runtime. Latest inspected PR head: `337fc2ab157a21ec79593070d9718307cdd7d9f6`.
+- Worker 3 independent security acceptance exists on `worker/p08-security-acceptance-ci`, latest inspected head `2b32ca6af8222a831106471f6423d7fce25734c1`, composed on the Worker 1 runtime candidate; it was not yet integrated when inspected.
+- Captain convergence claim exists on tracker #1. This worker does not close the phase.
 
-- P08 — MOJ authentication integration — is the sole OPEN / READY implementation phase.
-- P09–P17 remain locked.
-- P08 exit requires authoritative MOJ authentication behavior, exact Service + Environment + AuthProfile isolation, executable negative/security acceptance, preserved P00–P07 regressions and exact-main evidence.
-- The canonical P07 execution runtime remains the integration boundary; P08 must extend authentication behavior rather than introduce a competing execution runtime.
+## 2. Official CAIT/MOJ authentication evidence
 
-### P08 worker ownership observed
+`docs/moj-api-reference/INDEX.md` preserves owner-supplied official evidence for:
 
-| Unit | Branch / PR | Owned scope | Audit disposition |
-|---|---|---|---|
-| `P08::moj-auth-runtime` | `worker/p08-moj-auth-runtime` | P08 x-api-key, `/genToken`, Bearer runtime and P07 wiring | Branch exists but remained at baseline `8609ae4b5eb963208b366e59e8bd6b3f9311daa3` when inspected; **no implementation evidence yet**. |
-| `P08::moj-auth-scope-isolation` | `worker/p08-moj-auth-scope-isolation`; PR #43 merged; PR #44 open | fail-closed isolation and dedicated acceptance | PR #43 production guard integrated on current base. PR #44 full acceptance extension pending integration. |
-| `P08::security-acceptance-ci` | `worker/p08-security-acceptance-ci` | independent P08 security/negative/no-leak acceptance | Branch exists; integration evidence pending. |
-| `P08::contract-evidence-reconciliation` | this branch | contract matrix, traceability, evidence and non-overlapping validation | Active. |
-| P08 captain convergence | `worker/p08-moj-authentication-convergence` was claimed in issue #1 | integration/closure convergence | Captain claim exists; no closure conclusion is made here. |
-
-### Integrated P08 change observed
-
-PR #43 normally merged the minimum stale-binding Secret Vault guard into `main=e63e4ca7d5719404452791784709af8d509ea498`. The change requires canonical active `ServiceEnvironmentConfig.AuthProfileId` to agree with the exact requested AuthProfile before secret material can be resolved. The PR reported dedicated P08 Auth Scope Isolation run `34312024564` SUCCESS on its reconciled candidate.
-
-PR #44 is a lawful continuation of the same isolation lease and, at this snapshot, remains OPEN. Its stated delta is limited to the unit-owned isolation test/workflow paths and extends synthetic-only coverage across forged/stale SecretRefs/AuthProfiles, cross-service/environment misuse, Production→UAT fallback, disabled/missing binding, cache-scope/version/generation isolation, near-expiry refresh and single-flight/failure safety. Because it is not yet integrated, those claims are not promoted to exact-main PASS by this audit.
-
-## 2. Official CAIT/MOJ contract capture
-
-The repository-preserved owner-supplied official evidence in `docs/moj-api-reference/INDEX.md` establishes:
-
-- `ApiKeyAuth` request header named `x-api-key` / Swagger-defined casing;
+- `ApiKeyAuth` header `x-api-key`;
 - `POST /genToken`;
-- `application/x-www-form-urlencoded` request content type;
-- form fields `username` and `password`;
-- successful example token response shape `{ "data": "string" }`;
-- Bearer use of the token for other Marriage APIs where that authentication applies.
+- `application/x-www-form-urlencoded`;
+- `username` + `password` form fields;
+- successful `{ "data": "string" }` token shape;
+- Bearer use for Marriage APIs where applicable.
 
-The live public CAIT portal is reachable, but exact referenced API detail pages were not available to the auditing retrieval path as a complete machine-readable operation contract. General public CAIT guidance corroborates separate UAT/live environments, JWT Bearer usage and token expiry as concepts; it does not establish the exact MOJ `/genToken` TTL, scope, audience, per-operation auth scheme, base URL or full error schema.
+The exact referenced CAIT operation pages were not retrievable by this audit as a complete machine-readable contract. General public CAIT guidance corroborates separate UAT/live environments, JWT/Bearer use, and token expiry as concepts, but does not establish the exact MOJ token TTL, scope/audience, per-operation auth applicability, base URL, or full status/error schema.
 
-Therefore the following are deliberately **not invented**:
+Therefore exact unavailable details are `DEFERRED_EXTERNAL`; this audit does not invent `expires_in`, scope/audience, `grant_type`, client credentials, refresh-token behavior, undocumented fields, or undocumented status schemas.
 
-- token TTL / `expires_in`;
-- OAuth `scope` or audience;
-- `grant_type`, `client_id`, `client_secret`, refresh-token semantics;
-- undocumented `/genToken` fields;
-- exact UAT/Production token base URLs;
-- undocumented error status/response shapes.
+## 3. Worker 1 runtime audit — PR #45
 
-Exact inaccessible items are recorded as `DEFERRED_EXTERNAL` in `docs/moj-api-reference/P08_AUTH_CONTRACT_MATRIX.md`.
+### Candidate behavior supported by the preserved contract
 
-## 3. Implementation-to-contract traceability status
+The inspected candidate:
 
-The authoritative matrix is `docs/moj-api-reference/P08_AUTH_CONTRACT_MATRIX.md`.
+- preserves exact `x-api-key` header capability through `ApiKeyHeader`;
+- posts form-urlencoded `username` + `password` for token acquisition;
+- parses token only from response `data` string;
+- attaches the acquired token transiently as Bearer to the P07 service request;
+- resolves token credentials under exact execution Service + Environment + AuthProfile scope;
+- reuses canonical `ITokenCache`/`TokenCacheIdentity` with version/generation validity inputs;
+- derives reusable expiry only from JWT `exp`; if absent/unusable it returns current time, so no MOJ TTL is invented;
+- keeps the flow inside `GenericServiceExecutionEngine` and runs P07 runtime/security regressions in its dedicated workflow.
 
-At this snapshot:
+PR #45 candidate Action query showed 21 workflow runs at audit time with no observed failed, queued, or in-progress run. Candidate-green evidence is not exact-main closure evidence.
 
-- x-api-key runtime: **PENDING_IMPLEMENTATION**;
-- `/genToken` exact request/response runtime: **PENDING_IMPLEMENTATION**;
-- Bearer injection: **PENDING_IMPLEMENTATION**;
-- P07 authenticated-send integration: **PENDING_IMPLEMENTATION**;
-- P08 runtime-specific redaction/no-leak evidence: **PENDING**;
-- exact secret-binding stale/forged fail-closed production guard: **INTEGRATED via PR #43**;
-- extended isolation acceptance: **PENDING_INTEGRATION via PR #44**;
-- token-cache isolation foundation: **PRESENT from P06**, with P08-specific acceptance still pending;
-- official exact token TTL/scope: **NOT CAPTURED; MUST NOT BE INVENTED**.
+### Blocking contract defect found
 
-## 4. Contract gap requiring captain handoff
+PR #45 introduces:
 
-### `AUTH-ADMIN-01` — P08 token-generation Test administration action
+`private const string MojTokenPath = "/genToken";`
 
-The canonical P08 execution instruction requires a token-generation **Test** button/action in administration. Current specialist leases do not own that implementation:
+and constructs the token endpoint using that runtime constant. Canonical P08 explicitly requires base URL, header name, and **paths** to come from environment/metadata, not hard-coded production behavior.
 
-- Worker 1 excludes UI;
-- Worker 2 owns isolation paths only;
-- Worker 3 excludes UI;
-- this worker is evidence/contract only.
+This audit posted a blocking handoff:
 
-**Required captain action:** assign or implement the smallest P08-only administration Test Authentication/token-generation flow using the canonical P04 authorization + P06 AuthProfile/Secret Vault + P08 authentication runtime. It must be server-side authorized, redacted, environment-scoped, non-persistent for plaintext/token material, and tested without real credentials. It must not seed/implement P09 service-specific request/response behavior.
+- PR #45 comment id `5596048376`;
+- tracker #1 HANDOFF comment id `5596056631`.
 
-Until this requirement is resolved or lawfully reconciled by higher-authority project evidence, P08 should not be declared closure-ready.
+Required repair is the smallest lawful metadata/configuration change that resolves the token endpoint path from exact Service + Environment + AuthProfile governed configuration, fails closed when absent/invalid, includes the resolved validity-affecting path in token-cache identity, and proves the behavior with a non-default synthetic token-path test. No P09 service fields should be introduced.
 
-## 5. P00–P07 regression evidence
+Exact applicability of `x-api-key` to `/genToken` itself remains `DEFERRED_EXTERNAL`; the preserved evidence proves the header scheme exists but does not prove operation-level scheme assignment. The implementation must not guess that combination.
 
-Before P08 feature changes, exact `main=8609ae4b5eb963208b366e59e8bd6b3f9311daa3` had 16 workflow runs with no observed failed, queued, in-progress or cancelled run in the live query. That served as the closed P00–P07 baseline after PR #42 repaired the P06 browser-evidence timing flake.
+## 4. Worker 2 isolation audit
 
-Current audit base advanced to `main=e63e4ca7d5719404452791784709af8d509ea498` through PR #43. Final P08 convergence must re-run and record the complete applicable exact-main P00–P07 regression matrix on the **final integrated P08 SHA**. Candidate/PR-head green evidence is necessary but not sufficient for phase closure.
+PR #43 integrated the fail-closed production guard on `main=e63e4ca7d5719404452791784709af8d509ea498`. It requires canonical active ServiceEnvironmentConfig selection to agree with the requested AuthProfile before secret material can be resolved. PR #43 reported P08 Auth Scope Isolation run `34312024564` SUCCESS on its reconciled candidate.
 
-## 6. Ledger/evidence reconciliation assessment
+PR #44 is a lawful follow-up limited to the owned isolation test/workflow paths. Its stated matrix covers forged/stale AuthProfile/SecretRef, cross-service/environment misuse, Production→UAT fallback, disabled/missing binding, cache isolation, near-expiry, single-flight and failed-refresh safety. It remains pending integration in this audit snapshot.
 
-- `CURRENT_PHASE.md` correctly states P08 OPEN / READY and keeps P09+ locked.
-- `docs/TASK_LEDGER.md` correctly keeps P08 OPEN / READY; it does not falsely claim the partially landed P08 work is closed.
-- P07 governance references the exact integrated P07 **implementation baseline** `9535fa...`; later PR #41 is a reconciliation/phase-transition commit. This distinction is not treated as a defect by this audit.
-- No phase-state document should be changed by this independent worker merely because PR #43 landed; P08 remains OPEN and the captain owns final convergence/closure reconciliation.
+## 5. Worker 3 independent acceptance audit
 
-## 7. Validation policy
+The branch contains `tests/GSIP.P08SecurityAcceptanceChecks` and exercises synthetic-only cases including:
 
-`scripts/verify-p08-auth-contract.ps1` is the non-overlapping static contract validator owned by this unit. It:
+- official-contract fixture integrity;
+- valid x-api-key and Bearer;
+- missing/invalid auth;
+- forged AuthProfile and SecretRef;
+- HTTP/retry/network/TLS/timeout behavior;
+- stale/wrong-scope token cache identity;
+- failed refresh and single-flight safety;
+- secret/token diagnostics leakage.
 
-- verifies the preserved official minimum contract is still present;
-- verifies this matrix carries required contract IDs and `DEFERRED_EXTERNAL` discipline;
-- rejects a false `P08 CLOSED` claim in this audit document/matrix;
-- checks current governance still identifies P08 and keeps P09 locked;
-- scans P08 authentication production locations, when present, for hard-coded external URLs/`/genToken` path and common undocumented OAuth request assumptions;
-- supports `-ClosureGate` to turn pending runtime/security evidence into a hard failure during captain convergence.
+This is useful independent evidence, but it was not yet integrated/exact-main evidence when inspected. Its synthetic `scope` values test GSIP cache isolation only and must not be represented as proof that MOJ defines OAuth scope.
 
-This worker does not add a competing CI workflow because dedicated P08 runtime, isolation and security CI paths are already owned by Workers 1–3. The captain should execute this script after composing those lines and before closure.
+## 6. Remaining contract gap — administration Test action
 
-## 8. Current closure-readiness verdict
+`execution/GSIP_Full_Execution.json` P08 requires a token-generation **Test** action/button in administration. Current specialist boundaries do not own it: Worker 1 and Worker 3 explicitly exclude UI; Worker 2 owns isolation; this worker is contract/evidence only.
 
-**NOT CLOSURE-READY at this audit snapshot.**
+Captain handoff requirement: assign or implement the smallest P08-only server-authorized, environment-scoped, redacted Test Authentication/token-generation administration flow over the canonical P04/P06/P08 boundaries, using synthetic tests and no plaintext/token persistence. Do not enter P09.
 
-Reasons:
+This remains `AUTH-ADMIN-01 = CONTRACT_GAP / HANDOFF_REQUIRED` until resolved or lawfully reconciled by higher-authority project evidence.
 
-1. Worker 1 MOJ auth runtime had no implementation commit when inspected.
-2. Worker 3 independent security acceptance had no integrated evidence when inspected.
-3. PR #44 full isolation acceptance remained open.
-4. `AUTH-ADMIN-01` had no specialist owner/implementation.
-5. Final exact-main P00–P07 + P08 evidence cannot exist until the above lines are integrated.
-6. Exact live CAIT contract details beyond the preserved owner-supplied minimum remain `DEFERRED_EXTERNAL` and must not be guessed.
+## 7. Regression / ledger assessment
 
-The integrated PR #43 isolation repair is legitimate progress and should be preserved.
+- Before P08 feature work, `main=8609ae4b5eb963208b366e59e8bd6b3f9311daa3` had 16 observed workflow runs with no failure/queued/in-progress/cancelled result and served as the closed P00–P07 baseline after PR #42.
+- Audit base `e63e4ca7...` includes PR #43. Final closure still requires the complete applicable exact-main P00–P08 matrix after all P08 lines are integrated.
+- `CURRENT_PHASE.md` correctly keeps P08 OPEN / READY and P09+ locked.
+- `docs/TASK_LEDGER.md` correctly does not claim P08 CLOSED.
+- The P07 `9535fa...` reference is an implementation-baseline reference, while PR #41 is later governance reconciliation; this audit does not treat that distinction as stale evidence.
 
-`UNPUSHED_WORK=NONE` after this branch is pushed by GitHub-backed writes.
+## 8. Validation artifact
+
+`scripts/verify-p08-auth-contract.ps1` is the unit-owned static validator. In normal open-phase mode it verifies preserved official-contract anchors, matrix/governance discipline, and reports pending runtime. In `-ClosureGate` mode it requires composed Worker 1–3 evidence paths and rejects pending/gap markers. When the PR #45 runtime is composed, its production-source scan rejects a literal hard-coded `/genToken` path and undocumented OAuth request conventions.
+
+No separate CI workflow is added by this unit because Worker 1–3 already own dedicated P08 CI paths; the captain should run this validator on the composed convergence head.
+
+## 9. Closure-readiness verdict
+
+**NOT CLOSURE-READY.**
+
+Blocking / pending items:
+
+1. PR #45 hard-coded `/genToken` production path violates metadata-driven P08 configuration and requires repair.
+2. `AUTH-ADMIN-01` token-generation Test administration action is unowned/unimplemented.
+3. PR #44 full isolation acceptance is not yet integrated.
+4. Worker 3 independent security acceptance is not yet integrated/exact-main verified.
+5. Final exact-main P00–P08 regression/evidence gate is necessarily pending.
+6. Exact unavailable CAIT operation details remain `DEFERRED_EXTERNAL` and must not be guessed.
+
+`UNPUSHED_WORK=NONE` after GitHub-backed branch writes.
