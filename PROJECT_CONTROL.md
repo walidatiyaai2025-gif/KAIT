@@ -6,7 +6,7 @@
 - Repository: `walidatiyaai2025-gif/KAIT`
 - Default branch: `main`
 - Delivery model: phase-gated autonomous implementation
-- Current planned product state: P10 CLOSED from exact integrated evidence; P11 tamper-evident audit/monitoring is the canonical current phase and is OPEN / READY
+- Current planned product state: P10 CLOSED from exact integrated and repaired evidence; P11 tamper-evident audit/monitoring is the canonical current phase and is OPEN / READY
 - Initial executable version: `0.1.0`
 - Pinned SDK / target framework: .NET SDK `10.0.400` / `net10.0`
 - Initial entity: Ministry of Justice (MOJ), Kuwait
@@ -16,9 +16,9 @@
 
 ## Last closed phase evidence
 
-P10 is CLOSED from exact integrated `main` SHA `f4b0142175207af1f8cb3c32cfb935e7a66ff856` after normal integration of PR #62. The exact integrated baseline completed **32/32** push workflow runs with failure=0, queued=0, in-progress=0 and cancelled=0 after completion.
+P10 is CLOSED from exact integrated `main` SHA `b7e81cece985b566c9c3222a2c495b83e800e080` after normal integration of PR #62 followed by closed-baseline pagination-filter regression repair PR #65. PR #65 passed **32/32 exact-head workflows** before merge. The resulting exact integrated main completed **29/29 push workflows SUCCESS**, with failure=0, queued=0 and in-progress=0 after completion.
 
-P10 closure includes canonical request/result lifecycle persistence, masked/protected bounded result storage, Own/Department/All authorization plus current service visibility, IDOR rejection, filters/search, retention/migration/concurrency acceptance, permissioned CSV/XLSX/PDF/Print exports with injection defense and export audit events, and bilingual reachable History UI. Detailed evidence: `docs/evidence/P10_CLOSURE.md`.
+P10 closure includes canonical request/result lifecycle persistence, masked/protected bounded result storage, Own/Department/All authorization plus current service visibility, IDOR rejection, filters/search with date-range and other active filters preserved across pagination, retention/migration/concurrency acceptance, permissioned CSV/XLSX/PDF/Print exports with injection defense and export audit events, and bilingual reachable History UI. The pagination repair is protected by executable regression coverage. Detailed evidence: `docs/evidence/P10_CLOSURE.md`.
 
 Historical P08/P09 owner/external classifications remain unchanged. Evidence proven for UAT is not promoted to Production. `DEFERRED_EXTERNAL` remains NOT PASS and Production→UAT fallback is forbidden.
 
@@ -79,7 +79,7 @@ P04 established the authorization boundary. Runtime authorization uses editable 
 
 ## Metadata catalog contract
 
-P05 established the metadata-driven Entity/Environment/Service/ServiceField/ResultMapping boundary. Service definitions use independent UAT/Production bindings, secure metadata validation, historical versioning after first use, schema-governed JSON import/export, protected bilingual administration and generic execution metadata without custom per-service Controller/View requirements. Invalid or secret-bearing definitions must fail atomically and must not be persisted by later valid operations.
+P05 established the metadata-driven Entity/Environment/Service/ServiceField/ResultMapping boundary. Service definitions use independent UAT/Production bindings, secure metadata validation, historical versioning after first use, schema-governed JSON import/export, protected bilingual administration and generic service proof without custom per-service Controller/View requirements. Invalid or secret-bearing definitions must fail atomically and must not be persisted by later valid operations.
 
 ## Secret and authentication-profile contract
 
@@ -109,7 +109,7 @@ Unconfirmed Production details remain deferred and fail closed rather than being
 
 ## P10 request/history contract boundary
 
-P10 established canonical request/result history with bounded protected persistence, scoped Own/Department/All access plus current service visibility, filtering, retention/migration/concurrency safety and permissioned export/print behavior. Export operations are auditable and sensitive data remains governed by the existing masking/protection policies.
+P10 established canonical request/result history with bounded protected persistence, scoped Own/Department/All access plus current service visibility, filtering with active filter preservation across pagination, retention/migration/concurrency safety and permissioned export/print behavior. Export operations are auditable and sensitive data remains governed by the existing masking/protection policies. Closed-baseline regression repair PR #65 added executable coverage for pagination filter preservation.
 
 ## P11 audit/monitoring contract boundary
 
