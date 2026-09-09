@@ -1,0 +1,151 @@
+@model GSIP.Application.Operations.AdminHealthSnapshot
+@using System.Globalization
+@using GSIP.Application.Operations
+@{
+    var ar = CultureInfo.CurrentUICulture.TextInfo.IsRightToLeft;
+    var culture = ar ? "ar-KW" : "en";
+    ViewData["Title"] = ar ? "العمليات وصحة النظام" : "Operations & System Health";
+    var diagnostic = TempData["OperationsDiagnostic"] as string;
+    var success = TempData["OperationsSuccess"] as string;
+    string StateText(OperationalHealthState state) => ar ? state switch
+    {
+        OperationalHealthState.Healthy => "سليم",
+        OperationalHealthState.Degraded => "متدهور جزئياً",
+        OperationalHealthState.Unhealthy => "غير سليم",
+        _ => "غير مُعد"
+    } : state switch
+    {
+        OperationalHealthState.Healthy => "Healthy",
+        OperationalHealthState.Degraded => "Degraded",
+        OperationalHealthState.Unhealthy => "Unhealthy",
+        _ => "Not configured"
+    };
+}
+
+<section class="operations-shell" data-testid="operations-dashboard" dir="@(ar ? "rtl" : "ltr")">
+    <header class="operations-hero">
+        <div>
+            <p class="operations-kicker">P12 · GSIP</p>
+            <h1>@(ar ? "العمليات وصحة النظام" : "Operations & System Health")</h1>
+            <p>@(ar ? "مراقبة آمنة لحالة المنصة واتصالات الخدمات وإدارة حالة UAT وProduction دون أي مشاركة ضمنية للبيانات السرية." : "Protected platform health, service connectivity and UAT/Production operational state without implicit secret sharing.")</p>
+        </div>
+        <div class="health-summary state-@Model.OverallState.ToString().ToLowerInvariant()" data-testid="overall-health">
+            <span>@(ar ? "الحالة العامة" : "Overall health")</span>
+            <strong>@StateText(Model.OverallState)</strong>
+            <small>@Model.CheckedAtUtc.ToString("u", CultureInfo.InvariantCulture)</small>
+        </div>
+    </header>
+
+    @if (!string.IsNullOrWhiteSpace(diagnostic))
+    {
+        <div class="operations-alert" data-testid="diagnostic-result">@(ar ? "نتيجة الفحص: " : "Diagnostic result: ")@diagnostic</div>
+    }
+    @if (!string.IsNullOrWhiteSpace(success))
+    {
+        <div class="operations-alert success" data-testid="operation-result">@(ar ? "تم تحديث الحالة التشغيلية بنجاح." : "Operational state updated successfully.")</div>
+    }
+
+    <div class="operations-actions">
+        <form method="post" action="/operations/diagnostics/database?culture=@culture" data-testid="database-diagnostic">
+            @Html.AntiForgeryToken()
+            <button class="ops-button primary" type="submit">@(ar ? "فحص قاعدة البيانات" : "Test database")</button>
+        </form>
+        <a class="ops-button" href="/metadata?culture=@culture">@(ar ? "تعديل تعريفات الخدمات" : "Edit service metadata")</a>
+        <a class="ops-button" href="/auth-profiles?culture=@culture">@(ar ? "المصادقة وتدوير الأسرار" : "Authentication & secret rotation")</a>
+    </div>
+
+    <section class="operations-grid" aria-label="@(ar ? "مكونات صحة النظام" : "System health components")">
+        @foreach (var component in Model.Components)
+        {
+            <article class="health-card state-@component.State.ToString().ToLowerInvariant()">
+                <div class="health-card-head"><strong>@component.Key</strong><span>@StateText(component.State)</span></div>
+                <div class="health-code">@component.Code</div>
+                <dl>
+                    @foreach (var fact in component.Facts)
+                    {
+                        <div><dt>@fact.Key</dt><dd>@fact.Value</dd></div>
+                    }
+                </dl>
+            </article>
+        }
+    </section>
+
+    <section class="operations-panel" data-testid="integration-operations">
+        <div class="panel-heading">
+            <div><p class="operations-kicker">Entity → Service → Environment</p><h2>@(ar ? "عمليات التكامل" : "Integration operations")</h2></div>
+            <span class="count-pill">@Model.Integrations.Count</span>
+        </div>
+        @if (Model.Integrations.Count == 0)
+        {
+            <div class="empty-state">@(ar ? "لا توجد إعدادات خدمات مرئية لهذا المستخدم." : "No service environments are visible to this user.")</div>
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="operations-table">
+                    <thead><tr>
+                        <th>@(ar ? "الجهة / الخدمة" : "Entity / Service")</th>
+                        <th>@(ar ? "البيئة" : "Environment")</th>
+                        <th>@(ar ? "الحالة" : "State")</th>
+                        <th>@(ar ? "الفحص" : "Health")</th>
+                        <th>@(ar ? "المصادقة" : "Authentication")</th>
+                        <th>@(ar ? "آخر نتيجة" : "Last test")</th>
+                        <th>@(ar ? "الإجراءات" : "Actions")</th>
+                    </tr></thead>
+                    <tbody>
+                    @foreach (var item in Model.Integrations)
+                    {
+                        var enabled = item.ServiceActive && item.EnvironmentActive && item.ConfigurationActive;
+                        <tr data-service="@item.ServiceCode" data-environment="@item.EnvironmentCode">
+                            <td><strong>@(ar ? item.ServiceNameAr : item.ServiceNameEn)</strong><small>@item.EntityCode · @item.ServiceCode</small></td>
+                            <td><span class="environment-badge">@item.EnvironmentCode</span></td>
+                            <td><span class="status-chip @(enabled ? "on" : "off")">@(enabled ? (ar ? "نشط" : "Active") : (ar ? "متوقف" : "Disabled"))</span></td>
+                            <td>@(item.HealthProbeConfigured ? (ar ? "مُعد" : "Configured") : (ar ? "غير مُعد" : "Not configured"))</td>
+                            <td>@(item.AuthenticationConfigured ? (ar ? "مُعدة" : "Configured") : (ar ? "غير مُعدة" : "Not configured"))</td>
+                            <td><code>@(string.IsNullOrWhiteSpace(item.LastTestStatus) ? "—" : item.LastTestStatus)</code></td>
+                            <td class="action-cell">
+                                <form method="post" action="/operations/services/@item.ServiceId/environments/@item.EnvironmentId/test-connection?culture=@culture" class="inline-form">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="table-action" data-testid="test-connection">@(ar ? "فحص الاتصال" : "Test connection")</button>
+                                </form>
+                                <form method="post" action="/operations/services/@item.ServiceId/environments/@item.EnvironmentId/state?culture=@culture" class="inline-form">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="isActive" value="@(!item.ConfigurationActive).ToString().ToLowerInvariant()" />
+                                    <button type="submit" class="table-action @(item.ConfigurationActive ? "danger" : "success")" data-testid="toggle-environment">@(item.ConfigurationActive ? (ar ? "تعطيل" : "Disable") : (ar ? "تفعيل" : "Activate"))</button>
+                                </form>
+                                <a class="table-action" href="/metadata?culture=@culture">@(ar ? "تعديل" : "Edit")</a>
+                                @if (item.AuthenticationConfigured)
+                                {
+                                    <a class="table-action" href="/auth-profiles?culture=@culture">@(ar ? "اختبار المصادقة / تدوير السر" : "Test auth / Rotate secret")</a>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+
+    <section class="operations-panel" data-testid="operational-alerts">
+        <div class="panel-heading"><h2>@(ar ? "التنبيهات التشغيلية" : "Operational alerts")</h2><span class="count-pill">@Model.Alerts.Count</span></div>
+        @if (Model.Alerts.Count == 0)
+        {
+            <div class="empty-state">@(ar ? "لا توجد تنبيهات تشغيلية حالية." : "No current operational alerts.")</div>
+        }
+        else
+        {
+            <ul class="alert-list">
+                @foreach (var alert in Model.Alerts)
+                {
+                    <li><span class="status-chip">@StateText(alert.State)</span><strong>@alert.Code</strong><span>@alert.ServiceCode @alert.EnvironmentCode</span></li>
+                }
+            </ul>
+        }
+    </section>
+
+    <footer class="operations-foot">
+        <span>@(ar ? "معرّف الارتباط" : "Correlation ID"): <code>@Model.CorrelationId</code></span>
+        <span>@(ar ? "لا تعرض هذه الصفحة كلمات مرور أو مفاتيح API أو Bearer tokens أو payloads شخصية." : "This surface never displays passwords, API keys, bearer tokens or personal payloads.")</span>
+    </footer>
+</section>

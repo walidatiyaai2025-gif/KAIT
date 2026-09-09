@@ -1,0 +1,148 @@
+name: P12 Admin Operations Health and Diagnostics
+
+on:
+  push:
+    branches:
+      - main
+      - 'worker/p12-admin-health-diagnostics'
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  operations-security-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          fetch-depth: 0
+      - name: Assert exact candidate SHA
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+      - name: Setup pinned .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Restore
+        run: dotnet restore GSIP.sln
+      - name: Build Release
+        run: dotnet build GSIP.sln -c Release --no-restore
+      - name: Run P12 static authorization and UI acceptance
+        shell: bash
+        run: |
+          mkdir -p artifacts/p12-admin-operations
+          python scripts/verify_p12_operations_ui.py | tee artifacts/p12-admin-operations/static-acceptance.txt
+      - name: Preserve planning integrity
+        shell: bash
+        run: python scripts/validate_execution_plan.py | tee artifacts/p12-admin-operations/planning-integrity.txt
+      - name: Reject forbidden static evidence patterns
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          text = '\n'.join(p.read_text(encoding='utf-8', errors='ignore') for p in Path('artifacts/p12-admin-operations').rglob('*') if p.is_file())
+          patterns = [
+              r'Authorization\s*:\s*Bearer\s+\S+',
+              r'x-api-key\s*[:=]\s*\S+',
+              r'(?i)password\s*[:=]\s*(?!\[REDACTED\])\S+',
+          ]
+          for pattern in patterns:
+              if re.search(pattern, text):
+                  raise SystemExit(f'forbidden P12 evidence pattern: {pattern}')
+          personal = re.sub(r'(?i)\b[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}\b', '[GUID]', text)
+          personal = re.sub(r'(?i)\b[0-9a-f]{32,64}\b', '[HEXID]', personal)
+          if re.search(r'\b\d{12}\b', personal):
+              raise SystemExit('forbidden P12 12-digit personal-data pattern')
+          PY
+      - name: Build static evidence manifest
+        shell: bash
+        run: |
+          python - <<'PY'
+          import hashlib, json, os, pathlib
+          root = pathlib.Path('artifacts/p12-admin-operations')
+          files = []
+          for p in sorted(x for x in root.rglob('*') if x.is_file()):
+              data = p.read_bytes()
+              files.append({'path': p.as_posix(), 'bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest()})
+          manifest = {
+              'CandidateSha': os.environ['CANDIDATE_SHA'],
+              'Unit': 'P12::admin-operations-health-diagnostics',
+              'StaticAuthorizationIdorCsrfContract': 'TESTED',
+              'ExactServiceEnvironmentIsolation': 'TESTED',
+              'CanonicalAuthAndRotationReuse': 'TESTED',
+              'BilingualResponsiveUiContract': 'TESTED',
+              'RealCredentials': False,
+              'PersonalData': False,
+              'Files': files,
+          }
+          (root / 'manifest.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
+          PY
+      - name: Upload P12 static evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: P12-Admin-Operations-Static-${{ env.CANDIDATE_SHA }}
+          path: artifacts/p12-admin-operations/
+          if-no-files-found: error
+          retention-days: 30
+
+  protected-runtime-browser:
+    runs-on: windows-latest
+    timeout-minutes: 50
+    env:
+      CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          fetch-depth: 0
+      - name: Assert exact candidate SHA
+        shell: pwsh
+        run: |
+          $actual = (git rev-parse HEAD).Trim()
+          if ($actual -ne $env:CANDIDATE_SHA) { throw 'Exact P12 candidate mismatch.' }
+      - name: Setup pinned .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Restore
+        shell: pwsh
+        run: dotnet restore GSIP.sln
+      - name: Build Release
+        shell: pwsh
+        run: dotnet build GSIP.sln -c Release --no-restore
+      - name: Start SQL Server LocalDB
+        shell: pwsh
+        run: |
+          sqllocaldb start MSSQLLocalDB
+          sqllocaldb info MSSQLLocalDB
+      - name: Run protected bilingual operations runtime and browser acceptance
+        shell: pwsh
+        run: ./scripts/verify-p12-operations-runtime-ui.ps1
+      - name: Reject forbidden protected runtime evidence
+        shell: pwsh
+        run: |
+          $text = Get-ChildItem artifacts/p12-operations-runtime-ui -File -Recurse | Where-Object { $_.Extension -in @('.html','.json','.log','.txt') } | Get-Content -Raw | Out-String
+          if ($text -match 'Authorization\s*:\s*Bearer\s+\S+' -or $text -match 'x-api-key\s*[:=]\s*\S+' -or $text -match 'Synthetic-P12-Operations-Only!9143') {
+            throw 'P12 protected runtime evidence contains a forbidden secret pattern.'
+          }
+          $personal = [regex]::Replace($text, '(?i)\b[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}\b', '[GUID]')
+          $personal = [regex]::Replace($personal, '(?i)\b[0-9a-f]{32,64}\b', '[HEXID]')
+          $personal = [regex]::Replace($personal, '(?i)\bGSIP_P12_UI_[0-9a-f]{12}\b', 'GSIP_P12_UI_[ID]')
+          if ($personal -match '\b\d{12}\b') { throw 'P12 runtime evidence contains a 12-digit personal-data pattern.' }
+      - name: Upload P12 protected runtime evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: P12-Admin-Operations-Runtime-${{ env.CANDIDATE_SHA }}
+          path: artifacts/p12-operations-runtime-ui/
+          if-no-files-found: error
+          retention-days: 30

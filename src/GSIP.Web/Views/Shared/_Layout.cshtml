@@ -12,7 +12,8 @@
     var isExecution = Context.Request.Path.StartsWithSegments("/execute");
     var isRequests = Context.Request.Path.StartsWithSegments("/requests");
     var isAudit = Context.Request.Path.StartsWithSegments("/audit");
-    var isHome = !isPermissions && !isMetadata && !isAuthProfiles && !isExecution && !isRequests && !isAudit;
+    var isOperations = Context.Request.Path.StartsWithSegments("/operations");
+    var isHome = !isPermissions && !isMetadata && !isAuthProfiles && !isExecution && !isRequests && !isAudit && !isOperations;
 }
 <!doctype html>
 <html lang="@language" dir="@direction" data-culture-name="@CultureInfo.CurrentUICulture.Name">
@@ -27,6 +28,7 @@
     <link rel="stylesheet" href="~/css/permissions.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/metadata.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/execution.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/operations.css" asp-append-version="true" />
 </head>
 <body class="gsip-body @direction @(isSetup ? "setup-active" : string.Empty)">
     <a class="skip-link" href="#main-content">@L["SkipToContent"]</a>
@@ -60,9 +62,9 @@
                 <a class="nav-item @(isRequests ? "active" : string.Empty)" href="/requests?culture=@CultureInfo.CurrentUICulture.Name"><span class="nav-glyph">≡</span><span>@L["Requests"]</span></a>
                 <a class="nav-item @(isAudit ? "active" : string.Empty)" href="/audit?culture=@CultureInfo.CurrentUICulture.Name"><span class="nav-glyph">◴</span><span>@L["Audit"]</span></a>
                 <a class="nav-item @(isPermissions ? "active" : string.Empty)" href="/permissions?culture=@CultureInfo.CurrentUICulture.Name"><span class="nav-glyph">◈</span><span>@L["Permissions"]</span></a>
-                <span class="nav-item disabled" aria-disabled="true"><span class="nav-glyph">⚙</span><span>@L["Settings"]</span></span>
+                <a class="nav-item @(isOperations ? "active" : string.Empty)" href="/operations?culture=@CultureInfo.CurrentUICulture.Name"><span class="nav-glyph">⚙</span><span>@L["Settings"]</span></a>
             </nav>
-            <div class="sidebar-foot"><span class="phase-dot"></span><div><strong>P11</strong><small>@L["Audit"]</small></div></div>
+            <div class="sidebar-foot"><span class="phase-dot"></span><div><strong>P12</strong><small>@L["Settings"]</small></div></div>
         </aside>
     }
     <main id="main-content" class="main-content @(isSetup ? "setup-main" : string.Empty)" tabindex="-1">@RenderBody()</main>
