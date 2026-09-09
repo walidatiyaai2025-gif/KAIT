@@ -53,7 +53,7 @@ internal sealed record TokenEndpointContractMetadata(
                 throw new InvalidOperationException("Token endpoint metadata is invalid.");
 
             var path = RequiredString(document.RootElement, PathKey);
-            if (!path.StartsWith('/', StringComparison.Ordinal)
+            if (!path.StartsWith("/", StringComparison.Ordinal)
                 || path.StartsWith("//", StringComparison.Ordinal)
                 || path.Contains('\\') || path.Contains('?') || path.Contains('#') || path.Any(char.IsControl))
                 throw new InvalidOperationException("Token endpoint metadata is invalid.");
