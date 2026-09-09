@@ -15,13 +15,55 @@ files = {
     "auth_admin": ROOT / "src/GSIP.Web/Controllers/AuthProfilesController.cs",
     "state_acceptance": ROOT / "tests/GSIP.P12OperationsStateChecks/Program.cs",
     "phase": ROOT / "CURRENT_PHASE.md",
+    "project_control": ROOT / "PROJECT_CONTROL.md",
+    "ledger": ROOT / "docs/TASK_LEDGER.md",
+    "closure_evidence": ROOT / "docs/evidence/P12_ADMIN_OPERATIONS_HEALTH_DIAGNOSTICS.md",
 }
 for label, path in files.items():
     if not path.is_file():
         raise SystemExit(f"P12 operations acceptance failed: missing {label}: {path.relative_to(ROOT)}")
 text = {label: path.read_text(encoding="utf-8") for label, path in files.items()}
+
+integrated_p12_sha = "1ed40707552f62058980b44d6cb1e7251dbeb2d4"
+final_p12_head = "f367ca78fca217e9d5c7da0a1328dca047940390"
+phase_open = (
+    "**P12 — Admin operations, health and diagnostics**" in text["phase"]
+    and "Status: **OPEN / READY**" in text["phase"]
+)
+phase_closure_transition = (
+    "**P13 — Arabic/English UX and accessibility convergence**" in text["phase"]
+    and "Status: **OPEN / READY only after this P12 closure transition is normally integrated and the resulting exact-new-main CI is terminal green**" in text["phase"]
+    and "P12 — Admin operations, health and diagnostics is **CLOSED from implementation evidence**" in text["phase"]
+    and integrated_p12_sha in text["phase"]
+    and final_p12_head in text["phase"]
+    and "35/35 exact-head workflows SUCCESS" in text["phase"]
+    and "31/31 push workflows SUCCESS" in text["phase"]
+    and "does **not** authorize P13 implementation from its own head" in text["phase"]
+    and "P00 through P12 are CLOSED from integrated evidence" in text["project_control"]
+    and integrated_p12_sha in text["project_control"]
+    and final_p12_head in text["project_control"]
+    and "P13 is the next canonical implementation phase and becomes OPEN / READY only after the P12 closure transition is normally integrated and the resulting exact-new-main gate is green" in text["project_control"]
+    and "| P12 | CLOSED |" in text["ledger"]
+    and "| P13 | OPEN / READY AFTER P12 TRANSITION EXACT-MAIN GREEN |" in text["ledger"]
+    and integrated_p12_sha in text["ledger"]
+    and final_p12_head in text["ledger"]
+    and "Status: **CLOSED — exact integrated evidence**" in text["closure_evidence"]
+    and integrated_p12_sha in text["closure_evidence"]
+    and final_p12_head in text["closure_evidence"]
+    and "35/35 exact-head workflows SUCCESS" in text["closure_evidence"]
+    and "31/31 push workflows SUCCESS" in text["closure_evidence"]
+    and "P13 becomes canonical only after the P12 closure reconciliation is normally integrated and the resulting exact-new-main regression matrix is terminal green" in text["closure_evidence"]
+    and "DEFERRED_EXTERNAL_NOT_PASS" in text["closure_evidence"]
+    and "PRODUCTION_DEFERRED_EXTERNAL_NOT_PASS" in text["closure_evidence"]
+)
+
 checks = {
-    "canonical P12 phase is open": "**P12 — Admin operations, health and diagnostics**" in text["phase"] and "Status: **OPEN / READY**" in text["phase"],
+    "canonical P12 phase state is implementation-open or evidence-gated closure transition": phase_open or phase_closure_transition,
+    "closure transition cannot prematurely authorize P13": phase_open or (
+        phase_closure_transition
+        and "P14–P17 remain locked" in text["phase"]
+        and "P14–P17 remain locked" in text["project_control"]
+    ),
     "operations route is authenticated": "[Authorize]" in text["controller"] and '[Route("operations")]' in text["controller"],
     "health uses canonical operations service": "IAdminOperationsService operations" in text["controller"] and "GetHealthAsync(User" in text["controller"],
     "database diagnostic is permission protected": "GsipPermissions.DiagnosticsRun" in text["controller"] and "RunDatabaseDiagnosticAsync" in text["controller"],
