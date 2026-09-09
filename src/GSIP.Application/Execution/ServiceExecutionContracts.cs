@@ -69,6 +69,30 @@ public interface IServiceExecutionEngine
         CancellationToken cancellationToken = default);
 }
 
+public interface IRequestHistoryStore
+{
+    Task<string> StartAsync(
+        ServiceExecutionCommand command,
+        AuthorizedServiceExecutionBinding binding,
+        CancellationToken cancellationToken = default);
+
+    Task CompleteAsync(string trackingRequestId, ServiceExecutionResult result, CancellationToken cancellationToken = default);
+
+    Task TerminateAsync(
+        string trackingRequestId,
+        RequestLifecycleStatus status,
+        string outcomeCode,
+        CancellationToken cancellationToken = default);
+}
+
+public enum RequestLifecycleStatus
+{
+    Started = 0,
+    Succeeded = 1,
+    Failed = 2,
+    Cancelled = 3
+}
+
 public sealed class ServiceExecutionRuntimeOptions
 {
     public const string SafeToRetryMetadataHeader = "X-GSIP-SafeToRetry";
