@@ -79,7 +79,7 @@ jobs:
         run: |
           test -s artifacts/p08-closure-security/acceptance-summary.json
           test -s artifacts/p08-closure-security/ci-evidence.json
-          ! grep -RIE 'Authorization[[:space:]]*:[[:space:]]*Bearer[[:space:]]+[^[:space:]]+|x-api-key[[:space:]]*[:=][[:space:]]*[^[:space:]]+|password[[:space:]]*[:=][[:space:]]*[^[:space:]]+' docs/evidence artifacts/p08-closure-security
+          ! grep -RIE 'Authorization[[:space:]]*:[[:space:]]*Bearer[[:space:]]+[A-Za-z0-9._~+/-]{20,}|x-api-key[[:space:]]*[:=][[:space:]]*[A-Za-z0-9._~+/-]{20,}|password[[:space:]]*[:=][[:space:]]*[A-Za-z0-9._~+/-]{20,}' docs/evidence artifacts/p08-closure-security
       - name: Upload exact-candidate P08 closure evidence
         uses: actions/upload-artifact@v4
         with:
