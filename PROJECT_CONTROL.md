@@ -6,7 +6,7 @@
 - Repository: `walidatiyaai2025-gif/KAIT`
 - Default branch: `main`
 - Delivery model: phase-gated autonomous implementation
-- Current planned product state: P11 CLOSED from exact integrated and verified evidence; P12 admin operations, health and diagnostics is the canonical current phase and is OPEN / READY
+- Current planned product state: P12 CLOSED from exact integrated and verified evidence; P13 Arabic/English UX and accessibility convergence is the next canonical phase and becomes OPEN / READY only after the P12 closure transition is integrated and exact-new-main CI is green
 - Initial executable version: `0.1.0`
 - Pinned SDK / target framework: .NET SDK `10.0.400` / `net10.0`
 - Initial entity: Ministry of Justice (MOJ), Kuwait
@@ -16,11 +16,11 @@
 
 ## Last closed phase evidence
 
-P11 is CLOSED from exact integrated `main` SHA `3d0a77f3f76fac37691cdd19a030932c876bd1e5` after normal integration of PR #67 from exact implementation head `ae61ff7cedaf119bc6948a5b18eda811ab249b82`. PR #67 passed **36/36 exact-head workflows** before merge. The resulting exact integrated main completed **31/31 push workflows SUCCESS**, with failure=0, queued=0 and in-progress=0 after completion.
+P12 is CLOSED from exact integrated implementation `main` SHA `1ed40707552f62058980b44d6cb1e7251dbeb2d4` after normal integration of PR #69 from exact implementation head `f367ca78fca217e9d5c7da0a1328dca047940390`. PR #69 passed **35/35 exact-head workflows SUCCESS** before merge. The resulting exact integrated main completed **31/31 push workflows SUCCESS**, with failure=0, queued=0 and in-progress=0.
 
-The only post-merge anomaly was P01 Architecture and UI Shell run `34408109285` attempt 1: its runtime process did not become healthy and the uploaded `server.stdout.log` and `server.stderr.log` were both empty. The exact same-SHA job was rerun with no source or acceptance change; attempt 2 completed SUCCESS, including runtime and bilingual browser evidence. This is recorded as a runner/process-start anomaly, not as a waived gate.
+The exact-main P12 workflow run `34413925793` completed SUCCESS on the same integrated SHA. It produced runtime artifact `P12-Admin-Operations-Runtime-1ed40707552f62058980b44d6cb1e7251dbeb2d4` (artifact `10128361921`, digest `sha256:8161d7c95e2ee64cf3c0fdac6b3d252bc0ee0052fe662c1a2973e1b9cc4f194b`) and static artifact `P12-Admin-Operations-Static-1ed40707552f62058980b44d6cb1e7251dbeb2d4` (artifact `10128310606`, digest `sha256:3029f8ddf62255952478fb0197a4399a5724b028a83919eb7de332a9552654d9`).
 
-P11 closure includes canonical append-only audit persistence, SHA-256 integrity chaining, mutation/gap/reordering/tail-deletion detection, bounded checkpointed retention, transaction-scoped concurrent append serialization, centralized sanitization/redaction, server-side Audit/Diagnostics permissions, protected bilingual Audit UI, CSV export/integrity verification, LocalDB tamper/retention/concurrency acceptance and browser/CSRF/authorization/leakage evidence. Detailed evidence: `docs/evidence/P11_AUDIT_TRAIL_MONITORING.md`.
+P12 closure includes protected health/diagnostics, exact Service + Environment operational-state isolation, preserved ServiceId/version/AuthProfile/SecretRef scope, protected Test Connection/Test Authentication, safe canonical secret rotation reuse, bounded diagnostics, operational alerts, server-side authorization/IDOR/CSRF controls, bilingual Operations UI, executable SQL LocalDB state-isolation acceptance and protected runtime/browser evidence. Detailed evidence: `docs/evidence/P12_ADMIN_OPERATIONS_HEALTH_DIAGNOSTICS.md`.
 
 Historical P08/P09 owner/external classifications remain unchanged. Evidence proven for UAT is not promoted to Production. `DEFERRED_EXTERNAL` remains NOT PASS and Production→UAT fallback is forbidden.
 
@@ -44,9 +44,9 @@ No old prompt, screenshot caption, branch description, stale ledger or supersede
 ## Phase policy
 
 - Exactly one canonical current phase exists at a time.
-- P00 through P11 are CLOSED.
-- P12 is the canonical current legal implementation phase and is OPEN / READY.
-- P13–P17 remain locked until P12 is formally CLOSED.
+- P00 through P12 are CLOSED from integrated evidence.
+- P13 is the next canonical implementation phase and becomes OPEN / READY only after the P12 closure transition is normally integrated and the resulting exact-new-main gate is green.
+- P14–P17 remain locked until P13 is formally CLOSED.
 - Phase exit requires implementation + tests + evidence + documentation reconciliation + pushed commit + required CI + exact-main recheck.
 - Integration recovery and exact-main regressions take priority over new feature work.
 - A phase-transition branch does not authorize new-phase implementation until that transition is integrated and the resulting exact-main gate is green.
@@ -119,7 +119,15 @@ P11 is CLOSED from exact integrated `main` SHA `3d0a77f3f76fac37691cdd19a030932c
 
 ## P12 admin operations / health / diagnostics contract boundary
 
-P12 is the current phase. It must converge production-grade administration and operational diagnostics over the existing P05-P11 boundaries without creating competing persistence, secret, authentication, execution or audit engines. Scope includes exact Entity -> Service -> Environment operational state, protected Test Connection/Test Authentication, activation/disable operations, safe secret rotation through the canonical P06 boundary, bounded timeout/TLS/proxy/endpoint diagnostics, database/data-protection/runtime/disk/integration health, repeated-failure and readiness alerts, server-side authorization/IDOR/CSRF controls, sanitized audit/evidence and bilingual Arabic RTL / English LTR administration. The legitimate existing `worker/p12-admin-health-diagnostics` branch must be recovered and reconciled with exact current main before any duplicate implementation is created.
+P12 is CLOSED from exact integrated `main` SHA `1ed40707552f62058980b44d6cb1e7251dbeb2d4`. It converged production-grade administration and operational diagnostics over the existing P05-P11 boundaries without creating competing persistence, secret, authentication, execution or audit engines.
+
+The closed P12 boundary includes exact Entity -> Service -> Environment operational state; independent UAT/Production handling; protected Test Connection/Test Authentication; activation/disable through a dedicated no-revision state service; safe secret rotation through the canonical P06 boundary; bounded timeout/TLS/proxy/endpoint diagnostics; database/Data Protection/runtime/disk/integration health; repeated-failure and readiness alerts; server-side authorization/IDOR/CSRF controls; sanitized audit/evidence; bilingual Arabic RTL / English LTR administration; and executable SQL LocalDB/runtime/browser acceptance. The final repair proves operational toggles preserve exact ServiceId, metadata version, AuthProfile/SecretRef scope and sibling-environment configuration.
+
+## P13 UX / accessibility / parity contract boundary
+
+P13 is the next canonical phase after the P12 closure transition is integrated and exact-new-main CI is green. It owns full Arabic/English UX and accessibility convergence under `docs/UI_DESIGN_PARITY_GATE.md` and the four repository-native baselines under `docs/ui-baseline/`.
+
+P13 work must preserve all closed P00-P12 business/security contracts while converging RTL/LTR behavior, shared chrome, typography, spacing, controls, responsive/mobile behavior, keyboard/focus/accessibility semantics and high-fidelity visual parity on the required reference surfaces. Visual simplification that bypasses required controls, security state or service/environment context is not acceptable parity.
 
 ## Service environment / Go-Live control
 
