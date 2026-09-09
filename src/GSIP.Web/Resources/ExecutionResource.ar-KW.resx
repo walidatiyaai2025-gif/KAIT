@@ -15,7 +15,7 @@
   <data name="RequestData" xml:space="preserve"><value>بيانات الطلب</value></data>
   <data name="DynamicHint" xml:space="preserve"><value>يتم إنشاء الحقول من بيانات تعريف الخدمة المختارة.</value></data>
   <data name="RunRequest" xml:space="preserve"><value>تنفيذ الاستعلام</value></data>
-  <data name="BackendPending" xml:space="preserve"><value>محرك الإرسال غير موصول ضمن وحدة مطابقة الواجهة الحالية.</value></data>
+  <data name="ExecutionReady" xml:space="preserve"><value>يتم التحقق من الطلب وتنفيذه على الخادم باستخدام الخدمة والبيئة المصرح بهما تحديداً.</value></data>
   <data name="ServiceInformation" xml:space="preserve"><value>معلومات الخدمة المختارة</value></data>
   <data name="Authentication" xml:space="preserve"><value>المصادقة</value></data>
   <data name="Configured" xml:space="preserve"><value>مهيأة</value></data>
@@ -27,12 +27,47 @@
   <data name="Result" xml:space="preserve"><value>النتيجة</value></data>
   <data name="RawResponse" xml:space="preserve"><value>الاستجابة الخام</value></data>
   <data name="History" xml:space="preserve"><value>السجل</value></data>
+  <data name="HistoryDeferred" xml:space="preserve"><value>حفظ سجل الطلبات الدائم ضمن مرحلة السجل اللاحقة ولا يتم تخزينه في P07.</value></data>
   <data name="NoResult" xml:space="preserve"><value>لم يتم تنفيذ أي طلب بعد.</value></data>
+  <data name="NoStructuredResult" xml:space="preserve"><value>لا توجد حقول نتيجة مهيكلة مطابقة لهذه الاستجابة.</value></data>
+  <data name="NoRawResponse" xml:space="preserve"><value>لم يتم إرجاع محتوى للاستجابة.</value></data>
   <data name="RequestMetadata" xml:space="preserve"><value>معلومات الطلب</value></data>
   <data name="RequestId" xml:space="preserve"><value>رقم الطلب</value></data>
+  <data name="CorrelationId" xml:space="preserve"><value>رقم الارتباط</value></data>
   <data name="Status" xml:space="preserve"><value>الحالة</value></data>
+  <data name="HttpStatus" xml:space="preserve"><value>حالة HTTP:</value></data>
+  <data name="Duration" xml:space="preserve"><value>المدة</value></data>
+  <data name="Milliseconds" xml:space="preserve"><value>مللي ثانية</value></data>
+  <data name="Attempts" xml:space="preserve"><value>المحاولات</value></data>
   <data name="NotExecuted" xml:space="preserve"><value>لم ينفذ</value></data>
   <data name="Required" xml:space="preserve"><value>مطلوب</value></data>
   <data name="Sensitive" xml:space="preserve"><value>حساس</value></data>
   <data name="NoAuthorizedServices" xml:space="preserve"><value>لا توجد خدمات مسموح بتنفيذها لهذا الحساب.</value></data>
+  <data name="OutcomeSuccess" xml:space="preserve"><value>تم تنفيذ الطلب بنجاح</value></data>
+  <data name="OutcomeBadRequest" xml:space="preserve"><value>رفضت الخدمة البعيدة بيانات الطلب</value></data>
+  <data name="OutcomeUnauthorized" xml:space="preserve"><value>رفضت الخدمة البعيدة بيانات المصادقة</value></data>
+  <data name="OutcomeForbidden" xml:space="preserve"><value>رفضت الخدمة البعيدة صلاحية الوصول</value></data>
+  <data name="OutcomeNotFound" xml:space="preserve"><value>لم يتم العثور على المورد المطلوب في الخدمة البعيدة</value></data>
+  <data name="OutcomeConflict" xml:space="preserve"><value>أبلغت الخدمة البعيدة عن تعارض</value></data>
+  <data name="OutcomeRateLimited" xml:space="preserve"><value>تم تقييد معدل الطلبات من الخدمة البعيدة</value></data>
+  <data name="OutcomeServerError" xml:space="preserve"><value>أعادت الخدمة البعيدة خطأً في الخادم</value></data>
+  <data name="OutcomeTimeout" xml:space="preserve"><value>انتهت مهلة الطلب</value></data>
+  <data name="OutcomeTlsFailure" xml:space="preserve"><value>تعذر إنشاء اتصال TLS آمن</value></data>
+  <data name="OutcomeNetworkFailure" xml:space="preserve"><value>تعذر الوصول إلى الخدمة البعيدة</value></data>
+  <data name="OutcomeAuthenticationUnavailable" xml:space="preserve"><value>بيانات المصادقة المهيأة غير متاحة</value></data>
+  <data name="OutcomeResponseTooLarge" xml:space="preserve"><value>تجاوز حجم الاستجابة الحد الآمن المسموح</value></data>
+  <data name="OutcomeInvalidResponse" xml:space="preserve"><value>أعادت الخدمة البعيدة استجابة غير مدعومة</value></data>
+  <data name="ValidationRequired" xml:space="preserve"><value>هذا الحقل مطلوب.</value></data>
+  <data name="ValidationMinLength" xml:space="preserve"><value>القيمة أقصر من الحد المسموح.</value></data>
+  <data name="ValidationMaxLength" xml:space="preserve"><value>القيمة أطول من الحد المسموح.</value></data>
+  <data name="ValidationPattern" xml:space="preserve"><value>القيمة لا تطابق الصيغة المطلوبة.</value></data>
+  <data name="ValidationInvalidMetadataPattern" xml:space="preserve"><value>قاعدة التحقق الخاصة بالخدمة غير صحيحة. يرجى مراجعة المسؤول.</value></data>
+  <data name="ValidationPatternTimeout" xml:space="preserve"><value>تعذر تقييم قاعدة التحقق الخاصة بالخدمة بشكل آمن.</value></data>
+  <data name="ValidationInteger" xml:space="preserve"><value>أدخل رقماً صحيحاً صالحاً.</value></data>
+  <data name="ValidationNumber" xml:space="preserve"><value>أدخل رقماً صالحاً.</value></data>
+  <data name="ValidationBoolean" xml:space="preserve"><value>أدخل قيمة صح أو خطأ صالحة.</value></data>
+  <data name="ValidationMinimum" xml:space="preserve"><value>القيمة أقل من الحد الأدنى المسموح.</value></data>
+  <data name="ValidationMaximum" xml:space="preserve"><value>القيمة أكبر من الحد الأقصى المسموح.</value></data>
+  <data name="ValidationOption" xml:space="preserve"><value>اختر قيمة مسموحاً بها.</value></data>
+  <data name="ValidationUnknownField" xml:space="preserve"><value>الحقل المرسل ليس جزءاً من تعريف هذه الخدمة.</value></data>
 </root>

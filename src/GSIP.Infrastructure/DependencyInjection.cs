@@ -40,7 +40,10 @@ public static class DependencyInjection
         services.AddScoped<IServiceExecutionSecurityGate, ServiceExecutionSecurityGate>();
         services.Configure<ServiceExecutionRuntimeOptions>(configuration.GetSection("ServiceExecutionRuntime"));
         services.AddHttpClient("GSIP.Execution");
-        services.AddScoped<IServiceExecutionEngine, GenericServiceExecutionEngine>();
+        services.AddScoped<GenericServiceExecutionEngine>();
+        services.AddScoped<IServiceExecutionEngine>(serviceProvider => new SensitiveResponseMaskingExecutionEngine(
+            serviceProvider.GetRequiredService<GenericServiceExecutionEngine>(),
+            serviceProvider.GetRequiredService<IMetadataCatalogService>()));
         services.AddScoped<DataProtectionSecretVault>();
         services.AddScoped<ISecretVault>(serviceProvider => serviceProvider.GetRequiredService<DataProtectionSecretVault>());
         services.AddScoped<ISecretMaterialResolver>(serviceProvider => serviceProvider.GetRequiredService<DataProtectionSecretVault>());

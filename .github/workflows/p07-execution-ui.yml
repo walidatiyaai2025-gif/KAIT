@@ -3,7 +3,9 @@ name: P07 Service Execution UI
 on:
   push:
     branches:
+      - main
       - 'worker/p07-service-execution-ui-parity'
+      - 'worker/p07-execution-ui-runtime-wiring'
   pull_request:
     branches:
       - main
@@ -15,9 +17,22 @@ jobs:
   execution-ui:
     runs-on: windows-latest
     timeout-minutes: 40
+    env:
+      CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
     steps:
-      - name: Checkout exact commit
+      - name: Checkout exact candidate
         uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          fetch-depth: 0
+      - name: Assert exact candidate SHA
+        shell: pwsh
+        run: |
+          $actual = (git rev-parse HEAD).Trim()
+          if ($actual -ne $env:CANDIDATE_SHA) {
+            throw "Exact candidate mismatch: expected=$env:CANDIDATE_SHA actual=$actual"
+          }
+          Write-Host "EXACT_CANDIDATE_SHA=$actual"
       - name: Setup pinned .NET SDK
         uses: actions/setup-dotnet@v4
         with:
@@ -31,7 +46,7 @@ jobs:
         run: |
           sqllocaldb start MSSQLLocalDB
           sqllocaldb info MSSQLLocalDB
-      - name: Verify bilingual responsive Service Execution UI
+      - name: Verify bilingual responsive Service Execution runtime UI
         shell: pwsh
         run: ./scripts/verify-p07-execution-ui.ps1
       - name: Validate execution plan and governance
@@ -40,7 +55,7 @@ jobs:
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
-          name: P07-Execution-UI-Evidence-${{ github.sha }}
+          name: P07-Execution-UI-Evidence-${{ env.CANDIDATE_SHA }}
           path: artifacts/p07-execution-ui-evidence/
           if-no-files-found: error
           retention-days: 30

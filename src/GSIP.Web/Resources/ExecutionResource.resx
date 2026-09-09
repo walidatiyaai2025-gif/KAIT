@@ -15,7 +15,7 @@
   <data name="RequestData" xml:space="preserve"><value>Request Data</value></data>
   <data name="DynamicHint" xml:space="preserve"><value>Fields are generated from the selected service metadata.</value></data>
   <data name="RunRequest" xml:space="preserve"><value>Run Request</value></data>
-  <data name="BackendPending" xml:space="preserve"><value>Execution transport is not connected in this UI parity slice.</value></data>
+  <data name="ExecutionReady" xml:space="preserve"><value>The request is validated and executed server-side against the exact authorized service and environment.</value></data>
   <data name="ServiceInformation" xml:space="preserve"><value>Selected Service Information</value></data>
   <data name="Authentication" xml:space="preserve"><value>Authentication</value></data>
   <data name="Configured" xml:space="preserve"><value>Configured</value></data>
@@ -27,12 +27,47 @@
   <data name="Result" xml:space="preserve"><value>Result</value></data>
   <data name="RawResponse" xml:space="preserve"><value>Raw Response</value></data>
   <data name="History" xml:space="preserve"><value>History</value></data>
+  <data name="HistoryDeferred" xml:space="preserve"><value>Durable request history belongs to the later history phase and is not persisted by P07.</value></data>
   <data name="NoResult" xml:space="preserve"><value>No request has been executed yet.</value></data>
+  <data name="NoStructuredResult" xml:space="preserve"><value>No structured result fields were mapped for this response.</value></data>
+  <data name="NoRawResponse" xml:space="preserve"><value>No response body was returned.</value></data>
   <data name="RequestMetadata" xml:space="preserve"><value>Request Metadata</value></data>
   <data name="RequestId" xml:space="preserve"><value>Request ID</value></data>
+  <data name="CorrelationId" xml:space="preserve"><value>Correlation ID</value></data>
   <data name="Status" xml:space="preserve"><value>Status</value></data>
+  <data name="HttpStatus" xml:space="preserve"><value>HTTP status:</value></data>
+  <data name="Duration" xml:space="preserve"><value>Duration</value></data>
+  <data name="Milliseconds" xml:space="preserve"><value>ms</value></data>
+  <data name="Attempts" xml:space="preserve"><value>Attempts</value></data>
   <data name="NotExecuted" xml:space="preserve"><value>Not executed</value></data>
   <data name="Required" xml:space="preserve"><value>Required</value></data>
   <data name="Sensitive" xml:space="preserve"><value>Sensitive</value></data>
   <data name="NoAuthorizedServices" xml:space="preserve"><value>No executable services are assigned to your account.</value></data>
+  <data name="OutcomeSuccess" xml:space="preserve"><value>Request completed successfully</value></data>
+  <data name="OutcomeBadRequest" xml:space="preserve"><value>The remote service rejected the request</value></data>
+  <data name="OutcomeUnauthorized" xml:space="preserve"><value>Remote authentication was rejected</value></data>
+  <data name="OutcomeForbidden" xml:space="preserve"><value>The remote service denied access</value></data>
+  <data name="OutcomeNotFound" xml:space="preserve"><value>The requested remote resource was not found</value></data>
+  <data name="OutcomeConflict" xml:space="preserve"><value>The remote service reported a conflict</value></data>
+  <data name="OutcomeRateLimited" xml:space="preserve"><value>The remote service rate-limited the request</value></data>
+  <data name="OutcomeServerError" xml:space="preserve"><value>The remote service returned a server error</value></data>
+  <data name="OutcomeTimeout" xml:space="preserve"><value>The request timed out</value></data>
+  <data name="OutcomeTlsFailure" xml:space="preserve"><value>The TLS connection could not be established</value></data>
+  <data name="OutcomeNetworkFailure" xml:space="preserve"><value>The remote service could not be reached</value></data>
+  <data name="OutcomeAuthenticationUnavailable" xml:space="preserve"><value>The configured authentication material is unavailable</value></data>
+  <data name="OutcomeResponseTooLarge" xml:space="preserve"><value>The remote response exceeded the safe size limit</value></data>
+  <data name="OutcomeInvalidResponse" xml:space="preserve"><value>The remote service returned an unsupported response</value></data>
+  <data name="ValidationRequired" xml:space="preserve"><value>This field is required.</value></data>
+  <data name="ValidationMinLength" xml:space="preserve"><value>The value is shorter than allowed.</value></data>
+  <data name="ValidationMaxLength" xml:space="preserve"><value>The value is longer than allowed.</value></data>
+  <data name="ValidationPattern" xml:space="preserve"><value>The value does not match the required format.</value></data>
+  <data name="ValidationInvalidMetadataPattern" xml:space="preserve"><value>The service validation rule is invalid. Contact an administrator.</value></data>
+  <data name="ValidationPatternTimeout" xml:space="preserve"><value>The service validation rule could not be evaluated safely.</value></data>
+  <data name="ValidationInteger" xml:space="preserve"><value>Enter a valid whole number.</value></data>
+  <data name="ValidationNumber" xml:space="preserve"><value>Enter a valid number.</value></data>
+  <data name="ValidationBoolean" xml:space="preserve"><value>Enter a valid true/false value.</value></data>
+  <data name="ValidationMinimum" xml:space="preserve"><value>The value is below the allowed minimum.</value></data>
+  <data name="ValidationMaximum" xml:space="preserve"><value>The value is above the allowed maximum.</value></data>
+  <data name="ValidationOption" xml:space="preserve"><value>Select an allowed value.</value></data>
+  <data name="ValidationUnknownField" xml:space="preserve"><value>The submitted field is not part of this service definition.</value></data>
 </root>
