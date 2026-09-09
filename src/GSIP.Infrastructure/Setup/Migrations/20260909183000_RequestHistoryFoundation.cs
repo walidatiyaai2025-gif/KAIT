@@ -1,9 +1,12 @@
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace GSIP.Infrastructure.Setup.Migrations;
 
+[DbContext(typeof(GsipDbContext))]
+[Migration("20260909183000_RequestHistoryFoundation")]
 public partial class RequestHistoryFoundation : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)
