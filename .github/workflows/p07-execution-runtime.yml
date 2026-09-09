@@ -3,6 +3,7 @@ name: P07 Generic Execution Runtime
 on:
   push:
     branches:
+      - main
       - 'worker/p07-generic-execution-runtime'
       - 'worker/p07-execution-ui-runtime-wiring'
   pull_request:
