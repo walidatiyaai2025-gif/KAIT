@@ -4,11 +4,11 @@
 
 **P13 — Arabic/English UX and accessibility convergence**
 
-Status: **OPEN / READY only after this P12 closure transition is normally integrated and the resulting exact-new-main CI is terminal green**
+Status: **OPEN / READY**
 
-P12 — Admin operations, health and diagnostics is **CLOSED from implementation evidence** on exact integrated `main` SHA `1ed40707552f62058980b44d6cb1e7251dbeb2d4` after normal integration of PR #69 from exact implementation head `f367ca78fca217e9d5c7da0a1328dca047940390`.
+P12 — Admin operations, health and diagnostics is **CLOSED**. Its implementation was normally integrated at `main` SHA `1ed40707552f62058980b44d6cb1e7251dbeb2d4`, and its closure transition was normally integrated by PR #70 at exact `main` SHA `42136cf59202c90f20f204e520c644acc69a88ca`.
 
-PR #69 passed **35/35 exact-head workflows SUCCESS** before merge. The resulting exact integrated main completed **31/31 push workflows SUCCESS**, with failure=0, queued=0 and in-progress=0. Exact-main P12 workflow run `34413925793` completed SUCCESS on the same SHA and produced candidate-bound static/runtime evidence artifacts.
+PR #69 implementation head `f367ca78fca217e9d5c7da0a1328dca047940390` passed **35/35 exact-head workflows SUCCESS** before merge. The resulting implementation main `1ed40707552f62058980b44d6cb1e7251dbeb2d4` completed **31/31 push workflows SUCCESS**. PR #70 transition head `db33113943e8637827fe9d45bfcd1219617f2db6` then completed **34/34 governed PR workflows SUCCESS**, including P12 static acceptance `PASS checks=39` and protected runtime/browser acceptance. The resulting transition main `42136cf59202c90f20f204e520c644acc69a88ca` completed **31/31 push workflows SUCCESS**, failure=0, queued=0 and in-progress=0. P13 implementation is therefore legally authorized from that exact green main.
 
 ## P12 closure truth
 
@@ -34,21 +34,21 @@ Exact integrated evidence:
 - implementation merge main: `1ed40707552f62058980b44d6cb1e7251dbeb2d4` — **31/31 push workflows SUCCESS**;
 - exact-main P12 workflow: `34413925793` — SUCCESS;
 - runtime artifact: `P12-Admin-Operations-Runtime-1ed40707552f62058980b44d6cb1e7251dbeb2d4`, artifact id `10128361921`, digest `sha256:8161d7c95e2ee64cf3c0fdac6b3d252bc0ee0052fe662c1a2973e1b9cc4f194b`;
-- static artifact: `P12-Admin-Operations-Static-1ed40707552f62058980b44d6cb1e7251dbeb2d4`, artifact id `10128310606`, digest `sha256:3029f8ddf62255952478fb0197a4399a5724b028a83919eb7de332a9552654d9`.
+- static artifact: `P12-Admin-Operations-Static-1ed40707552f62058980b44d6cb1e7251dbeb2d4`, artifact id `10128310606`, digest `sha256:3029f8ddf62255952478fb0197a4399a5724b028a83919eb7de332a9552654d9`;
+- PR #70 closure transition head: `db33113943e8637827fe9d45bfcd1219617f2db6` — **34/34 governed workflows SUCCESS**;
+- closure transition main: `42136cf59202c90f20f204e520c644acc69a88ca` — **31/31 push workflows SUCCESS**.
 
-Detailed closure evidence is recorded in `docs/evidence/P12_ADMIN_OPERATIONS_HEALTH_DIAGNOSTICS.md`.
+Detailed P12 implementation evidence is recorded in `docs/evidence/P12_ADMIN_OPERATIONS_HEALTH_DIAGNOSTICS.md`.
 
 ## Legal work now
 
-This reconciliation branch is governance/evidence-only. It does **not** authorize P13 implementation from its own head.
-
-After this transition is normally merged and every required workflow on the resulting exact new `main` SHA is terminal SUCCESS, P13 becomes the only canonical implementation phase, plus any repair required to preserve closed P00-P12 baselines and repository controls.
+P13 is the only canonical implementation phase, plus any repair required to preserve closed P00-P12 baselines and repository controls.
 
 Canonical P13 scope is full Arabic/English UX and accessibility convergence against `docs/UI_DESIGN_PARITY_GATE.md` and the four repository-native references under `docs/ui-baseline/`. It must preserve all closed security, authorization, data-isolation and operational contracts while converging shared chrome, typography, spacing, responsive behavior, keyboard/focus/accessibility, RTL/LTR behavior and high-fidelity visual parity across the required reference surfaces.
 
 ## Locked future work
 
-P14–P17 remain locked. Security-hardening convergence, installer/package, full release-candidate automated acceptance and final release convergence must not begin before their canonical phase opens.
+P14–P17 remain **LOCKED**. Security-hardening convergence, installer/package, full release-candidate automated acceptance and final release convergence must not begin before their canonical phase opens.
 
 Legitimate already-started future-phase recovery branches may be repaired only under the documented owner non-stop exception when necessary to remove a known real failure; they remain **DO NOT MERGE** and do not change canonical phase authority until preceding phases close normally.
 
