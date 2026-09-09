@@ -54,10 +54,16 @@ public partial class AuditTrailTamperEvidence : Migration
             },
             constraints: table => table.PrimaryKey("PK_AuditChainState", x => x.Id));
 
-        migrationBuilder.InsertData(
-            table: "AuditChainState",
-            columns: new[] { "Id", "LastSequence", "LastHash", "CheckpointSequence", "CheckpointHash", "LastIntegrityStatus" },
-            values: new object[] { 1, 0L, string.Empty, 0L, string.Empty, "Unknown" });
+        // AuditChainState is intentionally maintained through bounded, parameterized SQL in the
+        // canonical audit runtime rather than through the EF model. Seed it with fixed migration
+        // SQL so migration generation does not require a duplicate DbSet/entity mapping.
+        migrationBuilder.Sql(
+            """
+            INSERT INTO [dbo].[AuditChainState]
+                ([Id], [LastSequence], [LastHash], [CheckpointSequence], [CheckpointHash], [LastIntegrityStatus])
+            VALUES
+                (1, 0, '', 0, '', N'Unknown');
+            """);
 
         migrationBuilder.Sql(
             """
