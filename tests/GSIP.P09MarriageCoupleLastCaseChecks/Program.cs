@@ -107,7 +107,7 @@ static async Task ValidateNoImplicitCredentialSharingAsync(GsipDbContext db, Cat
         "API130 acquired a service-specific AuthProfile without official auth evidence.");
     Check(await db.AuthProfileBindings.CountAsync(item => item.ServiceId == service.Id) == 0,
         "API130 acquired an implicit/shared AuthProfile binding.");
-    Check(await db.AuthProfileSecrets.AnyAsync(item => item.AuthProfile.OwnerServiceId == service.Id) == false,
+    Check(await db.AuthProfileSecrets.AnyAsync(item => item.AuthProfile != null && item.AuthProfile.OwnerServiceId == service.Id) == false,
         "API130 acquired secret references without official auth evidence.");
 
     var marriageProfile = await db.AuthProfiles.AsNoTracking()
