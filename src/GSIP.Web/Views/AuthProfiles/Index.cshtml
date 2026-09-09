@@ -168,6 +168,16 @@
                                 <div class="binding-chip">
                                     <span class="isolation-badge @(environment.IsSharedProfile ? "shared" : "isolated")">@(environment.IsSharedProfile ? L["Shared"] : L["Isolated"])</span>
                                     <span class="binding-label">@(isRtl ? entity.NameAr : entity.NameEn) / @(isRtl ? service.NameAr : service.NameEn) / @environment.Code</span>
+                                    @if (profile.AuthenticationType == "TokenEndpoint" && profile.IsActive && environment.IsActive)
+                                    {
+                                        <form method="post" action="/auth-profiles/@profile.Id/test" class="binding-unbind-form">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="culture" value="@currentCulture" />
+                                            <input type="hidden" name="serviceId" value="@service.Id" />
+                                            <input type="hidden" name="environmentId" value="@environment.Id" />
+                                            <button class="auth-button secondary" type="submit">@L["TestAuthentication"]</button>
+                                        </form>
+                                    }
                                     @if (environment.IsSharedProfile)
                                     {
                                         <form method="post" action="/auth-profiles/@profile.Id/bindings/@service.Id/@environment.Id/unbind" class="binding-unbind-form">
