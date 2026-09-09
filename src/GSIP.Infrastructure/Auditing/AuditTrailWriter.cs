@@ -186,7 +186,7 @@ public sealed class AuditTrailWriter(
         : $"{context.Request.Method} {context.Request.Path}";
 
     private static string BuildDevice(HttpContext? context) =>
-        context?.Request.Headers.UserAgent.ToString() ?? string.Empty;
+        context?.Request.Headers["User-Agent"].ToString() ?? string.Empty;
 
     private static string? Truncate(string? value, int maximumLength) =>
         value is null || value.Length <= maximumLength ? value : value[..maximumLength];
