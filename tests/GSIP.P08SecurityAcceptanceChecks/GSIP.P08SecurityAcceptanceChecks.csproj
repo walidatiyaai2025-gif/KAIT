@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>GSIP.P08SecurityAcceptanceChecks</AssemblyName>
+    <RootNamespace>GSIP.P08SecurityAcceptanceChecks</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="MojRuntime/**/*.cs" />
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <ProjectReference Include="../../src/GSIP.Application/GSIP.Application.csproj" />
+    <ProjectReference Include="../../src/GSIP.Domain/GSIP.Domain.csproj" />
+    <ProjectReference Include="../../src/GSIP.Infrastructure/GSIP.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>
