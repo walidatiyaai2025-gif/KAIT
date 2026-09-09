@@ -32,9 +32,15 @@ jobs:
         with:
           global-json-file: global.json
       - name: Restore
-        run: dotnet restore GSIP.sln
+        run: |
+          dotnet restore GSIP.sln
+          dotnet restore tests/GSIP.P10RequestHistoryChecks/GSIP.P10RequestHistoryChecks.csproj
       - name: Build Release
-        run: dotnet build GSIP.sln -c Release --no-restore
+        run: |
+          dotnet build GSIP.sln -c Release --no-restore
+          dotnet build tests/GSIP.P10RequestHistoryChecks/GSIP.P10RequestHistoryChecks.csproj -c Release --no-restore
+      - name: Run executable P10 negative acceptance
+        run: dotnet run --project tests/GSIP.P10RequestHistoryChecks/GSIP.P10RequestHistoryChecks.csproj -c Release --no-build
       - name: Verify P10 security contract
         run: python scripts/verify-p10-request-history.py
       - name: Preserve P09 official contract evidence
