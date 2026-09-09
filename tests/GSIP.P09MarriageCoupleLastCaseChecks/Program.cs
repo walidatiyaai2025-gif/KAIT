@@ -9,6 +9,7 @@ using GSIP.Application.Metadata;
 using GSIP.Application.Secrets;
 using GSIP.Domain.Metadata;
 using GSIP.Domain.Secrets;
+using GSIP.Infrastructure.Authentication;
 using GSIP.Infrastructure.Execution;
 using GSIP.Infrastructure.Metadata;
 using GSIP.Infrastructure.Setup;
@@ -414,7 +415,7 @@ sealed class FakeMetadata(MetadataCatalogSnapshot snapshot) : IMetadataCatalogSe
     public Task DeactivateEntityAsync(Guid entityId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task<CatalogService> CreateServiceAsync(Guid entityId, ServiceInput input, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task<CatalogService> UpdateServiceAsync(Guid serviceId, ServiceInput input, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-    public Task DeactivateServiceAsync(Guid serviceId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    public Task<CatalogService> DeactivateServiceAsync(Guid serviceId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task<string> ExportJsonAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task<MetadataImportResult> ImportJsonAsync(string json, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 }
