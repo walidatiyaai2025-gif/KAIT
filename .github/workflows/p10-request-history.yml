@@ -1,0 +1,43 @@
+name: P10 Request History and Exports
+
+on:
+  push:
+    branches:
+      - main
+      - 'worker/p10-requests-history-exports'
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build-security-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          fetch-depth: 0
+      - name: Assert exact candidate SHA
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+      - name: Setup pinned .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Restore
+        run: dotnet restore GSIP.sln
+      - name: Build Release
+        run: dotnet build GSIP.sln -c Release --no-restore
+      - name: Verify P10 security contract
+        run: python scripts/verify-p10-request-history.py
+      - name: Preserve P09 official contract evidence
+        run: python scripts/validate_p09_contract_snapshots.py
+      - name: Preserve planning integrity
+        run: python scripts/validate_execution_plan.py
