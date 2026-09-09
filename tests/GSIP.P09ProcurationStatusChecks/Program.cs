@@ -65,7 +65,7 @@ try
         .Include(item => item.ResultMappings)
         .SingleAsync(item => item.Code == "PROCURATIONSTATUS" && item.IsCurrent);
     Check(service.Version == 2 && service.Active, "API134 current metadata is not v2.");
-    Check(service.Fields.Select(item => item.Key).SequenceEqual(["CivilClient", "CivilAgent", "year", "Number"]),
+    Check(service.Fields.OrderBy(item => item.DisplayOrder).Select(item => item.Key).SequenceEqual(["CivilClient", "CivilAgent", "year", "Number"]),
         "API134 seeded request fields drifted.");
     Check(service.Fields.All(item => !item.Required),
         "API134 requiredness was invented although supplied schema did not mark fields required.");
