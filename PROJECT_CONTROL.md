@@ -6,7 +6,7 @@
 - Repository: `walidatiyaai2025-gif/KAIT`
 - Default branch: `main`
 - Delivery model: phase-gated autonomous implementation
-- Current planned product state: P08 CLOSED from exact integrated evidence; P09 five-service MOJ contract implementation is the canonical current phase and is OPEN / READY
+- Current planned product state: P08 CLOSED from exact integrated evidence; P09 five-service MOJ contract implementation is the canonical current phase and is OPEN / READY, with closed-baseline regressions repaired before new payload work
 - Initial executable version: `0.1.0`
 - Pinned SDK / target framework: .NET SDK `10.0.400` / `net10.0`
 - Initial entity: Ministry of Justice (MOJ), Kuwait
@@ -22,15 +22,19 @@ Closure evidence on that exact SHA includes:
 
 - P08 Security Acceptance run `34318032200`: SUCCESS;
 - artifact `P08-Security-Acceptance-67968a9230dae453b36f48549eda138d7b5401c7`, 2,314 bytes, digest `sha256:b39ea805fec25b5a45a35c2eb445074e64622f48a44dc7c7e3ccd6a0ea8b3d98`;
-- MOJ runtime acceptance PASS, including metadata-driven token-path behavior, documented form token acquisition, Bearer attachment and malformed/failure cases;
+- MOJ runtime acceptance PASS, including metadata-driven token-path behavior, documented form token acquisition, Bearer attachment and malformed/failure cases supported by the evidence then available;
 - P08 Auth Scope Isolation PASS for forged/stale profile/ref, cross-service/environment, Production→UAT fallback and stale/wrong-scope token paths;
 - protected administration Test Authentication PASS;
 - secret/token leakage acceptance PASS;
 - all closed P00–P07 regressions remained green on the integrated baseline.
 
-Exact operation-level applicability of `ApiKeyAuth` to `/genToken` remains `DEFERRED_EXTERNAL`, not PASS, pending authenticated CAIT/MOJ operation evidence or authorized UAT configuration. This does not authorize an assumption: the integrated runtime supports governed composition of documented mechanisms and must fail closed on unsupported configuration. Owner/operator follow-up is recorded in `docs/evidence/P08_MOJ_AUTHENTICATION_INTEGRATION.md`.
+At original P08 closure, exact operation-level `ApiKeyAuth` applicability to `/genToken` was correctly `DEFERRED_EXTERNAL`, not PASS, because authenticated CAIT/MOJ operation evidence or authorized UAT proof had not yet been supplied. That remains the historical closure record and is not rewritten retroactively.
 
-The P08 final closure reconciliation is governance/evidence/CI-only and introduces no P09 service payload implementation.
+After closure, owner-supplied authenticated official CAIT Swagger evidence for Marriage Cases API 129 and an owner-executed successful UAT token call proved the observed UAT Marriage contract: `/genToken` requires transient `x-api-key` plus form-urlencoded username/password, then the Marriage target requires the same `x-api-key` plus the acquired Bearer token. PR #50 / `P08-REGRESSION::moj-composite-auth-real-contract` repairs that newly proven closed-baseline contract through the existing canonical runtime, SecretRef/Vault, token cache and protected Test Authentication flow. The observed UAT status is `UAT_PROVEN`.
+
+Production is not inferred from UAT. Owner evidence proves only the Production gateway prefix `https://moj.api.cait.gov.kw`; unproven Production Marriage path suffixes and operation-level auth/payload applicability remain `PRODUCTION_DEFERRED_EXTERNAL — NOT PASS`. No Production→UAT fallback is permitted.
+
+The original P08 final closure reconciliation introduced no P09 service payload implementation; the post-closure PR #50 repair likewise must not introduce unrelated P09 payload work. New P09 payload implementation may proceed only after the regression repair is normally integrated and exact-new-main verification is green.
 
 ## Authoritative documents
 
@@ -59,6 +63,7 @@ No old prompt, screenshot caption, branch description, stale ledger or supersede
 - Integration recovery and exact-main regressions take priority over new feature work.
 - A phase-transition branch does not authorize new-phase implementation until that transition is integrated and the resulting exact-main gate is green.
 - Deferred external evidence remains explicitly deferred and must never be converted to PASS without real evidence.
+- Evidence proven for one environment or operation must not be promoted to another environment or operation without official support.
 
 ## Branch and PR policy
 
@@ -99,7 +104,9 @@ P07 established the metadata-driven execution boundary. Execution must resolve t
 
 ## MOJ authentication contract
 
-P08 established the MOJ authentication layer using repository-preserved official evidence and the existing P06/P07 boundaries. Runtime supports the documented `x-api-key` mechanism where governed metadata requires it, documented `POST /genToken` form-urlencoded username/password token acquisition with the token consumed from response `data`, and transient `Authorization: Bearer ...` attachment where the governed operation requires Bearer authentication. Base URL, header name and token path are configuration/metadata driven. Secrets remain in the Secret Vault; token/cache identity remains exact Service + Environment + AuthProfile + configuration/generation scope; cross-service/environment and Production→UAT fallback fail closed. Administration exposes a server-authorized, anti-forgery protected Test Authentication action that never redisplays token plaintext. Unknown operation applicability is not guessed; owner-last external evidence remains explicitly deferred where necessary.
+P08 established the MOJ authentication layer using repository-preserved official evidence and the existing P06/P07 boundaries. Runtime supports the documented `x-api-key` mechanism where governed metadata requires it, documented `POST /genToken` form-urlencoded username/password token acquisition with the token consumed from response `data`, and transient `Authorization: Bearer ...` attachment where the governed operation requires Bearer authentication. Base URL, header name and token path are configuration/metadata driven. Secrets remain in the Secret Vault; token/cache identity remains exact Service + Environment + AuthProfile + configuration/generation scope; cross-service/environment and Production→UAT fallback fail closed. Administration exposes a server-authorized, anti-forgery protected Test Authentication action that never redisplays token plaintext.
+
+The post-closure UAT Marriage evidence adds a proven composite specialization without creating a second engine: exact-scope `x-api-key`, `username`, and `password` material is used to call `/genToken`; the token response `data` becomes a transient Bearer; the target request carries the same transient API key plus Bearer; API-key generation participates in token-cache validity. Existing None/API-key/static-Bearer/custom-header/legacy token behavior remains supported. This proven specialization applies only to the observed UAT Marriage contract. Unproven Production operation details remain owner-last external and must fail closed rather than inherit UAT configuration.
 
 ## P09 MOJ five-service contract boundary
 
