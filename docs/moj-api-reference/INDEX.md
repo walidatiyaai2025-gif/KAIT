@@ -21,10 +21,11 @@ The original owner-supplied Marriage documentation established the common token 
 - `POST /genToken`;
 - `application/x-www-form-urlencoded` token request;
 - canonical secret names `username` and `password`;
+- successful documented token response shape `{ "data": "string" }`;
 - token value returned from the documented `data` response field;
-- Bearer authorization on protected Marriage operations.
+- Swagger scheme `BearerAuth`, used as a Bearer token on protected Marriage operations.
 
-The original screenshots also exposed API-key and Bearer security schemes, but at initial P08 closure they did not prove operation-level API-key applicability. That uncertainty was correctly kept fail-closed at that time.
+The original screenshots also exposed the `x-api-key` API-key scheme and the Bearer security scheme, but at initial P08 closure they did not prove operation-level API-key applicability. That uncertainty was correctly kept fail-closed at that time.
 
 Subsequent authenticated owner evidence on 2026-09-09 proved the observed UAT Marriage Cases sequence:
 
