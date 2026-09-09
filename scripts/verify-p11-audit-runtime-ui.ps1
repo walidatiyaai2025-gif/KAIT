@@ -20,6 +20,7 @@ function Assert-NoForbiddenEvidence([string]$Text, [string]$SyntheticPassword) {
 $databaseName = 'GSIP_P11_UI_' + [Guid]::NewGuid().ToString('N').Substring(0, 12)
 $connectionString = "Server=(localdb)\MSSQLLocalDB;Database=$databaseName;Integrated Security=true;Encrypt=false;TrustServerCertificate=true;MultipleActiveResultSets=true"
 $syntheticUsername = 'p11-audit-admin'
+$readonlyUsername = 'p11-audit-readonly'
 $syntheticPassword = 'Synthetic-P11-Audit-Only!8427'
 $helperDir = Join-Path $env:TEMP ('gsip-p11-ui-helper-' + [Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $helperDir -Force | Out-Null
@@ -37,7 +38,6 @@ $helperSource = Join-Path $helperDir 'Program.cs'
 
 @'
 using GSIP.Application.Authorization;
-using GSIP.Infrastructure.Authorization;
 using GSIP.Infrastructure.Identity;
 using GSIP.Infrastructure.Setup;
 using Microsoft.AspNetCore.Identity;
@@ -69,18 +69,17 @@ if (!await db.SystemSetup.AnyAsync())
     });
 }
 
-var adminRoleId = Guid.Parse(GsipRoles.SystemAdministratorId);
-var user = new ApplicationUser
+static ApplicationUser SyntheticUser(string username, string normalized, string displayName, bool privileged) => new()
 {
     Id = Guid.NewGuid(),
-    UserName = "p11-audit-admin",
-    NormalizedUserName = "P11-AUDIT-ADMIN",
-    Email = "p11-audit-admin@example.invalid",
-    NormalizedEmail = "P11-AUDIT-ADMIN@EXAMPLE.INVALID",
+    UserName = username,
+    NormalizedUserName = normalized,
+    Email = $"{username}@example.invalid",
+    NormalizedEmail = $"{normalized}@EXAMPLE.INVALID",
     EmailConfirmed = true,
-    DisplayName = "Synthetic P11 Audit Administrator",
+    DisplayName = displayName,
     IsEnabled = true,
-    IsPrivileged = true,
+    IsPrivileged = privileged,
     MustChangePassword = false,
     TwoFactorEnabled = false,
     LockoutEnabled = true,
@@ -88,9 +87,16 @@ var user = new ApplicationUser
     SecurityStamp = Guid.NewGuid().ToString("N"),
     ConcurrencyStamp = Guid.NewGuid().ToString("N")
 };
-user.PasswordHash = new PasswordHasher<ApplicationUser>().HashPassword(user, password);
-db.Users.Add(user);
-db.UserRoles.Add(new IdentityUserRole<Guid> { UserId = user.Id, RoleId = adminRoleId });
+
+var hasher = new PasswordHasher<ApplicationUser>();
+var admin = SyntheticUser("p11-audit-admin", "P11-AUDIT-ADMIN", "Synthetic P11 Audit Administrator", true);
+admin.PasswordHash = hasher.HashPassword(admin, password);
+var readOnly = SyntheticUser("p11-audit-readonly", "P11-AUDIT-READONLY", "Synthetic P11 Read Only User", false);
+readOnly.PasswordHash = hasher.HashPassword(readOnly, password);
+
+db.Users.AddRange(admin, readOnly);
+db.UserRoles.Add(new IdentityUserRole<Guid> { UserId = admin.Id, RoleId = Guid.Parse(GsipRoles.SystemAdministratorId) });
+db.UserRoles.Add(new IdentityUserRole<Guid> { UserId = readOnly.Id, RoleId = Guid.Parse(GsipRoles.ReadOnlyId) });
 await db.SaveChangesAsync();
 '@ | Set-Content $helperSource -Encoding utf8
 
@@ -145,6 +151,21 @@ try {
         $client.Dispose()
         $handler.Dispose()
     }
+
+    $readonlyLogin = Invoke-WebRequest "$baseUrl/login?culture=en" -UseBasicParsing -SessionVariable readonlySession
+    $readonlyToken = Get-AntiForgeryToken $readonlyLogin.Content
+    $readonlyLoginResult = Invoke-WebRequest "$baseUrl/login?culture=en" -Method Post -UseBasicParsing -WebSession $readonlySession -Body @{
+        Username = $readonlyUsername
+        Password = $syntheticPassword
+        RememberMe = 'false'
+        __RequestVerificationToken = $readonlyToken
+    }
+    if ($readonlyLoginResult.StatusCode -ne 200) { throw "Synthetic Read Only login failed. Status $($readonlyLoginResult.StatusCode)" }
+
+    $readonlyAudit = Invoke-WebRequest "$baseUrl/audit?culture=en" -UseBasicParsing -WebSession $readonlySession -SkipHttpErrorCheck
+    if ($readonlyAudit.StatusCode -ne 403) { throw "Authenticated user without Audit.View was not denied. Status $($readonlyAudit.StatusCode)" }
+    $readonlyExport = Invoke-WebRequest "$baseUrl/audit/export?culture=en" -UseBasicParsing -WebSession $readonlySession -SkipHttpErrorCheck
+    if ($readonlyExport.StatusCode -ne 403) { throw "Authenticated user without Audit.Export was not denied. Status $($readonlyExport.StatusCode)" }
 
     $login = Invoke-WebRequest "$baseUrl/login?culture=en" -UseBasicParsing -SessionVariable session
     $loginToken = Get-AntiForgeryToken $login.Content
@@ -262,7 +283,8 @@ try {
             screenshot = $capture.Name
             sha256 = (Get-FileHash $path -Algorithm SHA256).Hash.ToLowerInvariant()
             authenticatedRuntime = 'PASS'
-            unauthorizedChallenge = 'PASS'
+            unauthenticatedChallenge = 'PASS'
+            authenticatedUnauthorizedDeny = 'PASS'
             auditView = 'PASS'
             auditFilterDetail = 'PASS'
             auditExport = 'PASS'
