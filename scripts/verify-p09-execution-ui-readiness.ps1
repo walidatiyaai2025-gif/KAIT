@@ -29,8 +29,7 @@ Assert-Contains $view 'masked-result' 'Sensitive structured results do not retai
 if ($view.Contains('field.Key.Contains("CIVIL"', [System.StringComparison]::OrdinalIgnoreCase)) {
     throw 'Service-specific CIVIL field-name UI heuristic remains.'
 }
-if ($view.Contains('moj.api.cait.gov.kw', [System.StringComparison]::OrdinalIgnoreCase)
-    -or $view.Contains('moj-uat.api-non-prod.cait.gov.kw', [System.StringComparison]::OrdinalIgnoreCase)) {
+if ($view.Contains('moj.api.cait.gov.kw', [System.StringComparison]::OrdinalIgnoreCase) -or $view.Contains('moj-uat.api-non-prod.cait.gov.kw', [System.StringComparison]::OrdinalIgnoreCase)) {
     throw 'Execution view exposes a concrete MOJ URL instead of generic metadata/alias presentation.'
 }
 
