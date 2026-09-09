@@ -57,7 +57,7 @@ try
         .Include(item => item.ResultMappings)
         .SingleAsync(item => item.Code == "FAMILYJUDGMENTTEXT" && item.IsCurrent);
     Check(service.Version == 2 && service.Active, "API196 current metadata is not v2.");
-    Check(service.Fields.Select(item => item.Key).SequenceEqual(["caseNo", "type"]), "API196 seeded request fields drifted.");
+    Check(service.Fields.OrderBy(item => item.DisplayOrder).Select(item => item.Key).SequenceEqual(["caseNo", "type"]), "API196 seeded request fields drifted.");
     Check(service.Fields.All(item => !item.Required), "API196 requiredness was invented although supplied schema did not mark fields required.");
     Check(service.Fields.Single(item => item.Key == "caseNo").Sensitive
         && !service.Fields.Single(item => item.Key == "type").Sensitive,
