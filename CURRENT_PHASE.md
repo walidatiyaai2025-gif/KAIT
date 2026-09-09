@@ -2,54 +2,57 @@
 
 ## Canonical current phase
 
-**P11 — Tamper-evident audit trail and monitoring**
+**P12 — Admin operations, health and diagnostics**
 
 Status: **OPEN / READY**
 
-P10 — Requests, result history and exports is **CLOSED** from exact integrated `main` SHA `b7e81cece985b566c9c3222a2c495b83e800e080` after normal integration of PR #62 followed by closed-baseline pagination-filter regression repair PR #65.
+P11 — Tamper-evident audit trail and monitoring is **CLOSED** from exact integrated `main` SHA `3d0a77f3f76fac37691cdd19a030932c876bd1e5` after normal integration of PR #67 from exact implementation head `ae61ff7cedaf119bc6948a5b18eda811ab249b82`.
 
-On that exact integrated SHA, all **29/29 push workflow runs completed successfully**, with failure=0, queued=0 and in-progress=0 after completion. PR #65 itself also passed **32/32 exact-head workflows** before normal merge. Detailed closure evidence is recorded in `docs/evidence/P10_CLOSURE.md`.
+PR #67 passed **36/36 exact-head workflows** before merge. The resulting exact integrated main completed **31/31 push workflows SUCCESS**, with failure=0, queued=0 and in-progress=0 after completion. P01 Architecture and UI Shell run `34408109285` attempt 1 hit a runner/process-start anomaly in which the runtime did not become healthy and both uploaded server stdout/stderr logs were empty; the exact same-SHA job was rerun without any source or acceptance change and attempt 2 completed SUCCESS, including runtime and bilingual browser evidence. Detailed closure evidence is recorded in `docs/evidence/P11_AUDIT_TRAIL_MONITORING.md`.
 
-## P10 closure truth
+## P11 closure truth
 
-The integrated P10 baseline provides:
+The integrated P11 baseline provides:
 
-- canonical request/result history persistence for RequestId, actor/department, Entity/Service/version, masked inputs, status, duration, CorrelationId and timestamps;
-- bounded/protected structured and raw-result persistence with raw storage disableable;
-- Own / Department / All authorization plus current service-visibility isolation and IDOR rejection;
-- search/filter/date/status/entity/service history, with date-range and all other active filters preserved across pagination;
-- permissioned CSV/XLSX/PDF/Print exports with spreadsheet-injection defense and export audit events;
-- retention, migration and concurrency acceptance;
-- bilingual Arabic/English history list/detail UI and canonical Requests navigation reachability;
-- executable regression coverage that prevents pagination from dropping `fromUtc`, `toUtc` or the other active history filters.
+- canonical tamper-evident audit records with append-only database enforcement;
+- monotonic sequence and SHA-256 chained integrity with mutation, gap/reordering and tail-deletion detection;
+- bounded prefix-only retention with verifiable checkpoint continuity;
+- SQL transaction-scoped concurrent append serialization;
+- centralized sanitization/redaction and secret/personal-data leakage rejection;
+- server-side `Audit.View`, `Audit.Export`, `Audit.ViewSensitive` and `Diagnostics.Run` enforcement;
+- protected bilingual Arabic RTL / English LTR Audit dashboard, filters, detail, CSV export and integrity verification;
+- executable Linux security/UI checks and Windows SQL LocalDB append-only/tamper/concurrency/retention/monitoring acceptance;
+- authenticated/unauthenticated authorization, CSRF-negative and real browser regression evidence using synthetic-only data.
 
 No plaintext credentials, API keys, bearer tokens, Civil IDs or personal MOJ data were added to Git/evidence.
 
 ## Legal work now
 
-P11 only, plus any repair required to preserve closed P00-P10 baselines and repository controls.
+P12 only, plus any repair required to preserve closed P00-P11 baselines and repository controls.
 
-Canonical P11 scope from repository authority:
+Canonical P12 scope from repository authority:
 
-- tamper-evident canonical audit records with append-only database enforcement;
-- verifiable hash-chain integrity and tail-deletion/field-mutation detection;
-- bounded retention with verifiable checkpoint continuity;
-- safe concurrent append behavior;
-- monitoring/integrity health and actionable, sanitized evidence;
-- high-fidelity protected Audit dashboard, filters/details/export and server-side authorization;
-- bilingual Arabic RTL / English LTR responsive presentation;
-- executable leakage, migration, LocalDB tamper/retention/concurrency and UI contract acceptance.
+- administration for exact Entity -> Service -> Environment configuration and operational state;
+- UAT/Production environment operations without cross-environment fallback;
+- protected health and diagnostics for database, data-protection/runtime/disk and configured integrations;
+- permission-protected Test Connection / Test Authentication and operational diagnostics;
+- Activate/Disable and secret-rotation administration using the canonical P06/P08 secret/auth boundaries;
+- bounded timeouts, TLS/proxy/configuration diagnostics and actionable sanitized status/alerts;
+- bilingual Arabic RTL / English LTR responsive administration;
+- executable authorization/IDOR/CSRF, diagnostics sanitization, failure and UI acceptance.
+
+Recover the existing legitimate `worker/p12-admin-health-diagnostics` work before creating any duplicate P12 implementation. That branch was started under the documented owner non-stop exception and must be reconciled with the exact current main before integration.
 
 ## Locked future work
 
-P12–P17 remain locked. Admin operations/diagnostics, full UI convergence, security hardening, installer, full automated acceptance and final release convergence must not begin before their canonical phase opens.
+P13–P17 remain locked. Full UI convergence, security hardening, installer, full automated acceptance and final release convergence must not begin before their canonical phase opens.
 
 Legitimate already-started future-phase recovery branches may be repaired only under the documented owner non-stop exception when necessary to remove a known real failure; they remain **DO NOT MERGE** and do not change canonical phase authority until preceding phases close normally.
 
 ## Deferred boundaries
 
-Historical owner/external classifications from earlier phases remain unchanged. `DEFERRED_EXTERNAL` is never PASS. Production details are never inferred from UAT, and no Production→UAT fallback is allowed.
+Historical owner/external classifications from earlier phases remain unchanged. `DEFERRED_EXTERNAL` is never PASS. The P09 authorized live-UAT evidence that remains unavailable is still `DEFERRED_EXTERNAL_NOT_PASS`; unproven Production operation proof remains `PRODUCTION_DEFERRED_EXTERNAL_NOT_PASS`. Production details are never inferred from UAT, and no Production→UAT fallback is allowed.
 
-## P11 exit condition
+## P12 exit condition
 
-P11 may be marked CLOSED only when the canonical audit trail, append-only enforcement, integrity verification, retention checkpointing, concurrency behavior, monitoring, high-fidelity Audit dashboard, bilingual UI and required security/LocalDB/UI acceptance are integrated; exact-main evidence must be green. Any genuinely owner-only/external evidence must remain explicitly deferred rather than being called PASS.
+P12 may be marked CLOSED only when canonical admin operations, health/diagnostics, exact Service + Environment isolation, protected operational actions, secret/auth diagnostics, sanitized alerts/evidence, bilingual UI and required security/runtime/UI acceptance are integrated and the exact-new-main evidence is green. Any genuinely owner-only/external evidence must remain explicitly deferred rather than being called PASS.

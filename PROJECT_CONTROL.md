@@ -6,7 +6,7 @@
 - Repository: `walidatiyaai2025-gif/KAIT`
 - Default branch: `main`
 - Delivery model: phase-gated autonomous implementation
-- Current planned product state: P10 CLOSED from exact integrated and repaired evidence; P11 tamper-evident audit/monitoring is the canonical current phase and is OPEN / READY
+- Current planned product state: P11 CLOSED from exact integrated and verified evidence; P12 admin operations, health and diagnostics is the canonical current phase and is OPEN / READY
 - Initial executable version: `0.1.0`
 - Pinned SDK / target framework: .NET SDK `10.0.400` / `net10.0`
 - Initial entity: Ministry of Justice (MOJ), Kuwait
@@ -16,9 +16,11 @@
 
 ## Last closed phase evidence
 
-P10 is CLOSED from exact integrated `main` SHA `b7e81cece985b566c9c3222a2c495b83e800e080` after normal integration of PR #62 followed by closed-baseline pagination-filter regression repair PR #65. PR #65 passed **32/32 exact-head workflows** before merge. The resulting exact integrated main completed **29/29 push workflows SUCCESS**, with failure=0, queued=0 and in-progress=0 after completion.
+P11 is CLOSED from exact integrated `main` SHA `3d0a77f3f76fac37691cdd19a030932c876bd1e5` after normal integration of PR #67 from exact implementation head `ae61ff7cedaf119bc6948a5b18eda811ab249b82`. PR #67 passed **36/36 exact-head workflows** before merge. The resulting exact integrated main completed **31/31 push workflows SUCCESS**, with failure=0, queued=0 and in-progress=0 after completion.
 
-P10 closure includes canonical request/result lifecycle persistence, masked/protected bounded result storage, Own/Department/All authorization plus current service visibility, IDOR rejection, filters/search with date-range and other active filters preserved across pagination, retention/migration/concurrency acceptance, permissioned CSV/XLSX/PDF/Print exports with injection defense and export audit events, and bilingual reachable History UI. The pagination repair is protected by executable regression coverage. Detailed evidence: `docs/evidence/P10_CLOSURE.md`.
+The only post-merge anomaly was P01 Architecture and UI Shell run `34408109285` attempt 1: its runtime process did not become healthy and the uploaded `server.stdout.log` and `server.stderr.log` were both empty. The exact same-SHA job was rerun with no source or acceptance change; attempt 2 completed SUCCESS, including runtime and bilingual browser evidence. This is recorded as a runner/process-start anomaly, not as a waived gate.
+
+P11 closure includes canonical append-only audit persistence, SHA-256 integrity chaining, mutation/gap/reordering/tail-deletion detection, bounded checkpointed retention, transaction-scoped concurrent append serialization, centralized sanitization/redaction, server-side Audit/Diagnostics permissions, protected bilingual Audit UI, CSV export/integrity verification, LocalDB tamper/retention/concurrency acceptance and browser/CSRF/authorization/leakage evidence. Detailed evidence: `docs/evidence/P11_AUDIT_TRAIL_MONITORING.md`.
 
 Historical P08/P09 owner/external classifications remain unchanged. Evidence proven for UAT is not promoted to Production. `DEFERRED_EXTERNAL` remains NOT PASS and Production→UAT fallback is forbidden.
 
@@ -42,9 +44,9 @@ No old prompt, screenshot caption, branch description, stale ledger or supersede
 ## Phase policy
 
 - Exactly one canonical current phase exists at a time.
-- P00 through P10 are CLOSED.
-- P11 is the canonical current legal implementation phase and is OPEN / READY.
-- P12–P17 remain locked until P11 is formally CLOSED.
+- P00 through P11 are CLOSED.
+- P12 is the canonical current legal implementation phase and is OPEN / READY.
+- P13–P17 remain locked until P12 is formally CLOSED.
 - Phase exit requires implementation + tests + evidence + documentation reconciliation + pushed commit + required CI + exact-main recheck.
 - Integration recovery and exact-main regressions take priority over new feature work.
 - A phase-transition branch does not authorize new-phase implementation until that transition is integrated and the resulting exact-main gate is green.
@@ -113,7 +115,11 @@ P10 established canonical request/result history with bounded protected persiste
 
 ## P11 audit/monitoring contract boundary
 
-P11 is the current phase. It must converge the canonical tamper-evident audit trail and monitoring boundary: append-only database enforcement, chained integrity evidence, mutation/tail-deletion detection, safe concurrent append, verifiable retention checkpointing, sanitized monitoring, protected high-fidelity Audit administration, bilingual UI and executable security/LocalDB/UI evidence. P11 must preserve all closed P00-P10 controls.
+P11 is CLOSED from exact integrated `main` SHA `3d0a77f3f76fac37691cdd19a030932c876bd1e5`. It established the canonical tamper-evident audit and monitoring boundary: append-only database enforcement, monotonic SHA-256 chained integrity, mutation/tail-deletion/gap detection, safe concurrent append, verifiable retention checkpointing, sanitized monitoring, protected high-fidelity Audit administration, bilingual UI and executable security/LocalDB/runtime/browser evidence. P11 preserves all closed P00-P10 controls.
+
+## P12 admin operations / health / diagnostics contract boundary
+
+P12 is the current phase. It must converge production-grade administration and operational diagnostics over the existing P05-P11 boundaries without creating competing persistence, secret, authentication, execution or audit engines. Scope includes exact Entity -> Service -> Environment operational state, protected Test Connection/Test Authentication, activation/disable operations, safe secret rotation through the canonical P06 boundary, bounded timeout/TLS/proxy/endpoint diagnostics, database/data-protection/runtime/disk/integration health, repeated-failure and readiness alerts, server-side authorization/IDOR/CSRF controls, sanitized audit/evidence and bilingual Arabic RTL / English LTR administration. The legitimate existing `worker/p12-admin-health-diagnostics` branch must be recovered and reconciled with exact current main before any duplicate implementation is created.
 
 ## Service environment / Go-Live control
 
