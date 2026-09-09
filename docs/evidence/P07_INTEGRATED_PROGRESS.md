@@ -6,8 +6,10 @@ This document reconciles only P07 work that is already normally merged on the ca
 
 ## Exact integrated baseline
 
-- Current exact `main`: `153555ede07ddacaee22fe173d4e560528bc35dd`
-- Exact-main push workflows on this SHA: **15/15 SUCCESS**
+- P07 implementation baseline before this documentation-only reconciliation: `153555ede07ddacaee22fe173d4e560528bc35dd`.
+- Applicable push workflows on that implementation baseline: **15/15 SUCCESS**.
+- Progress reconciliation PR #39 was normally merged at exact-main SHA `7cf4d6133193f956927089e8eeb94f68a1b34ec4`.
+- Post-reconciliation push workflows on `7cf4d6133193f956927089e8eeb94f68a1b34ec4`: **14/14 SUCCESS**, with no failure, queued or in-progress run after completion.
 - P07 remains the canonical current phase.
 - P08–P17 remain LOCKED.
 
@@ -22,11 +24,11 @@ This document reconciles only P07 work that is already normally merged on the ca
    - PR #34 — normally merged.
    - Merge commit: `77bcecc7c090ce28a607fe527caebb96170d78b4`.
    - Acceptance-only; no P07 production migration or durable execution-history persistence was introduced.
-   - On exact current main `153555ede07ddacaee22fe173d4e560528bc35dd`, P07 Upgrade Persistence Acceptance run `34295388181` succeeded.
-   - Exact-main artifact: `p07-upgrade-persistence-evidence-153555ede07ddacaee22fe173d4e560528bc35dd`
+   - On implementation baseline `153555ede07ddacaee22fe173d4e560528bc35dd`, P07 Upgrade Persistence Acceptance run `34295388181` succeeded.
+   - Exact-main artifact from that implementation baseline: `p07-upgrade-persistence-evidence-153555ede07ddacaee22fe173d4e560528bc35dd`.
    - Artifact size: `643` bytes.
    - Artifact digest: `sha256:472d2a49570944d30f19ca69f72f9e2d849fb6e1e120da70b68098843da2e847`.
-   - This exact-main gate verifies no P07 schema drift, exact P06 database upgrade/open, data preservation, Service + Environment configuration isolation, protected vault-payload preservation and clean-install schema.
+   - This gate verifies no P07 schema drift, exact P06 database upgrade/open, data preservation, Service + Environment configuration isolation, protected vault-payload preservation and clean-install schema.
 
 3. `P07::service-execution-ui-parity`
    - PR #36 — normally merged.
@@ -36,7 +38,7 @@ This document reconciles only P07 work that is already normally merged on the ca
 
 4. `P07::generic-execution-runtime`
    - PR #37 — normally merged.
-   - Merge commit and current exact main: `153555ede07ddacaee22fe173d4e560528bc35dd`.
+   - Merge commit / P07 implementation baseline: `153555ede07ddacaee22fe173d4e560528bc35dd`.
    - Integrated behavior: metadata-driven request validation/construction, RequestId/CorrelationId, exact authorized binding reuse, `IHttpClientFactory` outbound execution, bounded retry/timeout semantics, POST retry only with explicit `SafeToRetry`, HTTP/TLS/network classification, bounded response reads, ResultMappings and transient secret-safe authentication material handling.
    - Dedicated PR-head P07 Generic Execution Runtime run `34295084467` succeeded on head `09018f1a673250f548154586f62d53e1f8d5dec3`.
    - PR-head artifact: `P07-Generic-Execution-Runtime-09018f1a673250f548154586f62d53e1f8d5dec3`, 529 bytes, digest `sha256:76f2295f3f387d6e439f6400e873ed077661dfe62972cf0f1fca312d8fb2ca1e`.
