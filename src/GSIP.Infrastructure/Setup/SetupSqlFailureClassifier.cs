@@ -1,4 +1,5 @@
 using System.Security.Authentication;
+using GSIP.Application.Setup;
 using Microsoft.Data.SqlClient;
 
 namespace GSIP.Infrastructure.Setup;
