@@ -1,0 +1,259 @@
+@model GSIP.Web.Models.AuditDashboardViewModel
+@using System.Globalization
+@{
+    ViewData["Title"] = Model.IsArabic ? "سجل التدقيق والمراقبة" : "Audit Log & Monitoring";
+    var ar = Model.IsArabic;
+    var total = Model.Page.TotalCount;
+    var maxVolume = Math.Max(1, Model.Volume.Count == 0 ? 1 : Model.Volume.Max(point => point.Total));
+    var integrityClass = string.Equals(Model.Monitoring.IntegrityStatus, "Healthy", StringComparison.OrdinalIgnoreCase)
+        ? "is-healthy"
+        : string.Equals(Model.Monitoring.IntegrityStatus, "Tampered", StringComparison.OrdinalIgnoreCase)
+            ? "is-danger"
+            : "is-warning";
+    var integrityResult = ViewData["IntegrityResult"] as string;
+}
+
+<link rel="stylesheet" href="~/css/audit.css" asp-append-version="true" />
+
+<section class="audit-shell" dir="@(ar ? "rtl" : "ltr")" data-testid="audit-dashboard">
+    <header class="audit-hero">
+        <div>
+            <span class="audit-eyebrow">GSIP / P11</span>
+            <h1>@(ar ? "سجل التدقيق والمراقبة" : "Audit Log & Monitoring")</h1>
+            <p>@(ar ? "سجل أمني غير قابل للتعديل مع التحقق من سلامة السلسلة ومؤشرات التشغيل." : "Append-only security audit with integrity-chain verification and operational monitoring.")</p>
+        </div>
+        <div class="audit-hero-actions">
+            @if (Model.CanVerifyIntegrity)
+            {
+                <form method="post" asp-action="VerifyIntegrity">
+                    @Html.AntiForgeryToken()
+                    <button class="audit-btn audit-btn-primary" type="submit" data-testid="verify-integrity">
+                        @(ar ? "تحقق من السلامة" : "Verify integrity")
+                    </button>
+                </form>
+            }
+            @if (Model.CanExport)
+            {
+                <a class="audit-btn" asp-action="Export"
+                   asp-route-fromUtc="@Model.Filter.FromUtc"
+                   asp-route-toUtc="@Model.Filter.ToUtc"
+                   asp-route-entityCode="@Model.Filter.EntityCode"
+                   asp-route-serviceCode="@Model.Filter.ServiceCode"
+                   asp-route-actorUserId="@Model.Filter.ActorUserId"
+                   asp-route-succeeded="@Model.Filter.Succeeded"
+                   asp-route-action="@Model.Filter.Action"
+                   data-testid="audit-export">@(ar ? "تصدير CSV" : "Export CSV")</a>
+            }
+        </div>
+    </header>
+
+    @if (integrityResult is not null)
+    {
+        <div class="audit-notice @(integrityResult == "Healthy" ? "is-success" : "is-danger")" role="status">
+            @(integrityResult == "Healthy"
+                ? (ar ? "تم التحقق من سلسلة التدقيق: سليمة." : "Audit chain verification completed: healthy.")
+                : (ar ? "تم اكتشاف مشكلة سلامة في سلسلة التدقيق." : "Audit-chain integrity issue detected."))
+        </div>
+    }
+
+    <div class="audit-kpis">
+        <article class="audit-kpi">
+            <span>@(ar ? "إجمالي الأحداث" : "Audit events")</span>
+            <strong>@total.ToString("N0", CultureInfo.InvariantCulture)</strong>
+            <small>@(ar ? "ضمن الفلاتر الحالية" : "current filter set")</small>
+        </article>
+        <article class="audit-kpi">
+            <span>@(ar ? "ناجحة في الصفحة" : "Successful on page")</span>
+            <strong>@Model.SuccessfulOnPage.ToString("N0", CultureInfo.InvariantCulture)</strong>
+            <small>@(ar ? "نتائج تشغيلية مقبولة" : "accepted outcomes")</small>
+        </article>
+        <article class="audit-kpi audit-kpi-alert">
+            <span>@(ar ? "فشل خلال 24 ساعة" : "Failures / 24h")</span>
+            <strong>@Model.Monitoring.FailedEventsLast24Hours.ToString("N0", CultureInfo.InvariantCulture)</strong>
+            <small>@(ar ? "للمراجعة التشغيلية" : "operational review")</small>
+        </article>
+        <article class="audit-kpi @integrityClass">
+            <span>@(ar ? "سلامة السجل" : "Ledger integrity")</span>
+            <strong>@Model.Monitoring.IntegrityStatus</strong>
+            <small>#@Model.Monitoring.LastSequence.ToString(CultureInfo.InvariantCulture)</small>
+        </article>
+    </div>
+
+    <form method="get" class="audit-filter" data-testid="audit-filter">
+        <div class="audit-filter-title">
+            <strong>@(ar ? "تصفية السجل" : "Filter audit trail")</strong>
+            <span>@(ar ? "لا يتم البحث داخل بيانات الطلب الحساسة." : "Sensitive request payloads are never searched here.")</span>
+        </div>
+        <label>
+            <span>@(ar ? "الإجراء" : "Action")</span>
+            <input name="action" value="@Model.Filter.Action" maxlength="64" autocomplete="off" />
+        </label>
+        <label>
+            <span>@(ar ? "الخدمة" : "Service")</span>
+            <input name="serviceCode" value="@Model.Filter.ServiceCode" maxlength="120" autocomplete="off" />
+        </label>
+        <label>
+            <span>@(ar ? "الجهة" : "Entity")</span>
+            <input name="entityCode" value="@Model.Filter.EntityCode" maxlength="40" autocomplete="off" />
+        </label>
+        <label>
+            <span>@(ar ? "النتيجة" : "Outcome")</span>
+            <select name="succeeded">
+                <option value="">@(ar ? "الكل" : "All")</option>
+                <option value="true" selected="@(Model.Filter.Succeeded == true)">@(ar ? "ناجح" : "Success")</option>
+                <option value="false" selected="@(Model.Filter.Succeeded == false)">@(ar ? "فشل" : "Failed")</option>
+            </select>
+        </label>
+        <label>
+            <span>@(ar ? "من UTC" : "From UTC")</span>
+            <input type="datetime-local" name="fromUtc" value="@(Model.Filter.FromUtc?.UtcDateTime.ToString("yyyy-MM-ddTHH:mm"))" />
+        </label>
+        <label>
+            <span>@(ar ? "إلى UTC" : "To UTC")</span>
+            <input type="datetime-local" name="toUtc" value="@(Model.Filter.ToUtc?.UtcDateTime.ToString("yyyy-MM-ddTHH:mm"))" />
+        </label>
+        <button class="audit-btn audit-btn-primary" type="submit">@(ar ? "تطبيق" : "Apply")</button>
+        <a class="audit-btn audit-btn-ghost" asp-action="Index">@(ar ? "إعادة ضبط" : "Reset")</a>
+    </form>
+
+    <div class="audit-grid">
+        <section class="audit-panel audit-volume-panel">
+            <div class="audit-panel-heading">
+                <div>
+                    <span>@(ar ? "الحجم" : "Volume")</span>
+                    <h2>@(ar ? "نشاط التدقيق" : "Audit activity")</h2>
+                </div>
+                <span class="audit-muted">UTC · @(ar ? "آخر نقاط ظاهرة" : "visible recent buckets")</span>
+            </div>
+            @if (Model.Volume.Count == 0)
+            {
+                <div class="audit-empty">@(ar ? "لا توجد أحداث ضمن الفلاتر الحالية." : "No events match the current filters.")</div>
+            }
+            else
+            {
+                <div class="audit-chart" aria-label="Audit activity chart">
+                    @foreach (var point in Model.Volume)
+                    {
+                        var height = Math.Max(8, (int)Math.Round(point.Total * 100d / maxVolume));
+                        <div class="audit-chart-column" title="@point.BucketUtc.ToString("u") · @point.Total">
+                            <span class="audit-chart-value">@point.Total</span>
+                            <div class="audit-chart-bar" style="height:@height%"></div>
+                            <small>@point.BucketUtc.ToString("HH:mm")</small>
+                        </div>
+                    }
+                </div>
+            }
+        </section>
+
+        <aside class="audit-panel audit-security-panel">
+            <div class="audit-panel-heading">
+                <div>
+                    <span>@(ar ? "الأمان" : "Security")</span>
+                    <h2>@(ar ? "مؤشرات السلامة" : "Integrity indicators")</h2>
+                </div>
+            </div>
+            <dl class="audit-indicators">
+                <div><dt>@(ar ? "آخر تسلسل" : "Last sequence")</dt><dd>@Model.Monitoring.LastSequence</dd></div>
+                <div><dt>@(ar ? "نقطة الاحتفاظ" : "Retention checkpoint")</dt><dd>@Model.Monitoring.CheckpointSequence</dd></div>
+                <div><dt>@(ar ? "سجلات محفوظة" : "Retained canonical")</dt><dd>@Model.Monitoring.RetainedCanonicalRecords</dd></div>
+                <div><dt>@(ar ? "سجلات قديمة" : "Legacy records")</dt><dd>@Model.Monitoring.LegacyRecords</dd></div>
+                <div><dt>@(ar ? "آخر تحقق" : "Last verified")</dt><dd>@(Model.Monitoring.LastVerifiedAtUtc?.ToString("u") ?? "—")</dd></div>
+                <div><dt>@(ar ? "آخر حدث" : "Last event")</dt><dd>@(Model.Monitoring.LastAuditAtUtc?.ToString("u") ?? "—")</dd></div>
+            </dl>
+        </aside>
+    </div>
+
+    <section class="audit-panel audit-table-panel">
+        <div class="audit-panel-heading">
+            <div>
+                <span>@(ar ? "السجل" : "Ledger")</span>
+                <h2>@(ar ? "الأحداث الأمنية والتشغيلية" : "Security & operational events")</h2>
+            </div>
+            <span class="audit-muted">@(ar ? "الصفحة" : "Page") @Model.Page.Page / @Math.Max(1, (int)Math.Ceiling(Model.Page.TotalCount / (double)Model.Page.PageSize))</span>
+        </div>
+        <div class="audit-table-wrap">
+            <table class="audit-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>@(ar ? "الوقت" : "Time")</th>
+                        <th>@(ar ? "الإجراء" : "Action")</th>
+                        <th>@(ar ? "الهدف" : "Target")</th>
+                        <th>@(ar ? "الخدمة" : "Service")</th>
+                        <th>@(ar ? "النتيجة" : "Outcome")</th>
+                        <th>@(ar ? "Correlation" : "Correlation")</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.Page.Items)
+                    {
+                        <tr class="@(item.Succeeded ? "" : "is-failed")">
+                            <td>@item.SequenceNumber</td>
+                            <td><time datetime="@item.OccurredAtUtc.ToString("O")">@item.OccurredAtUtc.ToString("yyyy-MM-dd HH:mm:ss")</time></td>
+                            <td><strong>@item.Action</strong></td>
+                            <td>@item.TargetType@(string.IsNullOrWhiteSpace(item.TargetId) ? "" : $" · {item.TargetId}")</td>
+                            <td>@(item.ServiceCode ?? "—")</td>
+                            <td><span class="audit-status @(item.Succeeded ? "is-ok" : "is-fail")">@item.Outcome</span></td>
+                            <td><code>@item.CorrelationId</code></td>
+                            <td>
+                                <a class="audit-row-link" asp-action="Index"
+                                   asp-route-selectedId="@item.Id"
+                                   asp-route-page="@Model.Page.Page"
+                                   asp-route-pageSize="@Model.Page.PageSize"
+                                   asp-route-fromUtc="@Model.Filter.FromUtc"
+                                   asp-route-toUtc="@Model.Filter.ToUtc"
+                                   asp-route-entityCode="@Model.Filter.EntityCode"
+                                   asp-route-serviceCode="@Model.Filter.ServiceCode"
+                                   asp-route-actorUserId="@Model.Filter.ActorUserId"
+                                   asp-route-succeeded="@Model.Filter.Succeeded"
+                                   asp-route-action="@Model.Filter.Action">@(ar ? "تفاصيل" : "Details")</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <nav class="audit-pagination" aria-label="Audit pages">
+            @if (Model.Page.Page > 1)
+            {
+                <a class="audit-btn audit-btn-ghost" asp-action="Index" asp-route-page="@(Model.Page.Page - 1)" asp-route-pageSize="@Model.Page.PageSize"
+                   asp-route-fromUtc="@Model.Filter.FromUtc" asp-route-toUtc="@Model.Filter.ToUtc" asp-route-entityCode="@Model.Filter.EntityCode"
+                   asp-route-serviceCode="@Model.Filter.ServiceCode" asp-route-actorUserId="@Model.Filter.ActorUserId" asp-route-succeeded="@Model.Filter.Succeeded"
+                   asp-route-action="@Model.Filter.Action">@(ar ? "السابق" : "Previous")</a>
+            }
+            @if (Model.Page.Page * Model.Page.PageSize < Model.Page.TotalCount)
+            {
+                <a class="audit-btn audit-btn-ghost" asp-action="Index" asp-route-page="@(Model.Page.Page + 1)" asp-route-pageSize="@Model.Page.PageSize"
+                   asp-route-fromUtc="@Model.Filter.FromUtc" asp-route-toUtc="@Model.Filter.ToUtc" asp-route-entityCode="@Model.Filter.EntityCode"
+                   asp-route-serviceCode="@Model.Filter.ServiceCode" asp-route-actorUserId="@Model.Filter.ActorUserId" asp-route-succeeded="@Model.Filter.Succeeded"
+                   asp-route-action="@Model.Filter.Action">@(ar ? "التالي" : "Next")</a>
+            }
+        </nav>
+    </section>
+
+    @if (Model.Selected is not null)
+    {
+        <aside class="audit-detail" aria-label="Audit event detail" data-testid="audit-detail">
+            <div class="audit-detail-heading">
+                <div>
+                    <span>@(ar ? "تفاصيل الحدث" : "Event detail")</span>
+                    <h2>#@Model.Selected.SequenceNumber · @Model.Selected.Action</h2>
+                </div>
+                <a asp-action="Index" class="audit-detail-close" aria-label="Close">×</a>
+            </div>
+            <dl>
+                <div><dt>@(ar ? "الوقت" : "Timestamp")</dt><dd>@Model.Selected.OccurredAtUtc.ToString("O")</dd></div>
+                <div><dt>@(ar ? "المستخدم" : "Actor")</dt><dd>@(Model.Selected.ActorUserId?.ToString("D") ?? "System")</dd></div>
+                <div><dt>@(ar ? "الهدف" : "Target")</dt><dd>@Model.Selected.TargetType · @(Model.Selected.TargetId ?? "—")</dd></div>
+                <div><dt>Correlation ID</dt><dd><code>@Model.Selected.CorrelationId</code></dd></div>
+                <div><dt>Request ID</dt><dd>@(Model.Selected.RequestId ?? "—")</dd></div>
+                <div><dt>@(ar ? "الجهة / الخدمة" : "Entity / service")</dt><dd>@(Model.Selected.EntityCode ?? "—") / @(Model.Selected.ServiceCode ?? "—")</dd></div>
+                <div><dt>@(ar ? "المصدر" : "Source")</dt><dd>@(Model.Selected.Source ?? "—")</dd></div>
+                <div><dt>@(ar ? "النتيجة" : "Outcome")</dt><dd>@Model.Selected.Outcome</dd></div>
+                <div class="audit-detail-wide"><dt>@(ar ? "بيانات آمنة" : "Sanitized metadata")</dt><dd><pre>@Model.Selected.MetadataJson</pre></dd></div>
+                <div class="audit-detail-wide"><dt>@(ar ? "بصمة السجل" : "Record hash")</dt><dd><code>@Model.Selected.RecordHash</code></dd></div>
+            </dl>
+        </aside>
+    }
+</section>
