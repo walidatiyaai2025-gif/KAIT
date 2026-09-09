@@ -6,7 +6,7 @@
 - Repository: `walidatiyaai2025-gif/KAIT`
 - Default branch: `main`
 - Delivery model: phase-gated autonomous implementation
-- Current planned product state: P06 CLOSED from corrected final evidence; P07 Generic service execution engine is the canonical current phase and remains OPEN / READY
+- Current planned product state: P07 CLOSED from exact integrated evidence; P08 MOJ authentication integration is the canonical current phase and is OPEN / READY
 - Initial executable version: `0.1.0`
 - Pinned SDK / target framework: .NET SDK `10.0.400` / `net10.0`
 - Initial entity: Ministry of Justice (MOJ), Kuwait
@@ -16,34 +16,17 @@
 
 ## Last closed phase evidence
 
-P06 is closed from corrected exact integrated implementation/security `main` SHA `fef5882abf8a6f12990c3e7c0e9f849d08cd7947` after:
+P07 is CLOSED from exact integrated implementation baseline `9535fa158441160ab7c7d204863776e38e560a33` after normal integration of PRs #33, #34, #36, #37 and #38, with PR #39 providing intermediate progress reconciliation. The exact-main baseline passed **16/16** push workflow runs with no failure, queued or in-progress run after completion.
 
-- rotation/redaction/cache was normally integrated through PR #24 and its focused regression follow-up PR #27;
-- canonical Secret Vault / SecretRef / AuthProfile persistence and lifecycle was normally integrated through PR #25;
-- Windows/IIS persisted ASP.NET Core Data Protection keys were protected with DPAPI through PR #28;
-- server-authorized bilingual AuthProfile administration and browser evidence was normally integrated through PR #29;
-- the recovered independent security/evidence gate was normally integrated through PR #26 without duplicating production implementation;
-- the earlier closure reconciliation was normally integrated through PR #30;
-- a later live audit of the higher-authority execution plan identified one unintegrated canonical P06 requirement: a runtime token cache with expiry safety window and single-flight refresh;
-- the already-existing legitimate `P06::token-cache-runtime` branch was recovered, reconciled to current main and normally integrated through PR #31 instead of creating duplicate work;
-- runtime token caching now uses the existing exact Service + Environment + AuthProfile + version/generation `TokenCacheIdentity`, a configurable expiry safety window, single-flight refresh, caller-cancellation isolation, fail-safe non-caching of failed/canceled/near-expiry refresh results, and secret-safe token serialization/diagnostics;
-- all 13 exact-main workflow runs succeeded on the corrected implementation/security SHA;
-- P06 Token Cache Runtime run `34281504875`: SUCCESS;
-- P06 Security Acceptance and Evidence run `34281505005`: SUCCESS;
-- exact-main security artifact `P06-Security-Evidence-fef5882abf8a6f12990c3e7c0e9f849d08cd7947` was produced at 5,975 bytes with digest `sha256:2a3ccafdd523e513caca803514b1dde6b3da349460d5715bca17e6841fe5a573`;
-- P06 AuthProfile Administration run `34281505040`: SUCCESS;
-- exact-main AuthProfile administration/browser artifact `P06-AuthProfile-Admin-Evidence-fef5882abf8a6f12990c3e7c0e9f849d08cd7947` was produced at 557,361 bytes with digest `sha256:aa2adb57ffb3cd7ecece6c696ed4df3bec0bb3c41ad99180b0fb530ac10bce91`;
-- opaque SecretRefs are scoped to the owning AuthProfile/Service/Environment and cannot be silently reused across boundaries;
-- Shared AuthProfile use is explicit and auditable;
-- secret rotation uses durable expected-current-reference/generation compare-and-swap semantics with rollback and cache-validity version advancement;
-- centralized redaction/masking, write-only secret handling and no-leak evidence gates are executable;
-- AuthProfile metadata/binding mutations are protected by server-side authorization, IDOR/CSRF checks and safe owner/shared-binding lifecycle rules;
-- Arabic RTL / English LTR desktop and narrow browser evidence passed;
-- closed P00–P05 contracts remained green;
-- PR #31 introduced no P07 execution-engine implementation and no P08+ scope;
-- no owner-only or external P06 evidence was deferred.
+Closure evidence on that exact SHA includes:
 
-The P06 evidence baseline recorded by PR #30 is superseded by this corrected closure record because it predated integration of the canonical runtime token-cache requirement. The final corrected closure reconciliation was normally integrated through PR #32 at exact `main` SHA `90b3068ea39a342392222ae581e568b94f7f9004`; all 15 applicable exact-main push workflows on that SHA completed successfully. P07 is therefore the sole legal current implementation phase. This status does not mark any open P07 implementation, evidence, or closure item complete.
+- P07 Generic Execution Runtime run `34305403834`: SUCCESS; artifact `P07-Generic-Execution-Runtime-9535fa158441160ab7c7d204863776e38e560a33`, 809 bytes, digest `sha256:322395583f95a1f8fd1cacab0975ca0f4b3c0c971de1a86fa44185ed3f57a8dc`;
+- P07 Service Execution UI run `34305403861`: SUCCESS; artifact `P07-Execution-UI-Evidence-9535fa158441160ab7c7d204863776e38e560a33`, 372,853 bytes, digest `sha256:5d9b9fd470d6f953fb120391c42130a01412a9b4e8a6288399170cf8399b8f78`;
+- P07 Upgrade Persistence Acceptance run `34305403851`: SUCCESS; artifact `p07-upgrade-persistence-evidence-9535fa158441160ab7c7d204863776e38e560a33`, 647 bytes, digest `sha256:5ec9fd3f01925d62cf47d375be1bf591b27dd2eebf9c3848ea448e01c00482ef`.
+
+Acceptance covers exact authorized Service + Environment + AuthProfile resolution, no cross-service/environment fallback, metadata-generated execution forms, client/server validation, RequestId/CorrelationId, `IHttpClientFactory` execution, bounded timeout/retry with POST retry only when explicitly `SafeToRetry`, ResultMappings, bounded response reads, required HTTP/TLS/network error classification, secret-safe status/duration/endpoint-alias telemetry, sensitive raw-response masking, bilingual responsive Service Execution UI, accessibility/visual evidence, fake endpoints, persistence/upgrade safety and preservation of P00–P06 security/isolation contracts. No owner-only or external P07 evidence is deferred.
+
+The P07 final closure reconciliation is governance/evidence-only and introduces no P08 implementation.
 
 ## Authoritative documents
 
@@ -65,8 +48,9 @@ No old prompt, screenshot caption, branch description, or stale ledger overrides
 ## Phase policy
 
 - Exactly one canonical current phase exists at a time.
-- P00, P01, P02, P03, P04, P05 and P06 are closed; P07 is the canonical current legal implementation phase and remains OPEN / READY.
-- P08–P17 remain locked until the current phase is formally CLOSED.
+- P00, P01, P02, P03, P04, P05, P06 and P07 are CLOSED.
+- P08 is the canonical current legal implementation phase and is OPEN / READY.
+- P09–P17 remain locked until P08 is formally CLOSED.
 - Phase exit requires implementation + tests + evidence + documentation reconciliation + pushed commit + required CI + exact-main recheck.
 - Integration recovery and exact-main regressions take priority over new feature work.
 - A phase-transition branch does not authorize new-phase implementation until that transition is integrated and the resulting exact-main gate is green.
@@ -103,6 +87,10 @@ P05 established the metadata-driven Entity/Environment/Service/ServiceField/Resu
 ## Secret and authentication-profile contract
 
 P06 established the Secret Vault/AuthProfile and runtime token-cache safety boundary. Plaintext secrets never belong in metadata, Git, logs or evidence. Runtime references use opaque SecretRefs scoped to the exact AuthProfile, Service and Environment. Shared AuthProfile relationships must be explicit and auditable. Rotation must stage safely, activate atomically against the expected current reference/generation, preserve the current valid secret on failure and advance cache-validity identity on success. Administration is write-only for plaintext secret input and masked-only for display, protected server-side by authorization/IDOR/CSRF controls. Persisted ASP.NET Core Data Protection keys on Windows/IIS use DPAPI protection. Runtime token reuse is in-memory only and keyed by the exact governed token-cache identity; reuse must respect an expiry safety window, coalesce concurrent refresh through single-flight semantics, isolate caller cancellation, reject failed/canceled/unsafe refresh results from caching, and avoid token leakage through normal serialization or diagnostics.
+
+## Generic service execution contract
+
+P07 established the metadata-driven execution boundary. Execution must resolve the exact authorized Service + Environment + AuthProfile binding, never fall back across service/environment boundaries, validate metadata-driven fields on both client and server, propagate RequestId/CorrelationId, use `IHttpClientFactory` with bounded timeout/resilience, retry POST only when explicitly marked `SafeToRetry`, map structured results through canonical ResultMappings, bound response reads, classify required HTTP/TLS/network failures, and keep telemetry/diagnostics secret-free. The Service Execution UI is bilingual Arabic RTL / English LTR, responsive, accessible and high-fidelity, with Result / Raw Response / History presentation and sensitive-response masking. P08+ service-specific authentication semantics must layer onto this generic boundary rather than bypass it.
 
 ## Service environment / Go-Live control
 

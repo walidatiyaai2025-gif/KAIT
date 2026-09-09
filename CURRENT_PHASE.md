@@ -2,58 +2,44 @@
 
 ## Canonical current phase
 
-**P07 — Generic service execution engine**
+**P08 — MOJ authentication integration**
 
 Status: **OPEN / READY**
 
-P06 is CLOSED from corrected integrated exact-main evidence. The final P06 implementation/security baseline is exact `main` SHA `fef5882abf8a6f12990c3e7c0e9f849d08cd7947`. P06 originally converged through PRs #24, #25, #26, #27, #28 and #29; a final live-plan audit after the earlier PR #30 closure reconciliation found one canonical P06 requirement that had not yet been integrated: the runtime token cache required by `execution/GSIP_Full_Execution.json`, including an expiry safety window and single-flight refresh. The already-existing legitimate `P06::token-cache-runtime` work was recovered instead of duplicated, reconciled to current main and normally merged through PR #31.
+P07 — Generic service execution engine is **CLOSED** from exact integrated implementation baseline `9535fa158441160ab7c7d204863776e38e560a33` after normal integration of the P07 execution authorization/binding, upgrade-persistence acceptance, Service Execution UI parity, generic runtime and final UI/runtime convergence lines through PRs #33, #34, #36, #37 and #38. PR #39 supplied intermediate progress reconciliation before final integration.
 
-On that corrected exact P06 implementation SHA, all **13/13 exact-main workflow runs succeeded**. P06 Token Cache Runtime run `34281504875` succeeded. P06 Security Acceptance and Evidence run `34281505005` succeeded and produced `P06-Security-Evidence-fef5882abf8a6f12990c3e7c0e9f849d08cd7947` (5,975 bytes), digest `sha256:2a3ccafdd523e513caca803514b1dde6b3da349460d5715bca17e6841fe5a573`. P06 AuthProfile Administration run `34281505040` succeeded and produced `P06-AuthProfile-Admin-Evidence-fef5882abf8a6f12990c3e7c0e9f849d08cd7947` (557,361 bytes), digest `sha256:aa2adb57ffb3cd7ecece6c696ed4df3bec0bb3c41ad99180b0fb530ac10bce91`.
+On exact implementation `main` SHA `9535fa158441160ab7c7d204863776e38e560a33`, all **16/16 exact-main workflow runs succeeded**, with no failed, queued or in-progress run after completion.
 
-P06 acceptance verifies opaque scoped SecretRefs, default Service + Environment isolation, explicit auditable Shared AuthProfile bindings, durable atomic expected-current-reference/generation rotation with rollback, profile/cache generation advancement, centralized redaction/masking, protected metadata/binding lifecycle, server-side authorization/IDOR/CSRF controls, write-only secret administration, masked-only display, Windows/IIS DPAPI protection for persisted Data Protection keys, bilingual Arabic RTL / English LTR responsive browser evidence, independent negative/no-leak security acceptance, and the corrected runtime token-cache contract: exact Service + Environment + AuthProfile + version/generation identity, configurable expiry safety window, single-flight refresh, caller-cancellation isolation, rejection of failed/canceled/near-expiry refresh results, and secret-safe token serialization/diagnostics. P00–P05 contracts remain preserved. No owner-only or external P06 evidence is deferred.
+P07 exact-main closure evidence includes:
 
-The earlier PR #30 closure record is superseded only as to its P06 evidence baseline; its P07 transition remains the intended next phase. The final corrected closure reconciliation was normally integrated through PR #32 at exact `main` SHA `90b3068ea39a342392222ae581e568b94f7f9004`, and all 15 applicable exact-main push workflows on that SHA completed successfully. P07 is therefore the canonical current phase now; this reconciliation does not claim any open P07 implementation unit complete.
+- P07 Generic Execution Runtime run `34305403834` — **SUCCESS**; artifact `P07-Generic-Execution-Runtime-9535fa158441160ab7c7d204863776e38e560a33`, 809 bytes, digest `sha256:322395583f95a1f8fd1cacab0975ca0f4b3c0c971de1a86fa44185ed3f57a8dc`.
+- P07 Service Execution UI run `34305403861` — **SUCCESS**; artifact `P07-Execution-UI-Evidence-9535fa158441160ab7c7d204863776e38e560a33`, 372,853 bytes, digest `sha256:5d9b9fd470d6f953fb120391c42130a01412a9b4e8a6288399170cf8399b8f78`.
+- P07 Upgrade Persistence Acceptance run `34305403851` — **SUCCESS**; artifact `p07-upgrade-persistence-evidence-9535fa158441160ab7c7d204863776e38e560a33`, 647 bytes, digest `sha256:5ec9fd3f01925d62cf47d375be1bf591b27dd2eebf9c3848ea448e01c00482ef`.
+
+P07 acceptance verifies exact authorized `Service + Environment + AuthProfile` resolution without fallback, metadata-driven field generation and validation, RequestId/CorrelationId propagation, `IHttpClientFactory` outbound execution with bounded resilience and POST retry only when explicitly `SafeToRetry`, structured ResultMappings, bounded response handling, secret-safe request/response diagnostics, response/error handling across required HTTP/network/TLS classes, sensitive raw-response masking, bilingual Arabic RTL / English LTR responsive Service Execution UI, accessibility/visual evidence, fake-endpoint acceptance, upgrade/data preservation and preservation of closed P00–P06 security/isolation contracts. No owner-only or external P07 evidence is deferred.
+
+The P07 final closure reconciliation is governance/evidence only and introduces **no P08 implementation**.
 
 ## Legal work now
 
-P07 only, plus any repair needed to preserve closed P00/P01/P02/P03/P04/P05/P06 baselines and repository controls.
+P08 only, plus any repair needed to preserve closed P00–P07 baselines and repository controls.
 
-P07 scope is the canonical ledger scope: the generic service execution engine must resolve the exact `Service + Environment + AuthProfile` binding and drive the high-fidelity dynamic Service Execution UI without introducing MOJ-specific P08/P09 behavior early.
+P08 scope is MOJ authentication integration based only on official documentation/fixtures: x-api-key, `/genToken` and Bearer-token behavior where applicable. Do not assume credentials or authentication bindings are shared between MOJ services. Continue exact Service + Environment + AuthProfile isolation and fail closed on unknown/forged/cross-scope configuration.
 
 ## Locked future work
 
-P08–P17 remain locked. Do not implement MOJ authentication/services, history/audit, operational administration, installer or release acceptance before their phase is current.
+P09–P17 remain locked. P09 service-specific MOJ request/response implementation must not begin until P08 is formally CLOSED.
 
-The per-service/per-environment isolation contract in `docs/SERVICE_ENVIRONMENT_CONFIGURATION_CONTRACT.md` remains binding. Execution must never fall back across Service or Environment boundaries, and credential/token resolution must remain scoped to the exact authorized binding.
+## P07 closure evidence
 
-## P06 closure evidence
+Detailed closure evidence is recorded in `docs/evidence/P07_GENERIC_EXECUTION_ENGINE.md`.
 
-- Corrected final integrated implementation/security SHA: `fef5882abf8a6f12990c3e7c0e9f849d08cd7947`
-- Runtime token-cache recovery PR: #31 — normally merged
-- Final independent security PR: #26 — normally merged
-- AuthProfile administration PR: #29 — normally merged
-- Canonical foundation PR: #25 — normally merged
-- Rotation/redaction/cache PRs: #24 and #27 — normally merged
-- Windows/IIS Data Protection hardening PR: #28 — normally merged
-- Earlier closure reconciliation: PR #30 — superseded only by this corrected P06 evidence baseline
-- Final corrected closure reconciliation: PR #32 — normally merged at exact `main` SHA `90b3068ea39a342392222ae581e568b94f7f9004`
-- Exact-main post-reconciliation workflows on `90b3068ea39a342392222ae581e568b94f7f9004`: **15/15 SUCCESS**
-- Exact-main workflow runs on corrected implementation SHA: **13/13 SUCCESS**
-- P06 Token Cache Runtime: run `34281504875` — **SUCCESS**
-- P06 Security Acceptance and Evidence: run `34281505005` — **SUCCESS**
-- Exact-main security artifact: `P06-Security-Evidence-fef5882abf8a6f12990c3e7c0e9f849d08cd7947`
-- Security artifact size: 5,975 bytes
-- Security artifact digest: `sha256:2a3ccafdd523e513caca803514b1dde6b3da349460d5715bca17e6841fe5a573`
-- P06 AuthProfile Administration: run `34281505040` — **SUCCESS**
-- Exact-main admin/browser artifact: `P06-AuthProfile-Admin-Evidence-fef5882abf8a6f12990c3e7c0e9f849d08cd7947`
-- Admin/browser artifact size: 557,361 bytes
-- Admin/browser artifact digest: `sha256:aa2adb57ffb3cd7ecece6c696ed4df3bec0bb3c41ad99180b0fb530ac10bce91`
-- Runtime cache evidence: exact identity isolation, expiry safety window, single-flight refresh, cancellation/failure safety and secret-safe token diagnostics
-- P07 implementation introduced by the P06 repair: **NONE**
-- Owner/external dependency deferred for P06: **NONE**
+- Implementation baseline: `9535fa158441160ab7c7d204863776e38e560a33`
+- Exact-main workflows: **16/16 SUCCESS**
+- Open P07 PRs at closure reconciliation start: **NONE**
+- Owner/external dependency deferred for P07: **NONE**
+- P08 implementation introduced by P07 closure reconciliation: **NONE**
 
-Detailed evidence is recorded in `docs/evidence/P06_SECRET_VAULT_AUTH_PROFILES.md`.
+## P08 exit condition
 
-## P07 exit condition
-
-P07 may be marked CLOSED only when generic execution resolves the exact authorized Service + Environment + AuthProfile configuration, performs metadata-driven request execution without cross-service/environment fallback, exposes the required dynamic high-fidelity execution UI, has executable positive/negative tests and evidence, preserves P00–P06 security/isolation contracts, and passes exact-main verification without introducing P08+ scope.
+P08 may be marked CLOSED only when the authoritative MOJ authentication contract is implemented from official evidence, x-api-key/token/Bearer handling is isolated to the exact Service + Environment + AuthProfile binding, credentials/tokens cannot cross service or environment boundaries, negative/security acceptance is executable, P00–P07 regressions remain green, and exact-main evidence supports closure without introducing P09+ scope.
