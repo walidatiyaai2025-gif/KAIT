@@ -12,7 +12,7 @@ This folder records the owner-supplied official CAIT Developer Portal references
 | Family Judgment Text Service | `https://developer.api.cait.gov.kw/api/196` | Retrieves family judgment text; owner screenshot indicates case number/type inputs. |
 | Procuration Status Service | `https://developer.api.cait.gov.kw/api/134` | Procuration status endpoint; official schema must be read live before seeding fields. |
 
-## Authentication behavior visible in the official owner-supplied screenshots
+## Authentication behavior visible in the original owner-supplied screenshots
 
 The Marriage service documentation states that a consumer must first call a Token API to obtain an access token and include that token in the `Authorization` header as a Bearer token when calling other Marriage APIs.
 
@@ -28,7 +28,23 @@ The Swagger authorization dialog shown by the owner contains both:
 - `ApiKeyAuth` in a header, with the exact header name displayed as `x-api-key`/the Swagger-defined casing;
 - `BearerAuth` for the JWT/access token obtained from the authentication endpoint.
 
-Treat exact base URLs, path casing, header casing/semantics, token lifetime, request/response field names and status schemas as live-documentation facts that must be verified during implementation.
+At original P08 closure, the screenshots above did not establish operation-level `ApiKeyAuth` applicability to `/genToken`, so that exact fact was correctly classified `DEFERRED_EXTERNAL` at that time.
+
+## Post-closure authenticated UAT evidence — 2026-09-09
+
+Owner-supplied authenticated official CAIT Swagger evidence plus an owner-executed successful UAT token call now resolves the former operation-level question **for the observed UAT Marriage Cases contract only**:
+
+- UAT Swagger base: `https://moj-uat.api-non-prod.cait.gov.kw/WSWEB/WS/v1/marriage`
+- `POST /genToken` requires header `x-api-key` plus form-urlencoded `username` and `password`;
+- successful token shape is `{ "data": "<token>" }`;
+- `POST /marriageCasesAPIGEE` requires `x-api-key` plus `Authorization: Bearer <token>`;
+- the target request is form-urlencoded and the supplied operation evidence proves required field `civilId`.
+
+Current classification for this observed UAT fact: `UAT_PROVEN`.
+
+Production remains deliberately separate. Owner evidence proves only the Production gateway prefix `https://moj.api.cait.gov.kw`; it does not prove a Marriage suffix or the same operation-level security/payload contract. Current classification for those unproven Production details: `PRODUCTION_DEFERRED_EXTERNAL`.
+
+See `docs/evidence/P08_POST_CLOSURE_COMPOSITE_AUTH_REPAIR.md` for the additive repair record. Do not reinterpret the historical P08 closure evidence as if this external fact had been known earlier.
 
 ## Contract-capture requirement
 
