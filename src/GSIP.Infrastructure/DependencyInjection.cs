@@ -1,4 +1,5 @@
 using GSIP.Application.Abstractions;
+using GSIP.Application.Auditing;
 using GSIP.Application.Authentication;
 using GSIP.Application.Authorization;
 using GSIP.Application.Execution;
@@ -6,6 +7,7 @@ using GSIP.Application.Identity;
 using GSIP.Application.Metadata;
 using GSIP.Application.Secrets;
 using GSIP.Application.Setup;
+using GSIP.Infrastructure.Auditing;
 using GSIP.Infrastructure.Authentication;
 using GSIP.Infrastructure.Authorization;
 using GSIP.Infrastructure.Execution;
@@ -41,6 +43,7 @@ public static class DependencyInjection
         services.AddScoped<IServiceExecutionSecurityGate, ServiceExecutionSecurityGate>();
         services.Configure<ServiceExecutionRuntimeOptions>(configuration.GetSection("ServiceExecutionRuntime"));
         services.Configure<RequestHistoryOptions>(configuration.GetSection(RequestHistoryOptions.SectionName));
+        services.Configure<AuditTrailOptions>(configuration.GetSection(AuditTrailOptions.SectionName));
         services.AddHttpClient("GSIP.Execution");
         services.AddScoped<GenericServiceExecutionEngine>();
         services.AddScoped<IAuthenticationProbeService, MojAuthenticationProbeService>();
@@ -103,6 +106,9 @@ public static class DependencyInjection
         services.AddScoped<IGsipPermissionEvaluator, GsipPermissionEvaluator>();
         services.AddScoped<IAuthorizationHandler, GsipPermissionAuthorizationHandler>();
         services.AddScoped<IAccountSecurityPolicyProvider, AccountSecurityPolicyProvider>();
+        services.AddScoped<AuditTrailWriter>();
+        services.AddScoped<IAuditTrailWriter>(serviceProvider => serviceProvider.GetRequiredService<AuditTrailWriter>());
+        services.AddScoped<IAuditTrailService, AuditTrailService>();
         services.AddScoped<IAuthenticationAuditWriter, AuthenticationAuditWriter>();
         services.AddScoped<IAccountAuthenticationService, AccountAuthenticationService>();
         services.AddHostedService<IdentityDatabaseMigrationService>();
