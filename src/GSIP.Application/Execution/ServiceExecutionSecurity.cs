@@ -30,7 +30,7 @@ public sealed record AuthorizedServiceExecutionBinding(
     string ProxyUrl,
     Guid? AuthProfileId,
     long? AuthProfileVersion,
-    string NonSecretHeadersJson = "{}");
+    string ConfiguredHeadersJson = "{}");
 
 public interface IServiceExecutionSecurityGate
 {
