@@ -55,7 +55,8 @@ public static class DependencyInjection
         services.AddScoped<IServiceExecutionEngine>(serviceProvider => new RequestHistoryExecutionEngine(
             serviceProvider.GetRequiredService<SensitiveResponseMaskingExecutionEngine>(),
             serviceProvider.GetRequiredService<IServiceExecutionSecurityGate>(),
-            serviceProvider.GetRequiredService<IRequestHistoryStore>()));
+            serviceProvider.GetRequiredService<IRequestHistoryStore>(),
+            serviceProvider.GetRequiredService<IAuditTrailWriter>()));
         services.AddScoped<DataProtectionSecretVault>();
         services.AddScoped<ISecretVault>(serviceProvider => serviceProvider.GetRequiredService<DataProtectionSecretVault>());
         services.AddScoped<ISecretMaterialResolver>(serviceProvider => serviceProvider.GetRequiredService<DataProtectionSecretVault>());
