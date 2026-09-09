@@ -62,5 +62,6 @@
   <data name="LastRotated" xml:space="preserve"><value>Last rotated</value></data>
   <data name="Never" xml:space="preserve"><value>Never</value></data>
   <data name="BoundCount" xml:space="preserve"><value>bindings</value></data>
+  <data name="TestAuthentication" xml:space="preserve"><value>Test token generation</value></data>
   <data name="SecretPlaintextNeverShown" xml:space="preserve"><value>Plaintext is never displayed, recovered, logged, or placed in browser evidence.</value></data>
 </root>
