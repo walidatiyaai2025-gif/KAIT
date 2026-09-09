@@ -48,6 +48,7 @@ public static class DependencyInjection
             serviceProvider.GetRequiredService<GenericServiceExecutionEngine>(),
             serviceProvider.GetRequiredService<IMetadataCatalogService>()));
         services.AddScoped<IRequestHistoryStore, RequestHistoryStore>();
+        services.AddScoped<IRequestHistoryService, RequestHistoryService>();
         services.AddScoped<IServiceExecutionEngine>(serviceProvider => new RequestHistoryExecutionEngine(
             serviceProvider.GetRequiredService<SensitiveResponseMaskingExecutionEngine>(),
             serviceProvider.GetRequiredService<IServiceExecutionSecurityGate>(),
