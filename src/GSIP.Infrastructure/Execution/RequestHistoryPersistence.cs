@@ -201,7 +201,7 @@ public sealed class RequestHistoryStore(
         return _protector.Protect(bytes);
     }
 
-    private static string BuildMaskedInputJson(IReadOnlyCollection<GSIP.Domain.Metadata.ServiceFieldDefinition> fields, IReadOnlyDictionary<string, string?> inputs)
+    private static string BuildMaskedInputJson(IEnumerable<GSIP.Domain.Metadata.ServiceFieldDefinition> fields, IReadOnlyDictionary<string, string?> inputs)
     {
         var fieldByKey = fields.ToDictionary(item => item.Key, StringComparer.OrdinalIgnoreCase);
         var safe = new SortedDictionary<string, string?>(StringComparer.Ordinal);
