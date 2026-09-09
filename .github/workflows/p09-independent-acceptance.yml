@@ -1,0 +1,171 @@
+name: P09 Independent Contract Security Acceptance
+
+on:
+  push:
+    branches:
+      - main
+      - 'worker/p09-independent-acceptance'
+  pull_request:
+    branches:
+      - main
+      - 'worker/p09-official-contract-convergence'
+
+permissions:
+  contents: read
+
+jobs:
+  independent-five-service-acceptance:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+      GSIP_P09_INDEPENDENT_SQL: Server=(localdb)\MSSQLLocalDB;Database=GSIP_P09_Independent_${{ github.run_id }}_${{ github.run_attempt }};Trusted_Connection=True;TrustServerCertificate=True
+      GSIP_P09_SQL: Server=(localdb)\MSSQLLocalDB;Database=GSIP_P09_SeedRegression_${{ github.run_id }}_${{ github.run_attempt }};Trusted_Connection=True;TrustServerCertificate=True
+      GSIP_P08_SQL: Server=(localdb)\MSSQLLocalDB;Database=GSIP_P08_IndependentRegression_${{ github.run_id }}_${{ github.run_attempt }};Trusted_Connection=True;TrustServerCertificate=True
+      GSIP_P08_EVIDENCE_DIR: artifacts/p08-regression-for-p09
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          fetch-depth: 0
+      - name: Assert exact candidate SHA
+        shell: pwsh
+        run: |
+          $actual = (git rev-parse HEAD).Trim()
+          if ($actual -ne $env:CANDIDATE_SHA) { throw "Exact candidate mismatch." }
+      - name: Set up pinned .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Start SQL LocalDB
+        shell: pwsh
+        run: |
+          sqllocaldb start MSSQLLocalDB
+          sqllocaldb info MSSQLLocalDB
+      - name: Restore solution and acceptance regressions
+        shell: pwsh
+        run: |
+          dotnet restore GSIP.sln
+          $projects = @(
+            'tests/GSIP.P09IndependentAcceptanceChecks/GSIP.P09IndependentAcceptanceChecks.csproj',
+            'tests/GSIP.P09MetadataSeedChecks/GSIP.P09MetadataSeedChecks.csproj',
+            'tests/GSIP.P09TokenVariantChecks/GSIP.P09TokenVariantChecks.csproj',
+            'tests/GSIP.P06TokenCacheChecks/GSIP.P06TokenCacheChecks.csproj',
+            'tests/GSIP.P07ExecutionRuntimeChecks/GSIP.P07ExecutionRuntimeChecks.csproj',
+            'tests/GSIP.P07ExecutionSecurityChecks/GSIP.P07ExecutionSecurityChecks.csproj',
+            'tests/GSIP.P07SensitiveResponseChecks/GSIP.P07SensitiveResponseChecks.csproj',
+            'tests/GSIP.P08AuthenticationChecks/GSIP.P08AuthenticationChecks.csproj',
+            'tests/GSIP.P08MojAuthRuntimeChecks/GSIP.P08MojAuthRuntimeChecks.csproj',
+            'tests/GSIP.P08AuthIsolationChecks/GSIP.P08AuthIsolationChecks.csproj',
+            'tests/GSIP.P08SecurityAcceptanceChecks/GSIP.P08SecurityAcceptanceChecks.csproj',
+            'tests/GSIP.P08SecurityAcceptanceChecks/MojRuntime/GSIP.P08MojRuntimeAcceptance.csproj'
+          )
+          foreach ($project in $projects) { dotnet restore $project; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } }
+      - name: Build exact candidate Release
+        shell: pwsh
+        run: |
+          dotnet build GSIP.sln -c Release --no-restore
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $projects = @(
+            'tests/GSIP.P09IndependentAcceptanceChecks/GSIP.P09IndependentAcceptanceChecks.csproj',
+            'tests/GSIP.P09MetadataSeedChecks/GSIP.P09MetadataSeedChecks.csproj',
+            'tests/GSIP.P09TokenVariantChecks/GSIP.P09TokenVariantChecks.csproj',
+            'tests/GSIP.P06TokenCacheChecks/GSIP.P06TokenCacheChecks.csproj',
+            'tests/GSIP.P07ExecutionRuntimeChecks/GSIP.P07ExecutionRuntimeChecks.csproj',
+            'tests/GSIP.P07ExecutionSecurityChecks/GSIP.P07ExecutionSecurityChecks.csproj',
+            'tests/GSIP.P07SensitiveResponseChecks/GSIP.P07SensitiveResponseChecks.csproj',
+            'tests/GSIP.P08AuthenticationChecks/GSIP.P08AuthenticationChecks.csproj',
+            'tests/GSIP.P08MojAuthRuntimeChecks/GSIP.P08MojAuthRuntimeChecks.csproj',
+            'tests/GSIP.P08AuthIsolationChecks/GSIP.P08AuthIsolationChecks.csproj',
+            'tests/GSIP.P08SecurityAcceptanceChecks/GSIP.P08SecurityAcceptanceChecks.csproj',
+            'tests/GSIP.P08SecurityAcceptanceChecks/MojRuntime/GSIP.P08MojRuntimeAcceptance.csproj'
+          )
+          foreach ($project in $projects) { dotnet build $project -c Release --no-restore; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } }
+      - name: Validate five official contract snapshots
+        run: python scripts/validate_p09_contract_snapshots.py
+      - name: Run integrated five-service contract and metadata acceptance
+        run: dotnet run --project tests/GSIP.P09IndependentAcceptanceChecks/GSIP.P09IndependentAcceptanceChecks.csproj -c Release --no-build
+      - name: Preserve P09 metadata idempotency and upgrade regression
+        run: dotnet run --project tests/GSIP.P09MetadataSeedChecks/GSIP.P09MetadataSeedChecks.csproj -c Release --no-build
+      - name: Preserve P09 token-variant and composite-auth regression
+        run: dotnet run --project tests/GSIP.P09TokenVariantChecks/GSIP.P09TokenVariantChecks.csproj -c Release --no-build
+      - name: Preserve P07 response, classification, retry and masking regressions
+        shell: pwsh
+        run: |
+          dotnet run --project tests/GSIP.P07ExecutionRuntimeChecks/GSIP.P07ExecutionRuntimeChecks.csproj -c Release --no-build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --project tests/GSIP.P07ExecutionSecurityChecks/GSIP.P07ExecutionSecurityChecks.csproj -c Release --no-build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --project tests/GSIP.P07SensitiveResponseChecks/GSIP.P07SensitiveResponseChecks.csproj -c Release --no-build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Preserve P08 authentication and exact-scope regressions
+        shell: pwsh
+        run: |
+          dotnet run --project tests/GSIP.P08AuthenticationChecks/GSIP.P08AuthenticationChecks.csproj -c Release --no-build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --project tests/GSIP.P08MojAuthRuntimeChecks/GSIP.P08MojAuthRuntimeChecks.csproj -c Release --no-build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --project tests/GSIP.P08AuthIsolationChecks/GSIP.P08AuthIsolationChecks.csproj -c Release --no-build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Preserve independent P08 security and P06 token-cache regressions
+        shell: pwsh
+        run: ./scripts/verify-p08-security-acceptance.ps1 -Configuration Release -EvidenceDirectory $env:GSIP_P08_EVIDENCE_DIR
+      - name: Validate execution governance
+        run: python scripts/validate_execution_plan.py
+      - name: Build sanitized exact-head evidence and digest
+        shell: pwsh
+        run: |
+          $dir = 'artifacts/p09-independent-acceptance-evidence'
+          $summaryPath = Join-Path $dir 'acceptance-summary.json'
+          if (-not (Test-Path $summaryPath)) { throw 'Independent acceptance summary missing.' }
+          $summary = Get-Content $summaryPath -Raw | ConvertFrom-Json
+          if ($summary.candidateSha -ne $env:CANDIDATE_SHA) { throw 'Evidence candidate SHA mismatch.' }
+          Set-Content -LiteralPath (Join-Path $dir 'head-sha.txt') -Value $env:CANDIDATE_SHA -Encoding ascii
+          $ci = [ordered]@{
+            CandidateSha = $env:CANDIDATE_SHA
+            Unit = 'P09::independent-contract-security-acceptance'
+            FiveServiceContractAcceptance = 'PASS'
+            OfficialSnapshotValidation = 'PASS'
+            P09MetadataSeedRegression = 'PASS'
+            P09TokenVariantRegression = 'PASS'
+            P06TokenCacheRegression = 'PASS'
+            P07ExecutionRuntimeSecurityMaskingRegression = 'PASS'
+            P08AuthenticationScopeSecurityRegression = 'PASS'
+            LiveUat = 'OWNER_LAST_DEFERRED_EXTERNAL'
+            SyntheticOnly = $true
+            RealCredentials = $false
+          }
+          $ci | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $dir 'ci-evidence.json') -Encoding utf8
+          $files = @('acceptance-summary.json','ci-evidence.json','head-sha.txt')
+          $sha = [System.Security.Cryptography.SHA256]::Create()
+          try {
+            $stream = [System.IO.MemoryStream]::new()
+            foreach ($file in $files) {
+              $bytes = [System.IO.File]::ReadAllBytes((Join-Path $dir $file))
+              $stream.Write($bytes, 0, $bytes.Length)
+            }
+            $stream.Position = 0
+            $digest = ([System.BitConverter]::ToString($sha.ComputeHash($stream))).Replace('-', '').ToLowerInvariant()
+          } finally { if ($stream) { $stream.Dispose() }; $sha.Dispose() }
+          Set-Content -LiteralPath (Join-Path $dir 'evidence-digest.sha256') -Value $digest -Encoding ascii
+      - name: Reject sensitive evidence leakage
+        shell: pwsh
+        run: |
+          $text = Get-ChildItem 'artifacts/p09-independent-acceptance-evidence' -File | ForEach-Object { Get-Content $_.FullName -Raw }
+          $joined = $text -join "`n"
+          $patterns = @(
+            '(?i)Authorization\s*:\s*Bearer\s+\S+',
+            '(?i)x-api-key\s*[:=]\s*[^\s,\"]{8,}',
+            '(?i)(?:username|password|consumer(?:\s+|[-_])?(?:key|secret))\s*[:=]\s*[^\s,\"]{8,}',
+            '\b\d{12}\b',
+            '(?i)personal(?:Payload|Result)\s*[:=]\s*[^\s,\"]+'
+          )
+          foreach ($pattern in $patterns) { if ($joined -match $pattern) { throw 'P09 independent evidence leakage scan failed.' } }
+      - name: Upload exact-candidate P09 independent evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: P09-Independent-Acceptance-${{ env.CANDIDATE_SHA }}
+          path: artifacts/p09-independent-acceptance-evidence/
+          if-no-files-found: error
+          retention-days: 30
