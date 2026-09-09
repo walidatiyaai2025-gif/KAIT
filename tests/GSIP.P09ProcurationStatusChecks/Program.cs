@@ -123,9 +123,13 @@ static async Task ValidateNoImplicitCredentialSharingAsync(GsipDbContext db, Cat
     Check(await db.AuthProfileSecrets.AnyAsync(item => item.AuthProfile != null && item.AuthProfile.OwnerServiceId == service.Id) == false,
         "API134 acquired secret references without official auth evidence.");
 
+    var marriageServiceIds = await db.CatalogServices.AsNoTracking()
+        .Where(item => item.Code.StartsWith("MARRIAGE"))
+        .Select(item => item.Id)
+        .ToListAsync();
     var marriageProfiles = await db.AuthProfiles.AsNoTracking()
         .Include(item => item.Bindings)
-        .Where(item => item.OwnerService != null && item.OwnerService.Code.StartsWith("MARRIAGE"))
+        .Where(item => marriageServiceIds.Contains(item.OwnerServiceId))
         .ToListAsync();
     Check(marriageProfiles.All(profile => profile.OwnerServiceId != service.Id
         && profile.Bindings.All(binding => binding.ServiceId != service.Id)),
