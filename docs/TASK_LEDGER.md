@@ -16,8 +16,8 @@ This ledger is evidence-driven. Never mark a phase CLOSED because a prompt says 
 | P09 | CLOSED | Closed from exact integrated main `42b3b7af073efe6bd933f473b707333df8924346`; PRs #58/#59/#60 integrated official contracts for APIs 129/132/130/196/134, five canonical services, token variants, independent security acceptance and execution UI/UAT readiness; exact-main **29/29 SUCCESS**; unavailable owner live UAT remains `DEFERRED_EXTERNAL_NOT_PASS` |
 | P10 | CLOSED | Closed from exact integrated and repaired main `b7e81cece985b566c9c3222a2c495b83e800e080`; PR #62 integrated request/result history and exports; closed-baseline repair PR #65 preserved `fromUtc`/`toUtc` and all active filters across pagination and added executable regression coverage; PR #65 exact-head **32/32 SUCCESS** and resulting exact-main **29/29 SUCCESS** |
 | P11 | CLOSED | Closed from exact integrated main `3d0a77f3f76fac37691cdd19a030932c876bd1e5`; PR #67 exact head `ae61ff7cedaf119bc6948a5b18eda811ab249b82` passed **36/36** workflows; exact integrated main passed **31/31** push workflows after P01 run `34408109285` same-SHA attempt 2 succeeded with no source/acceptance change; append-only/tamper/retention/concurrency/monitoring/security/browser evidence verified |
-| P12 | OPEN / READY | Canonical current phase: admin operations for exact Entity -> Service -> Environments -> UAT/Production, protected Test Connection/Test Authentication/Activate/Disable/Rotate Secret, health/diagnostics, operational alerts, bilingual UI and executable security/runtime/UI acceptance; recover existing `worker/p12-admin-health-diagnostics` before duplicate work |
-| P13 | LOCKED | Full Arabic/English RTL/LTR UX convergence + UI DESIGN PARITY GATE for all four reference screens |
+| P12 | CLOSED | Closed from exact integrated main `1ed40707552f62058980b44d6cb1e7251dbeb2d4`; PR #69 exact head `f367ca78fca217e9d5c7da0a1328dca047940390` passed **35/35** workflows; exact integrated main passed **31/31** push workflows; P12 exact-main run `34413925793` SUCCESS with static/runtime artifacts; protected admin operations, health/diagnostics, no-revision ServiceId/version preservation, UAT/Production isolation, authorization/CSRF/IDOR and bilingual runtime/browser evidence verified |
+| P13 | OPEN / READY AFTER P12 TRANSITION EXACT-MAIN GREEN | Full Arabic/English RTL/LTR UX convergence + accessibility + UI DESIGN PARITY GATE for all four reference screens; no P13 implementation is authorized from the transition branch alone |
 | P14 | LOCKED | Security hardening, resilience, authorization/IDOR/CSRF/XSS/rate-limit/fuzz/dependency checks including cross-service endpoint/secret/token isolation |
 | P15 | LOCKED | Professional Windows/IIS installer, upgrade/repair/uninstall path, versioned artifact + SHA-256 |
 | P16 | LOCKED | Full automated acceptance on exact release candidate including setup→login→RBAC→MOJ→history→audit→installer + UI parity + service/environment isolation |
@@ -29,7 +29,7 @@ P00 implementation was integrated by PR #2. Exact integrated `main` SHA `8156c46
 
 ## P01 closure record
 
-P01 implementation was integrated by PR #4 at exact `main` SHA `34c665b12e910b6dfcb735f4978be6649e03d5c3`. Planning, P00 regression and P01 runtime/browser workflows all succeeded and exact-main bilingual UI evidence was produced and hashed. No owner-only evidence was deferred.
+P01 was integrated through PR #4 at exact `main` SHA `34c665b12e910b6dfcb735f4978be6649e03d5c3`. Planning, P00 regression and P01 runtime/browser workflows all succeeded and exact-main bilingual UI evidence was produced and hashed. No owner-only evidence was deferred.
 
 ## P02 closure and regression record
 
@@ -117,13 +117,30 @@ The resulting exact integrated main `3d0a77f3f76fac37691cdd19a030932c876bd1e5` c
 
 P11 automated closure requires no owner credential or personal MOJ data. Historical P09 live-UAT and unproven Production evidence remain `DEFERRED_EXTERNAL_NOT_PASS` / `PRODUCTION_DEFERRED_EXTERNAL_NOT_PASS`. Detailed evidence: `docs/evidence/P11_AUDIT_TRAIL_MONITORING.md`.
 
-## P12 opening record
+## P12 closure record
 
-P12 is **OPEN / READY** only after this P11 closure reconciliation is normally integrated and the resulting exact-new-main regression gate is green. Until that transition merge and recheck, this branch is governance-only and does not authorize P12 implementation from its own head.
+P12 is **CLOSED** from exact integrated `main` SHA `1ed40707552f62058980b44d6cb1e7251dbeb2d4` after normal integration of PR #69.
 
-Canonical P12 scope is admin operations for exact Entity -> Service -> Environment state and configuration; protected Test Connection/Test Authentication/Activate/Disable/Rotate Secret operations; database/data-protection/runtime/disk/integration health; bounded endpoint/TLS/proxy/timeouts diagnostics; operational alerts; server-side authorization/IDOR/CSRF; sanitized audit/evidence; and bilingual responsive administration.
+The pre-existing `worker/p12-admin-health-diagnostics` branch was recovered non-force and reused rather than replaced. The final implementation head `f367ca78fca217e9d5c7da0a1328dca047940390` completed **35/35 exact-head workflows SUCCESS** before merge.
 
-A legitimate stacked branch already exists: `worker/p12-admin-health-diagnostics`. It must be recovered/reconciled with the exact current main after P12 opens rather than replaced by duplicate implementation. It remains **DO NOT MERGE** until the P11 transition is integrated and exact-new-main is green.
+A prior green candidate was deliberately superseded after semantic review found that Activate/Disable could pass through metadata definition revisioning for an already-used service. The final repair introduced the dedicated operational-state boundary and executable LocalDB acceptance proving ServiceId, metadata version, AuthProfile/SecretRef scope and the sibling environment remain stable. This was a strengthened gate, not a waiver.
+
+Final P12 acceptance covers protected database/runtime/Data Protection/disk/integration health; bounded endpoint/timeout/TLS/proxy diagnostics; exact Service + Environment Test Connection/Test Authentication; activation/disable with service-level authorization; canonical P06 secret rotation reuse; operational alerts; authorization/IDOR/CSRF negatives; sanitized audit/evidence; Arabic RTL / English LTR responsive Operations runtime; and executable already-used-service UAT/Production isolation.
+
+The resulting exact integrated main `1ed40707552f62058980b44d6cb1e7251dbeb2d4` completed **31/31 push workflows SUCCESS**, failure=0, queued=0 and in-progress=0. Exact-main P12 workflow run `34413925793` completed SUCCESS.
+
+Exact-main P12 artifacts:
+
+- `P12-Admin-Operations-Runtime-1ed40707552f62058980b44d6cb1e7251dbeb2d4` — artifact `10128361921`, digest `sha256:8161d7c95e2ee64cf3c0fdac6b3d252bc0ee0052fe662c1a2973e1b9cc4f194b`.
+- `P12-Admin-Operations-Static-1ed40707552f62058980b44d6cb1e7251dbeb2d4` — artifact `10128310606`, digest `sha256:3029f8ddf62255952478fb0197a4399a5724b028a83919eb7de332a9552654d9`.
+
+P12 cloud acceptance requires no live MOJ credential or personal MOJ data. Historical P09 authorized live-UAT and unproven Production evidence remain `DEFERRED_EXTERNAL_NOT_PASS` / `PRODUCTION_DEFERRED_EXTERNAL_NOT_PASS` and are not rewritten as PASS. Detailed evidence: `docs/evidence/P12_ADMIN_OPERATIONS_HEALTH_DIAGNOSTICS.md`.
+
+## P13 opening record
+
+P13 is the next canonical phase only after this P12 closure reconciliation is normally integrated and the resulting exact-new-main regression gate is terminal green. Until that merge and recheck, this branch is governance/evidence-only and does not authorize P13 implementation from its own head.
+
+Canonical P13 scope is full Arabic/English RTL/LTR UX and accessibility convergence under `docs/UI_DESIGN_PARITY_GATE.md` and all four repository-native references under `docs/ui-baseline/`. It must preserve all closed P00-P12 business/security/operational behavior while converging shared chrome, typography, spacing, controls, responsive behavior, keyboard/focus/accessibility semantics and high-fidelity visual parity.
 
 ## Cross-phase gates
 
