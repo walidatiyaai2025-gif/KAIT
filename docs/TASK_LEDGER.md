@@ -15,8 +15,8 @@ This ledger is evidence-driven. Never mark a phase CLOSED because a prompt says 
 | P08 | CLOSED | Historical closure baseline `67968a9230dae453b36f48549eda138d7b5401c7`; canonical x-api-key + `/genToken` + Bearer runtime, exact scope isolation, protected Test Authentication and independent security acceptance; later authenticated Marriage UAT evidence integrated through closed-baseline repair without reopening P08 |
 | P09 | CLOSED | Closed from exact integrated main `42b3b7af073efe6bd933f473b707333df8924346`; PRs #58/#59/#60 integrated official contracts for APIs 129/132/130/196/134, five canonical services, token variants, independent security acceptance and execution UI/UAT readiness; exact-main **29/29 SUCCESS**; unavailable owner live UAT remains `DEFERRED_EXTERNAL_NOT_PASS` |
 | P10 | CLOSED | Closed from exact integrated and repaired main `b7e81cece985b566c9c3222a2c495b83e800e080`; PR #62 integrated request/result history and exports; closed-baseline repair PR #65 preserved `fromUtc`/`toUtc` and all active filters across pagination and added executable regression coverage; PR #65 exact-head **32/32 SUCCESS** and resulting exact-main **29/29 SUCCESS** |
-| P11 | OPEN / READY | Canonical current phase: tamper-evident append-only audit trail, hash-chain verification, retention checkpoint, monitoring, high-fidelity protected Audit dashboard, bilingual UI and executable security/LocalDB/UI acceptance |
-| P12 | LOCKED | Admin operations for Entity -> Service -> Environments -> UAT/Production, Edit/Test Connection/Test Authentication/Activate/Disable/Rotate Secret, health/diagnostics and operational alerts |
+| P11 | CLOSED | Closed from exact integrated main `3d0a77f3f76fac37691cdd19a030932c876bd1e5`; PR #67 exact head `ae61ff7cedaf119bc6948a5b18eda811ab249b82` passed **36/36** workflows; exact integrated main passed **31/31** push workflows after P01 run `34408109285` same-SHA attempt 2 succeeded with no source/acceptance change; append-only/tamper/retention/concurrency/monitoring/security/browser evidence verified |
+| P12 | OPEN / READY | Canonical current phase: admin operations for exact Entity -> Service -> Environments -> UAT/Production, protected Test Connection/Test Authentication/Activate/Disable/Rotate Secret, health/diagnostics, operational alerts, bilingual UI and executable security/runtime/UI acceptance; recover existing `worker/p12-admin-health-diagnostics` before duplicate work |
 | P13 | LOCKED | Full Arabic/English RTL/LTR UX convergence + UI DESIGN PARITY GATE for all four reference screens |
 | P14 | LOCKED | Security hardening, resilience, authorization/IDOR/CSRF/XSS/rate-limit/fuzz/dependency checks including cross-service endpoint/secret/token isolation |
 | P15 | LOCKED | Professional Windows/IIS installer, upgrade/repair/uninstall path, versioned artifact + SHA-256 |
@@ -107,11 +107,23 @@ The canonical baseline persists the required request lifecycle and masked input 
 
 PR #65 repaired the post-PR-#62 pagination defect and added executable UI/static regression coverage for filter preservation. PR #65 completed **32/32 exact-head workflows SUCCESS** before normal merge. Resulting exact-main `b7e81cece985b566c9c3222a2c495b83e800e080` completed **29/29 push workflows SUCCESS**, with failure=0, queued=0 and in-progress=0 after completion. The exact-main P10 workflow included successful build/security checks and Windows LocalDB migration, scope/IDOR, export/audit/injection-defense, concurrency and retention acceptance. No P10 owner-only requirement was fabricated as PASS. Detailed evidence: `docs/evidence/P10_CLOSURE.md`.
 
-## P11 opening record
+## P11 closure record
 
-P11 is **OPEN / READY** after P10 closure and exact-main regression verification, subject to normal integration of this reconciliation and a green exact-new-main recheck before P11 implementation is treated as canonical.
+P11 is **CLOSED** from exact integrated `main` SHA `3d0a77f3f76fac37691cdd19a030932c876bd1e5` after normal integration of PR #67.
 
-Canonical scope is tamper-evident append-only audit persistence, hash-chain verification, mutation/tail-deletion detection, safe concurrent append, verifiable retention checkpoint continuity, monitoring/integrity health, high-fidelity protected Audit dashboard, bilingual Arabic RTL / English LTR UI and executable leakage/LocalDB/UI acceptance. P12 and later remain locked until P11 closes normally.
+The exact P11 implementation head `ae61ff7cedaf119bc6948a5b18eda811ab249b82` completed **36/36 exact-head workflows SUCCESS** before merge. Acceptance includes canonical append-only audit persistence, SHA-256 hash-chain integrity, mutation/gap/reordering/tail-deletion detection, bounded checkpointed retention, concurrent append serialization, monitoring, sanitized projections, protected permissions/export/integrity actions, bilingual Arabic RTL / English LTR Audit UI, LocalDB integration, CSRF-negative behavior and browser evidence using synthetic-only data.
+
+The resulting exact integrated main `3d0a77f3f76fac37691cdd19a030932c876bd1e5` completed **31/31 push workflows SUCCESS**, failure=0, queued=0 and in-progress=0 after completion. P01 Architecture and UI Shell run `34408109285` attempt 1 failed only because the web runtime did not become healthy while its uploaded stdout/stderr logs were both empty. The same job was rerun against the exact same SHA with no source or acceptance modification; attempt 2 completed SUCCESS including runtime and bilingual browser evidence. No check was waived or weakened.
+
+P11 automated closure requires no owner credential or personal MOJ data. Historical P09 live-UAT and unproven Production evidence remain `DEFERRED_EXTERNAL_NOT_PASS` / `PRODUCTION_DEFERRED_EXTERNAL_NOT_PASS`. Detailed evidence: `docs/evidence/P11_AUDIT_TRAIL_MONITORING.md`.
+
+## P12 opening record
+
+P12 is **OPEN / READY** only after this P11 closure reconciliation is normally integrated and the resulting exact-new-main regression gate is green. Until that transition merge and recheck, this branch is governance-only and does not authorize P12 implementation from its own head.
+
+Canonical P12 scope is admin operations for exact Entity -> Service -> Environment state and configuration; protected Test Connection/Test Authentication/Activate/Disable/Rotate Secret operations; database/data-protection/runtime/disk/integration health; bounded endpoint/TLS/proxy/timeouts diagnostics; operational alerts; server-side authorization/IDOR/CSRF; sanitized audit/evidence; and bilingual responsive administration.
+
+A legitimate stacked branch already exists: `worker/p12-admin-health-diagnostics`. It must be recovered/reconciled with the exact current main after P12 opens rather than replaced by duplicate implementation. It remains **DO NOT MERGE** until the P11 transition is integrated and exact-new-main is green.
 
 ## Cross-phase gates
 
