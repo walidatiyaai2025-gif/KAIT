@@ -50,4 +50,5 @@ public sealed record ExecutionServiceDetailsViewModel(
     string ContentType,
     int TimeoutSeconds,
     bool HasAuthProfile,
+    bool CanExecute,
     IReadOnlyList<ExecutionFieldViewModel> Fields);
