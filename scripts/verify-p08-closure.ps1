@@ -54,9 +54,9 @@ if ($evidence -match '(?i)(authorization\s*:\s*bearer\s+[A-Za-z0-9._~+/-]{20,}|x
 }
 
 if ($ClosureGate) {
-    Require-Text 'docs/TASK_LEDGER.md' '\| P08 \| CLOSED \|' 'Closure mode requires the ledger to mark P08 CLOSED.'
-    Require-Text 'docs/TASK_LEDGER.md' '\| P09 \| OPEN / READY \|' 'Closure mode requires the ledger to open P09.'
-    Require-Text 'CURRENT_PHASE.md' 'P09 - Seed and implement the five MOJ services|P09 — Seed and implement the five MOJ services' 'Closure mode requires P09 to be the canonical next phase.'
+    Require-Text 'docs/TASK_LEDGER.md' '\| P08 \| CLOSED \|' 'Closure mode requires the ledger to keep P08 CLOSED.'
+    Require-Text 'docs/TASK_LEDGER.md' '\| P09 \| (OPEN / READY|CLOSED) \|' 'P08 regression mode requires P09 to remain active or closed; it must not regress to LOCKED after P08 closure.'
+    Require-Text 'CURRENT_PHASE.md' '\*\*P(?:09|1[0-7])\s+[—-]' 'P08 regression mode requires the canonical current phase to remain P09 or later.'
 }
 
 Write-Host 'P08_CLOSURE_CONTRACT_GATE=PASS'
