@@ -3,6 +3,7 @@ name: P07 Service Execution UI
 on:
   push:
     branches:
+      - main
       - 'worker/p07-service-execution-ui-parity'
       - 'worker/p07-execution-ui-runtime-wiring'
   pull_request:
