@@ -55,7 +55,8 @@ public sealed class ServiceExecutionController(
 
         if (selection.SelectedEntityId != request.EntityId
             || selection.SelectedServiceId != request.ServiceId
-            || selection.SelectedEnvironmentId != request.EnvironmentId)
+            || selection.SelectedEnvironmentId != request.EnvironmentId
+            || selection.SelectedService?.CanExecute != true)
         {
             return Forbid();
         }
@@ -152,12 +153,20 @@ public sealed class ServiceExecutionController(
             : null;
         selectedService ??= authorizedServices.FirstOrDefault(service => service.EntityId == selectedEntityId);
 
-        var activeEnvironmentIds = selectedService?.EnvironmentConfigs
-            .Where(config => config.Active)
+        // A contract-ready environment may be rendered before owner-held credentials activate it.
+        // It is view-only: Run() requires CanExecute=true and the execution engine independently
+        // enforces an active exact Service + Environment + AuthProfile binding. Incomplete Production
+        // rows have no operation method/path and therefore remain hidden/fail-closed.
+        var viewableEnvironmentConfigs = selectedService?.EnvironmentConfigs
+            .Where(config => config.Active
+                || (!string.IsNullOrWhiteSpace(config.HttpMethod)
+                    && !string.IsNullOrWhiteSpace(config.RelativePath)))
+            .ToArray() ?? [];
+        var viewableEnvironmentIds = viewableEnvironmentConfigs
             .Select(config => config.EnvironmentId)
-            .ToHashSet() ?? [];
+            .ToHashSet();
         var environments = snapshot.Environments
-            .Where(environment => environment.Active && activeEnvironmentIds.Contains(environment.Id))
+            .Where(environment => environment.Active && viewableEnvironmentIds.Contains(environment.Id))
             .OrderBy(environment => environment.DisplayOrder)
             .ThenBy(environment => environment.Code, StringComparer.Ordinal)
             .Select(environment => new ExecutionOptionViewModel(
@@ -168,15 +177,14 @@ public sealed class ServiceExecutionController(
             .ToArray();
 
         var selectedEnvironmentId = environmentId is Guid requestedEnvironmentId
-            && activeEnvironmentIds.Contains(requestedEnvironmentId)
+            && viewableEnvironmentIds.Contains(requestedEnvironmentId)
                 ? requestedEnvironmentId
                 : environments.FirstOrDefault()?.Id;
 
         ExecutionServiceDetailsViewModel? details = null;
         if (selectedService is not null && selectedEnvironmentId is Guid exactEnvironmentId)
         {
-            var config = selectedService.EnvironmentConfigs.SingleOrDefault(item =>
-                item.Active && item.EnvironmentId == exactEnvironmentId);
+            var config = viewableEnvironmentConfigs.SingleOrDefault(item => item.EnvironmentId == exactEnvironmentId);
             var entity = snapshot.Entities.Single(item => item.Id == selectedService.EntityId);
             var environment = snapshot.Environments.Single(item => item.Id == exactEnvironmentId);
             if (config is not null)
@@ -191,6 +199,7 @@ public sealed class ServiceExecutionController(
                     config.ContentType,
                     config.TimeoutSeconds,
                     config.AuthProfileId.HasValue,
+                    config.Active,
                     selectedService.Fields
                         .OrderBy(field => field.DisplayOrder)
                         .Select(field => new ExecutionFieldViewModel(
