@@ -30,7 +30,7 @@ public partial class RequestHistoryFoundation : Migration
                 MaskedInputJson = table.Column<string>(type: "nvarchar(max)", nullable: false),
                 ProtectedStructuredResult = table.Column<byte[]>(type: "varbinary(max)", nullable: true),
                 ProtectedRawResponse = table.Column<byte[]>(type: "varbinary(max)", nullable: true),
-                LifecycleStatus = table.Column<string>(type: "nvarchar(24)", maxLength: 24, nullable: false),
+                LifecycleStatus = table.Column<int>(type: "int", nullable: false),
                 OutcomeCode = table.Column<string>(type: "nvarchar(80)", maxLength: 80, nullable: false),
                 HttpStatusCode = table.Column<int>(type: "int", nullable: true),
                 DurationMilliseconds = table.Column<long>(type: "bigint", nullable: false),
