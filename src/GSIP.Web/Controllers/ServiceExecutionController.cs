@@ -1,5 +1,6 @@
 using System.Globalization;
 using GSIP.Application.Authorization;
+using GSIP.Application.Execution;
 using GSIP.Application.Metadata;
 using GSIP.Web.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -11,13 +12,95 @@ namespace GSIP.Web.Controllers;
 [Route("execute")]
 public sealed class ServiceExecutionController(
     IMetadataCatalogService catalog,
-    IGsipPermissionEvaluator permissions) : Controller
+    IGsipPermissionEvaluator permissions,
+    IServiceExecutionEngine executionEngine) : Controller
 {
     [HttpGet("")]
     public async Task<IActionResult> Index(
         Guid? entityId,
         Guid? serviceId,
         Guid? environmentId,
+        CancellationToken cancellationToken)
+    {
+        var model = await BuildModelAsync(
+            entityId,
+            serviceId,
+            environmentId,
+            submittedInputs: null,
+            validationErrors: null,
+            executionResult: null,
+            cancellationToken);
+        return View("~/Views/Execution/Index.cshtml", model);
+    }
+
+    [HttpPost("run")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Run(
+        [FromForm] ServiceExecutionRunRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (request.EntityId == Guid.Empty || request.ServiceId == Guid.Empty || request.EnvironmentId == Guid.Empty)
+        {
+            return Forbid();
+        }
+
+        var selection = await BuildModelAsync(
+            request.EntityId,
+            request.ServiceId,
+            request.EnvironmentId,
+            request.Inputs,
+            validationErrors: null,
+            executionResult: null,
+            cancellationToken);
+
+        if (selection.SelectedEntityId != request.EntityId
+            || selection.SelectedServiceId != request.ServiceId
+            || selection.SelectedEnvironmentId != request.EnvironmentId)
+        {
+            return Forbid();
+        }
+
+        try
+        {
+            var result = await executionEngine.ExecuteAsync(
+                new ServiceExecutionCommand(User, request.ServiceId, request.EnvironmentId, request.Inputs),
+                cancellationToken);
+
+            var model = await BuildModelAsync(
+                request.EntityId,
+                request.ServiceId,
+                request.EnvironmentId,
+                request.Inputs,
+                validationErrors: null,
+                executionResult: result,
+                cancellationToken);
+            return View("~/Views/Execution/Index.cshtml", model);
+        }
+        catch (ServiceExecutionValidationException exception)
+        {
+            var model = await BuildModelAsync(
+                request.EntityId,
+                request.ServiceId,
+                request.EnvironmentId,
+                request.Inputs,
+                exception.Errors,
+                executionResult: null,
+                cancellationToken);
+            return View("~/Views/Execution/Index.cshtml", model);
+        }
+        catch (ServiceExecutionRejectedException)
+        {
+            return Forbid();
+        }
+    }
+
+    private async Task<ServiceExecutionViewModel> BuildModelAsync(
+        Guid? entityId,
+        Guid? serviceId,
+        Guid? environmentId,
+        IReadOnlyDictionary<string, string?>? submittedInputs,
+        IReadOnlyDictionary<string, string>? validationErrors,
+        ServiceExecutionResult? executionResult,
         CancellationToken cancellationToken)
     {
         var snapshot = await catalog.GetSnapshotAsync(cancellationToken);
@@ -125,7 +208,19 @@ public sealed class ServiceExecutionController(
             }
         }
 
-        var model = new ServiceExecutionViewModel
+        var safeSubmittedValues = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        if (selectedService is not null && submittedInputs is not null)
+        {
+            foreach (var field in selectedService.Fields.Where(field => !field.Sensitive))
+            {
+                if (submittedInputs.TryGetValue(field.Key, out var value))
+                {
+                    safeSubmittedValues[field.Key] = value;
+                }
+            }
+        }
+
+        return new ServiceExecutionViewModel
         {
             Entities = entities,
             Services = serviceOptions,
@@ -133,8 +228,10 @@ public sealed class ServiceExecutionController(
             SelectedEntityId = selectedEntityId,
             SelectedServiceId = selectedService?.Id,
             SelectedEnvironmentId = selectedEnvironmentId,
-            SelectedService = details
+            SelectedService = details,
+            SubmittedValues = safeSubmittedValues,
+            ValidationErrors = validationErrors ?? new Dictionary<string, string>(),
+            ExecutionResult = executionResult
         };
-        return View("~/Views/Execution/Index.cshtml", model);
     }
 }
