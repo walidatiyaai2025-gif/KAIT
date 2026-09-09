@@ -6,9 +6,9 @@
 
 Status: **OPEN / READY**
 
-P10 — Requests, result history and exports is **CLOSED** from exact integrated `main` SHA `f4b0142175207af1f8cb3c32cfb935e7a66ff856` after normal merge of PR #62.
+P10 — Requests, result history and exports is **CLOSED** from exact integrated `main` SHA `b7e81cece985b566c9c3222a2c495b83e800e080` after normal integration of PR #62 followed by closed-baseline pagination-filter regression repair PR #65.
 
-On that exact integrated SHA, all **32/32 push workflow runs completed successfully**, with failure=0, queued=0, in-progress=0 and cancelled=0 after completion. Detailed closure evidence is recorded in `docs/evidence/P10_CLOSURE.md`.
+On that exact integrated SHA, all **29/29 push workflow runs completed successfully**, with failure=0, queued=0 and in-progress=0 after completion. PR #65 itself also passed **32/32 exact-head workflows** before normal merge. Detailed closure evidence is recorded in `docs/evidence/P10_CLOSURE.md`.
 
 ## P10 closure truth
 
@@ -17,10 +17,11 @@ The integrated P10 baseline provides:
 - canonical request/result history persistence for RequestId, actor/department, Entity/Service/version, masked inputs, status, duration, CorrelationId and timestamps;
 - bounded/protected structured and raw-result persistence with raw storage disableable;
 - Own / Department / All authorization plus current service-visibility isolation and IDOR rejection;
-- search/filter/date/status/entity/service history;
+- search/filter/date/status/entity/service history, with date-range and all other active filters preserved across pagination;
 - permissioned CSV/XLSX/PDF/Print exports with spreadsheet-injection defense and export audit events;
 - retention, migration and concurrency acceptance;
-- bilingual Arabic/English history list/detail UI and canonical Requests navigation reachability.
+- bilingual Arabic/English history list/detail UI and canonical Requests navigation reachability;
+- executable regression coverage that prevents pagination from dropping `fromUtc`, `toUtc` or the other active history filters.
 
 No plaintext credentials, API keys, bearer tokens, Civil IDs or personal MOJ data were added to Git/evidence.
 
