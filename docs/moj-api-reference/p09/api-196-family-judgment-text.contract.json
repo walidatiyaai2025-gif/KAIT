@@ -3,25 +3,67 @@
   "apiId": 196,
   "serviceName": "Family Judgment Text Service",
   "officialSource": "https://developer.api.cait.gov.kw/api/196",
-  "captureStatus": "DEFERRED_EXTERNAL",
+  "captureStatus": "PROVEN_UAT_CONTRACT",
   "evidence": {
-    "classification": "OFFICIAL_CAIT_SPECIFICATION_NOT_RETRIEVABLE_WITHOUT_SIGN_IN",
-    "automatedPortalSpecificationRetrieval": "DEFERRED_EXTERNAL",
-    "missingDependency": "Authenticated CAIT Developer Portal operation specification/OpenAPI for this exact API.",
-    "retrievalDiscipline": "No method, path, field, validation, auth, response, error, or read-only property is inferred from service name or non-authoritative hints."
+    "classification": "OWNER_SUPPLIED_AUTHENTICATED_OFFICIAL_CAIT_SWAGGER",
+    "environmentScope": "UAT_ONLY",
+    "uatTarget":"MOCK_TARGET",
+    "notes": [
+      "Official CAIT states the UAT try-out is connected to a mock target using producer-supplied sample responses; this proves structural integration behavior only, not live entity-backend data.",
+      "The Swagger authorization dialog exposes ApiKeyAuth in header x-api-key and BearerAuth. Bearer is explicitly required by the operation text; exact operation-level ApiKeyAuth applicability remains OWNER_LAST_DEFERRED_EXTERNAL.",
+      "The source description for HTTP 200 says Single status retrieved successfully although the operation is Judgment Text; this wording anomaly is preserved as source metadata and does not alter the response schema.",
+      "Production service-specific URL/auth details remain DEFERRED_EXTERNAL."
+    ]
   },
-  "contractItems": {
-    "uatServerBaseUrl":{"status":"DEFERRED_EXTERNAL","value":null},
-    "productionServerBaseUrl":{"status":"DEFERRED_EXTERNAL","value":null},
-    "httpMethod":{"status":"DEFERRED_EXTERNAL","value":null},
-    "relativePath":{"status":"DEFERRED_EXTERNAL","value":null},
-    "requestContentType":{"status":"DEFERRED_EXTERNAL","value":null},
-    "requestFields":{"status":"DEFERRED_EXTERNAL","fields":[]},
-    "operationAuthentication":{"status":"DEFERRED_EXTERNAL","requirements":[]},
-    "successStatusesAndSchema":{"status":"DEFERRED_EXTERNAL","responses":[]},
-    "errorStatusesAndSchemas":{"status":"DEFERRED_EXTERNAL","responses":[]},
-    "responseFields":{"status":"DEFERRED_EXTERNAL","fields":[]},
-    "resultMappingCandidates":{"status":"DEFERRED_EXTERNAL","fields":[]},
-    "readOnlyNonDestructive":{"status":"DEFERRED_EXTERNAL","value":null}
-  }
+  "environments": {
+    "uat":{"status":"PROVEN","baseUrl":"https://moj-uat.api-non-prod.cait.gov.kw/WSWEB/WS/v1/verdict","targetType":"MOCK"},
+    "production":{"status":"DEFERRED_EXTERNAL","gatewayPrefix":"https://moj.api.cait.gov.kw","baseUrl":null}
+  },
+  "authorizationSchemes":[
+    {"scheme":"ApiKeyAuth","type":"apiKey","headerName":"x-api-key","status":"PROVEN_SERVICE_SCHEME_OPERATION_APPLICABILITY_DEFERRED"},
+    {"scheme":"BearerAuth","type":"http-bearer","status":"PROVEN_SERVICE_SCHEME"}
+  ],
+  "tokenContract": {
+    "method":"POST",
+    "relativePath":"/token",
+    "requestContentType":"application/json",
+    "requestFields":[
+      {"name":"username","type":"string","required":null,"requiredStatus":"NOT_EXPLICIT_IN_SUPPLIED_SCHEMA","sensitive":true},
+      {"name":"password","type":"string","required":null,"requiredStatus":"NOT_EXPLICIT_IN_SUPPLIED_SCHEMA","sensitive":true}
+    ],
+    "tokenResponsePath":"token",
+    "tokenLifetime":{"status":"DEFERRED_EXTERNAL","seconds":null},
+    "responses":[
+      {"statusCode":200,"schema":{"fields":[{"name":"token","type":"string"}]}},
+      {"statusCode":400,"schema":{"fields":[{"name":"error","type":"string"}]}},
+      {"statusCode":401,"schema":{"fields":[{"name":"error","type":"string"}]}},
+      {"statusCode":500,"schema":{"fields":[{"name":"error","type":"string"}]}}
+    ]
+  },
+  "operation": {
+    "name":"Judgment Text Service",
+    "status":"PROVEN_UAT_CONTRACT",
+    "method":"POST",
+    "relativePath":"/familyJudgmentText",
+    "requestContentType":"application/json",
+    "authentication":[
+      {"scheme":"Bearer","headerName":"Authorization","status":"PROVEN_UAT_CONTRACT"},
+      {"scheme":"ApiKeyHeader","headerName":"x-api-key","status":"OWNER_LAST_DEFERRED_EXTERNAL_OPERATION_APPLICABILITY"}
+    ],
+    "requestFields":[
+      {"name":"caseNo","type":"string","required":null,"requiredStatus":"NOT_EXPLICIT_IN_SUPPLIED_SCHEMA","sensitive":true},
+      {"name":"type","type":"string","required":null,"requiredStatus":"NOT_EXPLICIT_IN_SUPPLIED_SCHEMA","sensitive":false}
+    ],
+    "responses":[
+      {"statusCode":200,"schema":{"fields":[{"path":"data.VRDESC","type":"string"}]}},
+      {"statusCode":400,"schemaRef":"SimpleError"},
+      {"statusCode":401,"schemaRef":"SimpleError"},
+      {"statusCode":403,"schemaRef":"SimpleError"},
+      {"statusCode":404,"schemaRef":"SimpleError"},
+      {"statusCode":500,"schemaRef":"SimpleError"}
+    ],
+    "responseFields":[{"path":"data.VRDESC","type":"string","sensitive":true}],
+    "readOnlyNonDestructive":{"status":"PROVEN_BY_SERVICE_DESCRIPTION","value":true}
+  },
+  "schemas":{"SimpleError":{"fields":["error"]}}
 }

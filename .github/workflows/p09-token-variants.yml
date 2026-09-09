@@ -1,0 +1,37 @@
+name: P09 MOJ Token Contract Variants
+
+on:
+  push:
+    branches:
+      - main
+      - 'worker/p09-official-contract-convergence'
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  token-contract-variants:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup pinned .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Restore solution
+        run: dotnet restore GSIP.sln
+      - name: Restore P09 token variant checks
+        run: dotnet restore tests/GSIP.P09TokenVariantChecks/GSIP.P09TokenVariantChecks.csproj
+      - name: Build solution Release
+        run: dotnet build GSIP.sln -c Release --no-restore
+      - name: Build P09 token variant checks Release
+        run: dotnet build tests/GSIP.P09TokenVariantChecks/GSIP.P09TokenVariantChecks.csproj -c Release --no-restore
+      - name: Run P09 token contract variant acceptance
+        run: dotnet run --project tests/GSIP.P09TokenVariantChecks/GSIP.P09TokenVariantChecks.csproj -c Release --no-build
+      - name: Revalidate authoritative P09 contract snapshots
+        run: python scripts/validate_p09_contract_snapshots.py
+      - name: Validate execution plan and governance
+        run: python scripts/validate_execution_plan.py

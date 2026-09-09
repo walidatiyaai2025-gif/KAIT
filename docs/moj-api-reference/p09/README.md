@@ -1,78 +1,61 @@
 # P09 Official MOJ Contract Capture
 
-Status: **PARTIAL AUTHORITATIVE CAPTURE — MATERIAL EXTERNAL CONTRACT ITEMS REMAIN DEFERRED**
+Status: **FIVE AUTHORITATIVE UAT CONTRACTS CAPTURED — OWNER-LAST ITEMS REMAIN DEFERRED**
 
-Unit: `P09::official-contract-capture`
+Unit: `P09::official-contract-convergence`
 
-This directory is the machine-readable P09 contract evidence set for exactly the five canonical MOJ services. It is intentionally fail-closed: a field, path, authentication rule, response schema, error schema, result mapping, or non-destructive classification is present as proven only when official CAIT evidence supports it.
+This directory is the machine-readable P09 contract evidence set for exactly the five canonical MOJ services. It remains fail-closed: a field, path, authentication rule, response schema, error schema, result mapping, or non-destructive classification is treated as proven only when the owner-supplied authenticated official CAIT evidence supports it. A proven UAT contract is not equivalent to a completed live UAT smoke test.
 
 ## Canonical service status
 
-| API | Service | Capture status | What is authoritative now |
+| API | Service | Capture status | Authoritative UAT contract |
 |---|---|---|---|
-| 129 | Marriage Cases Service | `PARTIAL_PROVEN` | Observed UAT base; `/genToken` request/auth and HTTP 200 token shape; `/marriageCasesAPIGEE` method/path/content type, composite auth and required `civilId`. |
-| 132 | Is Single Basic Service | `DEFERRED_EXTERNAL` | Official service reference only. Operation-level specification was not obtainable from the unauthenticated portal context. |
-| 130 | Marriage Couple Last Case Service | `DEFERRED_EXTERNAL` | Official service reference only. Operation-level specification was not obtainable from the unauthenticated portal context. |
-| 196 | Family Judgment Text Service | `DEFERRED_EXTERNAL` | Official service reference only. Operation-level specification was not obtainable from the unauthenticated portal context. |
-| 134 | Procuration Status Service | `DEFERRED_EXTERNAL` | Official service reference only. Operation-level specification was not obtainable from the unauthenticated portal context. |
+| 129 | Marriage Cases Service | `PROVEN_UAT_CONTRACT` | Marriage UAT base; `POST /genToken` form contract; `POST /marriageCasesAPIGEE` form contract; documented response/error schemas; observed UAT composite authentication where explicitly proven. |
+| 132 | Is Single Basic Service | `PROVEN_UAT_CONTRACT` | Marriage UAT base; common Marriage token contract; `POST /isSingleBasicAPIGEE`; exact request field and documented response/error schemas. |
+| 130 | Marriage Couple Last Case Service | `PROVEN_UAT_CONTRACT` | Marriage UAT base; common Marriage token contract; `POST /marriageCoupleLastAPIGEE`; exact request fields and documented response/error schemas. |
+| 196 | Family Judgment Text Service | `PROVEN_UAT_CONTRACT` | Verdict UAT base; JSON token contract; `POST /familyJudgmentText`; documented response/error schemas. Official UAT try-out is identified as a mock target. |
+| 134 | Procuration Status Service | `PROVEN_UAT_CONTRACT` | Procuration UAT base; JSON authentication-token contract; `POST /Procuration/ProcurationStatus`; documented response/error schemas and six-hour token lifetime. Official UAT try-out is identified as a mock target. |
 
-`DEFERRED_EXTERNAL` is not PASS and does not authorize seed metadata for the missing operation contract.
+The exact machine-readable authority is `manifest.json` plus the five `api-*.contract.json` snapshots. The executable validator is `scripts/validate_p09_contract_snapshots.py`.
 
-## API 129 evidence boundary
+## Authentication evidence boundary
 
-Owner-supplied authenticated official CAIT Swagger evidence establishes the observed UAT Marriage contract only:
+API 129 Marriage Cases has observed UAT operation-level evidence for the sequence:
 
-- UAT base: `https://moj-uat.api-non-prod.cait.gov.kw/WSWEB/WS/v1/marriage`
-- token operation: `POST /genToken`
-- token header: `x-api-key`
-- token content type: `application/x-www-form-urlencoded`
-- token required fields: `username`, `password`
-- owner-executed token call: HTTP 200
-- successful token shape contains string field `data`
-- target operation: `POST /marriageCasesAPIGEE`
-- target headers/auth: `x-api-key` plus Bearer authorization
-- target content type: `application/x-www-form-urlencoded`
-- target required field proven: `civilId`
+- `POST /genToken` with the documented gateway API-key header and form credentials;
+- token returned in the documented response field;
+- `POST /marriageCasesAPIGEE` with the documented gateway API-key header plus Bearer authorization.
 
-The available evidence does **not** prove the target success schema/status, documented error statuses/schemas, business response fields/result mappings, `civilId` type/validation, read-only/non-destructive classification, or the service-specific Production path/auth/payload contract. Those items remain explicit `DEFERRED_EXTERNAL`.
+For APIs 132, 130, 196 and 134, Bearer participation is captured where the supplied official operation text proves it. The existence of an API-key security scheme at service level is **not** promoted into operation-level API-key applicability unless that exact operation is independently proven. Those unresolved operation-level API-key facts remain `DEFERRED_EXTERNAL`.
 
-No Production suffix is inferred from UAT.
+No credential, API key, token, Civil ID or personal result is stored in this reference set.
 
-## Lawful retrieval record
+## Environment boundary
 
-The five official CAIT references were rechecked during this unit:
+The supplied official evidence establishes the UAT contracts represented in the snapshots. It does not establish service-specific Production suffixes, operation authentication applicability, or Production payload contracts beyond the separately proven Production gateway prefix.
 
-- `https://developer.api.cait.gov.kw/api/129`
-- `https://developer.api.cait.gov.kw/api/132`
-- `https://developer.api.cait.gov.kw/api/130`
-- `https://developer.api.cait.gov.kw/api/196`
-- `https://developer.api.cait.gov.kw/api/134`
+Therefore:
 
-The public CAIT Getting Started documentation states that users must sign in to see API specifications and additional documents. In the worker's unauthenticated retrieval context, direct page access and public search did not expose a usable operation-level OpenAPI/Swagger document for APIs 132, 130, 196, or 134. No alternate unofficial schema was substituted.
+- UAT contract metadata may be seeded only as represented by the authoritative snapshots;
+- Production service-specific operation details remain `DEFERRED_EXTERNAL` and fail closed;
+- there is no Production-to-UAT fallback;
+- UAT and Production credentials/tokens remain isolated by the canonical Service + Environment + AuthProfile scope.
 
-Public process reference: `https://developer.api.cait.gov.kw/index.php/get-started?language_content_entity=en`
+## OWNER_LAST / DEFERRED_EXTERNAL
 
-## Exact deferred dependency and follow-up
+The following items are not autonomous PASS conditions:
 
-For each service still deferred, an authorized operator must sign in to the CAIT Developer Portal, open the exact API page, and obtain the operation-level OpenAPI/Swagger specification or equivalent official CAIT contract evidence. The sanitized capture must establish:
+1. service-specific Production operation URLs/authentication/payload contracts beyond the proven gateway prefix;
+2. exact operation-level API-key applicability for API132/API130/API196/API134 where the supplied operation evidence proves Bearer but not the API-key header on that exact operation;
+3. live backend-data validation for API196/API134 because official CAIT identifies their UAT try-out targets as mocks;
+4. any live UAT call that requires owner-held credentials and an approved synthetic/test record.
 
-1. environment server/base URL where explicitly provided;
-2. HTTP method and exact relative path;
-3. request content type;
-4. request fields, types, required flags and documented validation;
-5. operation-level authentication requirements;
-6. success statuses and schemas;
-7. documented error statuses and schemas;
-8. business response fields and result-mapping candidates;
-9. read-only/non-destructive classification where documented.
+When credentials or approved test records are unavailable, live UAT remains `OWNER_LAST / DEFERRED_EXTERNAL`, never PASS. Autonomous contract, metadata, runtime, isolation, masking and synthetic acceptance must still complete independently.
 
-If newly obtained evidence conflicts with an existing snapshot, the snapshot and its executable validator must be changed together and reviewed; runtime/seed metadata must not be relaxed to make a speculative contract pass.
+## Sanitization and drift discipline
 
-## Sanitization
+All committed contract evidence and executable fixtures must remain sanitized. Do not add real API keys, consumer credentials, usernames/passwords, Bearer/JWT tokens, Civil IDs or personal MOJ payloads. If new official evidence conflicts with a snapshot, update the snapshot, validator, seed/runtime metadata and affected acceptance together; never relax an assertion merely to make speculative behavior pass.
 
-These snapshots contain no live API keys, credentials, bearer/JWT tokens, Civil IDs, or personal MOJ results. Examples are intentionally omitted.
-
-Executable drift gate: `scripts/validate_p09_contract_snapshots.py`
 CI workflow: `.github/workflows/p09-contract-snapshots.yml`
 
-This unit does not close P09. Material contract details for four services, plus several API 129 response/Production details, remain external.
+This contract-capture/convergence unit by itself does not close P09.

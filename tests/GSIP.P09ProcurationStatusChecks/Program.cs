@@ -1,588 +1,156 @@
-using System.Net;
-using System.Security.Claims;
-using System.Text;
 using System.Text.Json;
 using GSIP.Application.Abstractions;
-using GSIP.Application.Authentication;
-using GSIP.Application.Authorization;
-using GSIP.Application.Execution;
-using GSIP.Application.Metadata;
-using GSIP.Application.Secrets;
 using GSIP.Domain.Metadata;
 using GSIP.Domain.Secrets;
-using GSIP.Infrastructure.Authentication;
-using GSIP.Infrastructure.Execution;
 using GSIP.Infrastructure.Metadata;
 using GSIP.Infrastructure.Setup;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 var connection = Environment.GetEnvironmentVariable("GSIP_P09_PROCURATION_SQL");
-if (string.IsNullOrWhiteSpace(connection))
-    throw new InvalidOperationException("GSIP_P09_PROCURATION_SQL is required.");
+if (string.IsNullOrWhiteSpace(connection)) throw new InvalidOperationException("GSIP_P09_PROCURATION_SQL is required.");
 
-var dbOptions = new DbContextOptionsBuilder<GsipDbContext>().UseSqlServer(connection).Options;
-await using var db = new GsipDbContext(dbOptions);
+var options = new DbContextOptionsBuilder<GsipDbContext>().UseSqlServer(connection).Options;
+await using var db = new GsipDbContext(options);
 await db.Database.EnsureDeletedAsync();
 try
 {
     await db.Database.MigrateAsync();
-    await new MojMetadataSeedService(db, new FixedClock(TestValues.Now)).SeedAsync();
+    await new MojMetadataSeedService(db, new FixedClock(DateTimeOffset.Parse("2026-09-09T11:24:00Z"))).SeedAsync();
+
+    using var contract = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine("docs", "moj-api-reference", "p09", "api-134-procuration-status.contract.json")));
+    var root = contract.RootElement;
+    Check(root.GetProperty("apiId").GetInt32() == 134 && root.GetProperty("captureStatus").GetString() == "PROVEN_UAT_CONTRACT",
+        "API134 authoritative UAT contract identity/status drifted.");
+    var uatEvidence = root.GetProperty("environments").GetProperty("uat");
+    Check(uatEvidence.GetProperty("baseUrl").GetString() == MojMetadataSeedService.ProcurationUatBaseUrl
+        && uatEvidence.GetProperty("targetType").GetString() == "MOCK",
+        "API134 documented UAT mock/base contract drifted.");
+    Check(root.GetProperty("environments").GetProperty("production").GetProperty("status").GetString() == "DEFERRED_EXTERNAL",
+        "API134 Production contract must remain externally deferred.");
+
+    var token = root.GetProperty("tokenContract");
+    Check(token.GetProperty("method").GetString() == "POST"
+        && token.GetProperty("relativePath").GetString() == "/Authenticate/Token"
+        && token.GetProperty("requestContentType").GetString() == "application/json"
+        && token.GetProperty("tokenResponsePath").GetString() == "token",
+        "API134 token transport/response contract drifted.");
+    var tokenFields = token.GetProperty("requestFields").EnumerateArray().ToArray();
+    Check(tokenFields.Select(x => x.GetProperty("name").GetString()).SequenceEqual(["UserName", "Password", "Geha"]),
+        "API134 token wire field casing drifted.");
+    Check(tokenFields.Select(x => x.GetProperty("canonicalSecretName").GetString()).SequenceEqual(["username", "password", "geha"]),
+        "API134 canonical secret mapping drifted.");
+    Check(token.GetProperty("tokenLifetime").GetProperty("status").GetString() == "PROVEN"
+        && token.GetProperty("tokenLifetime").GetProperty("seconds").GetInt32() == 21600,
+        "API134 documented six-hour token lifetime drifted.");
+    Check(token.GetProperty("responses").EnumerateArray().Select(x => x.GetProperty("statusCode").GetInt32()).SequenceEqual([200, 401]),
+        "API134 token response statuses drifted.");
+
+    var operation = root.GetProperty("operation");
+    Check(operation.GetProperty("method").GetString() == "POST"
+        && operation.GetProperty("relativePath").GetString() == "/Procuration/ProcurationStatus"
+        && operation.GetProperty("requestContentType").GetString() == "application/json",
+        "API134 target transport contract drifted.");
+    Check(operation.GetProperty("requestFields").EnumerateArray().Select(x => x.GetProperty("name").GetString())
+        .SequenceEqual(["CivilClient", "CivilAgent", "year", "Number"]),
+        "API134 request wire field casing/order drifted.");
+    Check(operation.GetProperty("responses").EnumerateArray().Select(x => x.GetProperty("statusCode").GetInt32()).SequenceEqual([200, 400, 401, 404]),
+        "API134 documented target statuses drifted.");
+    Check(operation.GetProperty("responseFields").EnumerateArray().Select(x => x.GetProperty("path").GetString())
+        .SequenceEqual(["Status", "Message", "Data.type", "Data.Status"]),
+        "API134 response mappings drifted.");
 
     var service = await db.CatalogServices.AsNoTracking()
         .Include(item => item.EnvironmentConfigs)
         .Include(item => item.Fields)
         .Include(item => item.ResultMappings)
         .SingleAsync(item => item.Code == "PROCURATIONSTATUS" && item.IsCurrent);
+    Check(service.Version == 2 && service.Active, "API134 current metadata is not v2.");
+    Check(service.Fields.OrderBy(item => item.DisplayOrder).Select(item => item.Key).SequenceEqual(["CivilClient", "CivilAgent", "year", "Number"]),
+        "API134 seeded request fields drifted.");
+    Check(service.Fields.All(item => !item.Required),
+        "API134 requiredness was invented although supplied schema did not mark fields required.");
+    Check(service.Fields.Single(item => item.Key == "CivilClient").Sensitive
+        && service.Fields.Single(item => item.Key == "CivilAgent").Sensitive
+        && !service.Fields.Single(item => item.Key == "year").Sensitive
+        && service.Fields.Single(item => item.Key == "Number").Sensitive,
+        "API134 request sensitivity metadata drifted.");
+    Check(new[] { "Status", "Message", "Data.type", "Data.Status" }.All(path => service.ResultMappings.Any(mapping => mapping.SourcePath == path)),
+        "API134 official result mappings are incomplete.");
 
-    ValidateOfficialDeferredContract(service);
-    await ValidateNoImplicitCredentialSharingAsync(db, service);
-    await ValidateSeededServiceFailsClosedAsync(service);
-    await ValidateSyntheticAuthorizationFailureAsync(service);
-    await ValidateSyntheticUnknownInputRejectedAsync(service);
-    await ValidateSyntheticWrongProfileAndEnvironmentAsync(service);
-    await ValidateSyntheticForgedSecretRefAsync(service);
-    await ValidateSyntheticBoundedResponseAsync(service);
-    await WriteSafeEvidenceAsync();
+    var uat = service.EnvironmentConfigs.Single(item => item.EnvironmentId == CatalogEnvironmentCodes.UatId);
+    var production = service.EnvironmentConfigs.Single(item => item.EnvironmentId == CatalogEnvironmentCodes.ProductionId);
+    Check(!uat.Active
+        && uat.BaseUrl == MojMetadataSeedService.ProcurationUatBaseUrl
+        && uat.RelativePath == "/Procuration/ProcurationStatus"
+        && uat.HttpMethod == "POST"
+        && uat.ContentType == "application/json"
+        && uat.AuthProfileId.HasValue
+        && uat.LastTestStatus == "CONTRACT_READY_CREDENTIALS_REQUIRED",
+        "API134 UAT metadata must be exact-contract and credential-gated.");
+    using (var metadata = JsonDocument.Parse(uat.NonSecretHeadersJson))
+    {
+        var m = metadata.RootElement;
+        Check(m.GetProperty(MojMetadataSeedService.TokenPathMetadataKey).GetString() == "/Authenticate/Token", "API134 token path drifted.");
+        Check(m.GetProperty(MojMetadataSeedService.TokenRequestContentTypeMetadataKey).GetString() == "application/json", "API134 token request type drifted.");
+        Check(m.GetProperty(MojMetadataSeedService.TokenResponsePathMetadataKey).GetString() == "token", "API134 token response path drifted.");
+        Check(m.GetProperty(MojMetadataSeedService.TokenUsernameFieldMetadataKey).GetString() == "UserName"
+            && m.GetProperty(MojMetadataSeedService.TokenPasswordFieldMetadataKey).GetString() == "Password"
+            && m.GetProperty(MojMetadataSeedService.TokenGehaFieldMetadataKey).GetString() == "Geha",
+            "API134 token credential wire casing drifted.");
+        Check(m.GetProperty(MojMetadataSeedService.TokenDocumentedTtlSecondsMetadataKey).GetInt32() == 21600,
+            "API134 documented token TTL was not carried into metadata.");
+        Check(!m.TryGetProperty("X-GSIP-TokenApiKeyRequired", out _),
+            "API134 operation-level x-api-key applicability was promoted beyond supplied evidence.");
+    }
+    Check(!production.Active
+        && production.BaseUrl == MojMetadataSeedService.ProductionGatewayPrefix
+        && string.IsNullOrEmpty(production.RelativePath)
+        && string.IsNullOrEmpty(production.HttpMethod)
+        && string.IsNullOrEmpty(production.ContentType)
+        && production.AuthProfileId is null,
+        "API134 Production must remain prefix-only/fail-closed without UAT fallback.");
 
-    Console.WriteLine("P09_PROCURATION_STATUS_ACCEPTANCE=PASS_FAIL_CLOSED_SCOPE");
+    var profile = await db.AuthProfiles.AsNoTracking().Include(item => item.Bindings).Include(item => item.Secrets)
+        .SingleAsync(item => item.Id == uat.AuthProfileId!.Value);
+    Check(profile.OwnerServiceId == service.Id && profile.OwnerEnvironmentId == CatalogEnvironmentCodes.UatId
+        && profile.AuthType == AuthProfileType.TokenEndpoint && !profile.IsEnabled,
+        "API134 AuthProfile scope/type/state drifted.");
+    Check(profile.Bindings.Count == 1 && !profile.Bindings.Single().IsShared
+        && profile.Bindings.Single().ServiceId == service.Id
+        && profile.Bindings.Single().EnvironmentId == CatalogEnvironmentCodes.UatId,
+        "API134 AuthProfile acquired implicit sharing or wrong scope.");
+    Check(profile.Secrets.Count == 0, "API134 seed must not persist secret references.");
+
+    var directory = Path.Combine("artifacts", "p09-procuration-status-evidence");
+    Directory.CreateDirectory(directory);
+    await File.WriteAllTextAsync(Path.Combine(directory, "manifest.json"), JsonSerializer.Serialize(new
+    {
+        phase = "P09",
+        unit = "P09::procuration-status-service",
+        apiId = 134,
+        uatContract = "PROVEN",
+        uatTarget = "MOCK",
+        mockSuccessMeansRealBackendValidated = false,
+        exactTokenFields = new[] { "UserName", "Password", "Geha" },
+        documentedTokenTtlSeconds = 21600,
+        exactTargetFields = new[] { "CivilClient", "CivilAgent", "year", "Number" },
+        responseStatuses = new[] { 200, 400, 401, 404 },
+        operationApiKeyApplicability = "OWNER_LAST_DEFERRED_EXTERNAL",
+        productionContract = "DEFERRED_EXTERNAL",
+        ownerCredentialsRequired = true,
+        liveEntityBackendCalledByCi = false
+    }, new JsonSerializerOptions { WriteIndented = true }));
+
+    Console.WriteLine("P09_PROCURATION_STATUS_ACCEPTANCE=PASS");
 }
 finally
 {
     await db.Database.EnsureDeletedAsync();
 }
 
-static void ValidateOfficialDeferredContract(CatalogService service)
-{
-    using var contract = JsonDocument.Parse(File.ReadAllText(Path.Combine(
-        Directory.GetCurrentDirectory(), "docs", "moj-api-reference", "p09", "api-134-procuration-status.contract.json")));
-    var root = contract.RootElement;
-    Check(root.GetProperty("apiId").GetInt32() == 134, "Wrong API134 authoritative snapshot.");
-    Check(root.GetProperty("serviceName").GetString() == "Procuration Status Service", "API134 service-name snapshot drifted.");
-    Check(root.GetProperty("captureStatus").GetString() == "DEFERRED_EXTERNAL", "API134 operation contract was promoted without official evidence.");
-    Check(root.GetProperty("evidence").GetProperty("classification").GetString() == "OFFICIAL_CAIT_SPECIFICATION_NOT_RETRIEVABLE_WITHOUT_SIGN_IN",
-        "API134 evidence classification changed unexpectedly.");
-
-    var items = root.GetProperty("contractItems");
-    foreach (var property in items.EnumerateObject())
-    {
-        Check(property.Value.GetProperty("status").GetString() == "DEFERRED_EXTERNAL",
-            $"API134 contract item {property.Name} was promoted without official evidence.");
-    }
-
-    Check(items.GetProperty("uatServerBaseUrl").GetProperty("value").ValueKind == JsonValueKind.Null
-        && items.GetProperty("productionServerBaseUrl").GetProperty("value").ValueKind == JsonValueKind.Null
-        && items.GetProperty("httpMethod").GetProperty("value").ValueKind == JsonValueKind.Null
-        && items.GetProperty("relativePath").GetProperty("value").ValueKind == JsonValueKind.Null
-        && items.GetProperty("requestContentType").GetProperty("value").ValueKind == JsonValueKind.Null,
-        "API134 invented server/method/path/content type.");
-    Check(items.GetProperty("requestFields").GetProperty("fields").GetArrayLength() == 0,
-        "API134 invented request fields from the service name or hints.");
-    Check(items.GetProperty("operationAuthentication").GetProperty("requirements").GetArrayLength() == 0,
-        "API134 invented operation authentication.");
-    Check(items.GetProperty("successStatusesAndSchema").GetProperty("responses").GetArrayLength() == 0
-        && items.GetProperty("errorStatusesAndSchemas").GetProperty("responses").GetArrayLength() == 0,
-        "API134 invented success/error schemas.");
-    Check(items.GetProperty("responseFields").GetProperty("fields").GetArrayLength() == 0
-        && items.GetProperty("resultMappingCandidates").GetProperty("fields").GetArrayLength() == 0,
-        "API134 invented response fields/result mappings.");
-    Check(items.GetProperty("readOnlyNonDestructive").GetProperty("value").ValueKind == JsonValueKind.Null,
-        "API134 invented read-only/non-destructive classification.");
-
-    Check(service.Fields.Count == 0, "API134 seed contains unproven request fields.");
-    Check(service.ResultMappings.Count == 0, "API134 seed contains unproven result mappings.");
-    Check(service.EnvironmentConfigs.Count == 2, "API134 must retain isolated UAT and Production rows.");
-
-    var uat = service.EnvironmentConfigs.Single(item => item.EnvironmentId == CatalogEnvironmentCodes.UatId);
-    var production = service.EnvironmentConfigs.Single(item => item.EnvironmentId == CatalogEnvironmentCodes.ProductionId);
-    Check(!uat.Active
-        && string.IsNullOrEmpty(uat.BaseUrl)
-        && string.IsNullOrEmpty(uat.RelativePath)
-        && string.IsNullOrEmpty(uat.HttpMethod)
-        && string.IsNullOrEmpty(uat.ContentType)
-        && uat.AuthProfileId is null
-        && uat.LastTestStatus == "DEFERRED_EXTERNAL_CONTRACT",
-        "API134 UAT contains invented/executable operation metadata.");
-    Check(!production.Active
-        && production.BaseUrl == MojMetadataSeedService.ProductionGatewayPrefix
-        && string.IsNullOrEmpty(production.RelativePath)
-        && string.IsNullOrEmpty(production.HttpMethod)
-        && string.IsNullOrEmpty(production.ContentType)
-        && production.AuthProfileId is null
-        && production.LastTestStatus == "DEFERRED_EXTERNAL_CONTRACT",
-        "API134 Production must remain gateway-prefix-only and non-executable.");
-}
-
-static async Task ValidateNoImplicitCredentialSharingAsync(GsipDbContext db, CatalogService service)
-{
-    Check(await db.AuthProfiles.CountAsync(item => item.OwnerServiceId == service.Id) == 0,
-        "API134 acquired a service-specific AuthProfile without official auth evidence.");
-    Check(await db.AuthProfileBindings.CountAsync(item => item.ServiceId == service.Id) == 0,
-        "API134 acquired an implicit/shared AuthProfile binding.");
-    Check(await db.AuthProfileSecrets.AnyAsync(item => item.AuthProfile != null && item.AuthProfile.OwnerServiceId == service.Id) == false,
-        "API134 acquired secret references without official auth evidence.");
-
-    var marriageServiceIds = await db.CatalogServices.AsNoTracking()
-        .Where(item => item.Code.StartsWith("MARRIAGE"))
-        .Select(item => item.Id)
-        .ToListAsync();
-    var marriageProfiles = await db.AuthProfiles.AsNoTracking()
-        .Include(item => item.Bindings)
-        .Where(item => marriageServiceIds.Contains(item.OwnerServiceId))
-        .ToListAsync();
-    Check(marriageProfiles.All(profile => profile.OwnerServiceId != service.Id
-        && profile.Bindings.All(binding => binding.ServiceId != service.Id)),
-        "API134 implicitly reused a Marriage service credential scope.");
-}
-
-static async Task ValidateSeededServiceFailsClosedAsync(CatalogService service)
-{
-    using var fixture = RuntimeFixture.Create(service, RuntimeMode.SeededDeferred);
-    await ExpectRejectedAsync(() => fixture.Engine.ExecuteAsync(new ServiceExecutionCommand(
-        TestValues.Principal, service.Id, CatalogEnvironmentCodes.UatId,
-        new Dictionary<string, string?> { ["undocumented"] = TestValues.PrivateSentinel })));
-    await ExpectRejectedAsync(() => fixture.Engine.ExecuteAsync(new ServiceExecutionCommand(
-        TestValues.Principal, service.Id, CatalogEnvironmentCodes.ProductionId,
-        new Dictionary<string, string?>())));
-
-    Check(fixture.Handler.Calls == 0 && fixture.Resolver.Calls == 0,
-        "Deferred API134 execution reached transport or secret resolution.");
-    Check(NoSensitiveLogMaterial(fixture),
-        "Deferred API134 input leaked to logs.");
-}
-
-static async Task ValidateSyntheticAuthorizationFailureAsync(CatalogService service)
-{
-    using var fixture = RuntimeFixture.Create(service, RuntimeMode.DeniedPermission);
-    await ExpectRejectedAsync(() => fixture.Engine.ExecuteAsync(new ServiceExecutionCommand(
-        TestValues.Principal, service.Id, CatalogEnvironmentCodes.UatId, new Dictionary<string, string?>())));
-    Check(fixture.Handler.Calls == 0 && fixture.Resolver.Calls == 0,
-        "Unauthorized synthetic API134 execution reached transport or secrets.");
-    Check(NoSensitiveLogMaterial(fixture), "Authorization failure leaked sensitive synthetic material.");
-}
-
-static async Task ValidateSyntheticUnknownInputRejectedAsync(CatalogService service)
-{
-    using var fixture = RuntimeFixture.Create(service, RuntimeMode.CorrectSyntheticProfile);
-    await ExpectValidationRejectedAsync(() => fixture.Engine.ExecuteAsync(new ServiceExecutionCommand(
-        TestValues.Principal, service.Id, CatalogEnvironmentCodes.UatId,
-        new Dictionary<string, string?> { ["unproven-procuration-hint"] = TestValues.PrivateSentinel })));
-    Check(fixture.Handler.Calls == 0 && fixture.Resolver.Calls == 0,
-        "Unproven API134 input reached transport or secret resolution.");
-    Check(NoSensitiveLogMaterial(fixture), "Rejected unproven API134 input leaked to logs.");
-}
-
-static async Task ValidateSyntheticWrongProfileAndEnvironmentAsync(CatalogService service)
-{
-    using var wrongProfile = RuntimeFixture.Create(service, RuntimeMode.WrongProfile);
-    await ExpectRejectedAsync(() => wrongProfile.Engine.ExecuteAsync(new ServiceExecutionCommand(
-        TestValues.Principal, service.Id, CatalogEnvironmentCodes.UatId, new Dictionary<string, string?>())));
-    Check(wrongProfile.Handler.Calls == 0 && wrongProfile.Resolver.Calls == 0,
-        "Cross-service AuthProfile reached transport or secrets.");
-
-    using var wrongEnvironment = RuntimeFixture.Create(service, RuntimeMode.CorrectSyntheticProfile);
-    await ExpectRejectedAsync(() => wrongEnvironment.Engine.ExecuteAsync(new ServiceExecutionCommand(
-        TestValues.Principal, service.Id, CatalogEnvironmentCodes.ProductionId, new Dictionary<string, string?>())));
-    Check(wrongEnvironment.Handler.Calls == 0 && wrongEnvironment.Resolver.Calls == 0,
-        "Wrong-environment request fell back to synthetic UAT scope.");
-}
-
-static async Task ValidateSyntheticForgedSecretRefAsync(CatalogService service)
-{
-    using var fixture = RuntimeFixture.Create(service, RuntimeMode.ForgedSecretRef);
-    var result = await fixture.Engine.ExecuteAsync(new ServiceExecutionCommand(
-        TestValues.Principal, service.Id, CatalogEnvironmentCodes.UatId, new Dictionary<string, string?>()));
-    Check(result.Outcome == ServiceExecutionOutcome.AuthenticationUnavailable,
-        "Forged synthetic SecretRef did not fail closed as AuthenticationUnavailable.");
-    Check(fixture.Resolver.Calls == 1 && fixture.Handler.Calls == 0,
-        "Forged synthetic SecretRef reached outbound transport.");
-    Check(NoSensitiveLogMaterial(fixture), "Forged SecretRef path leaked sensitive synthetic material.");
-}
-
-static async Task ValidateSyntheticBoundedResponseAsync(CatalogService service)
-{
-    using var fixture = RuntimeFixture.Create(service, RuntimeMode.BoundedResponse);
-    var result = await fixture.Engine.ExecuteAsync(new ServiceExecutionCommand(
-        TestValues.Principal, service.Id, CatalogEnvironmentCodes.UatId, new Dictionary<string, string?>()));
-
-    Check(result.Outcome == ServiceExecutionOutcome.ResponseTooLarge,
-        "Generic API134 boundary did not classify oversized response as ResponseTooLarge.");
-    Check(result.RawResponse.Length == 0 && result.StructuredResult.Count == 0,
-        "Oversized response was retained or mapped.");
-    Check(fixture.Resolver.Calls == 1 && fixture.Handler.Calls == 1 && fixture.Handler.SyntheticHeaderObserved,
-        "Synthetic exact-scope auth did not reach the bounded-response transport exactly once.");
-    Check(NoSensitiveLogMaterial(fixture),
-        "Synthetic procuration/header material leaked to runtime logs.");
-}
-
-static bool NoSensitiveLogMaterial(RuntimeFixture fixture) =>
-    fixture.Logger.Messages.All(message =>
-        !message.Contains(TestValues.PrivateSentinel, StringComparison.Ordinal)
-        && !message.Contains(TestValues.ProcurationSentinel, StringComparison.Ordinal)
-        && !message.Contains(TestValues.SyntheticSecretMaterial, StringComparison.Ordinal)
-        && !message.Contains("sr1_", StringComparison.Ordinal));
-
-static async Task ExpectRejectedAsync(Func<Task<ServiceExecutionResult>> action)
-{
-    try
-    {
-        _ = await action();
-        throw new InvalidOperationException("Expected fail-closed execution rejection.");
-    }
-    catch (ServiceExecutionRejectedException ex)
-    {
-        Check(ex.Message == ServiceExecutionRejectedException.SafeMessage,
-            "Execution rejection did not use the safe constant message.");
-    }
-}
-
-static async Task ExpectValidationRejectedAsync(Func<Task<ServiceExecutionResult>> action)
-{
-    try
-    {
-        _ = await action();
-        throw new InvalidOperationException("Expected fail-closed input validation rejection.");
-    }
-    catch (ServiceExecutionValidationException ex)
-    {
-        Check(ex.Message == ServiceExecutionValidationException.SafeMessage && ex.Errors.Count > 0,
-            "Input validation did not fail with the canonical safe validation contract.");
-    }
-}
-
-static async Task WriteSafeEvidenceAsync()
-{
-    var directory = Path.Combine("artifacts", "p09-procuration-status-evidence");
-    Directory.CreateDirectory(directory);
-    var payload = JsonSerializer.Serialize(new
-    {
-        phase = "P09",
-        unit = "P09::procuration-status-service",
-        apiId = 134,
-        automatedScope = "PASS_FAIL_CLOSED_AND_GENERIC_SECURITY_BOUNDARY",
-        officialOperationContract = "DEFERRED_EXTERNAL",
-        inferredRequestFieldsUsed = false,
-        seededRequestFields = 0,
-        seededResultMappings = 0,
-        seededAuthProfile = false,
-        uatExecutable = false,
-        productionExecutable = false,
-        marriageCredentialReuse = false,
-        authorizationFailureRejected = true,
-        unprovenInputRejected = true,
-        wrongAuthProfileRejected = true,
-        wrongEnvironmentRejected = true,
-        forgedSecretRefRejectedBeforeTransport = true,
-        genericOversizeResponseRejectedWithoutRawRetention = true,
-        syntheticSensitiveMaterialLogged = false,
-        liveUatCalledByCi = false,
-        officialMethodPathContentType = "BLOCKED_DEFERRED_EXTERNAL_OPERATION_SCHEMA_NOT_PASS",
-        officialRequestValidationTest = "BLOCKED_DEFERRED_EXTERNAL_REQUEST_SCHEMA_NOT_PASS",
-        officialOperationAuthComposition = "BLOCKED_DEFERRED_EXTERNAL_AUTH_SCHEMA_NOT_PASS",
-        officialSuccessSchemaTest = "BLOCKED_DEFERRED_EXTERNAL_SUCCESS_SCHEMA_NOT_PASS",
-        officialErrorSchemaTest = "BLOCKED_DEFERRED_EXTERNAL_ERROR_SCHEMA_NOT_PASS",
-        malformedOfficialResponseTest = "BLOCKED_DEFERRED_EXTERNAL_RESPONSE_SCHEMA_NOT_PASS",
-        officialStructuredResultMappings = "BLOCKED_DEFERRED_EXTERNAL_RESPONSE_FIELDS_NOT_PASS",
-        officialSensitiveDataMasking = "BLOCKED_DEFERRED_EXTERNAL_RESPONSE_FIELDS_NOT_PASS"
-    }, new JsonSerializerOptions { WriteIndented = true });
-    var path = Path.Combine(directory, "manifest.json");
-    await File.WriteAllTextAsync(path, payload);
-    var persisted = await File.ReadAllTextAsync(path);
-    Check(!persisted.Contains(TestValues.PrivateSentinel, StringComparison.Ordinal)
-        && !persisted.Contains(TestValues.ProcurationSentinel, StringComparison.Ordinal)
-        && !persisted.Contains(TestValues.SyntheticSecretMaterial, StringComparison.Ordinal)
-        && !persisted.Contains("sr1_", StringComparison.Ordinal),
-        "API134 evidence artifact contains synthetic sensitive/reference material.");
-}
-
 static void Check(bool condition, string message)
 {
     if (!condition) throw new InvalidOperationException(message);
-}
-
-static class TestValues
-{
-    public static readonly DateTimeOffset Now = DateTimeOffset.Parse("2026-09-09T10:42:00Z");
-    public static readonly ClaimsPrincipal Principal = new(new ClaimsIdentity(
-        [new Claim(ClaimTypes.NameIdentifier, "99000000-0000-0000-0000-000000001340")],
-        "SyntheticP09Api134"));
-    public const string PrivateSentinel = "SYNTHETIC_PRIVATE_INPUT_DO_NOT_LOG";
-    public const string ProcurationSentinel = "SYNTHETIC_PROCURATION_RESPONSE_DO_NOT_LOG";
-    public const string SyntheticSecretMaterial = "SYNTHETIC_HEADER_MATERIAL_DO_NOT_LOG";
-    public static readonly Guid ForeignServiceId = Guid.Parse("99000000-0000-0000-0000-000000001341");
-    public static readonly Guid ProfileId = Guid.Parse("99000000-0000-0000-0000-000000001342");
-    public static readonly SecretRef ForgedReference = SecretRef.Parse("sr1_" + new string('F', 43));
-    public static readonly SecretRef SyntheticReference = SecretRef.Parse("sr1_" + new string('A', 43));
-}
-
-enum RuntimeMode
-{
-    SeededDeferred,
-    DeniedPermission,
-    WrongProfile,
-    CorrectSyntheticProfile,
-    ForgedSecretRef,
-    BoundedResponse
-}
-
-sealed class RuntimeFixture : IDisposable
-{
-    private RuntimeFixture(
-        GenericServiceExecutionEngine engine,
-        TestHandler handler,
-        TrackingSecretResolver resolver,
-        RecordingLogger<GenericServiceExecutionEngine> logger,
-        InMemoryTokenCache cache)
-    {
-        Engine = engine;
-        Handler = handler;
-        Resolver = resolver;
-        Logger = logger;
-        Cache = cache;
-    }
-
-    public GenericServiceExecutionEngine Engine { get; }
-    public TestHandler Handler { get; }
-    public TrackingSecretResolver Resolver { get; }
-    public RecordingLogger<GenericServiceExecutionEngine> Logger { get; }
-    private InMemoryTokenCache Cache { get; }
-
-    public static RuntimeFixture Create(CatalogService seeded, RuntimeMode mode)
-    {
-        var service = mode == RuntimeMode.SeededDeferred ? CloneService(seeded) : CloneSyntheticActiveUat(seeded);
-        AuthProfileDescriptor? profile = null;
-        if (mode != RuntimeMode.SeededDeferred)
-        {
-            var ownerService = mode == RuntimeMode.WrongProfile ? TestValues.ForeignServiceId : service.Id;
-            var bindingService = mode == RuntimeMode.WrongProfile ? TestValues.ForeignServiceId : service.Id;
-            var reference = mode == RuntimeMode.ForgedSecretRef ? TestValues.ForgedReference : TestValues.SyntheticReference;
-            profile = new AuthProfileDescriptor(
-                TestValues.ProfileId,
-                ownerService,
-                CatalogEnvironmentCodes.UatId,
-                "Synthetic API134 boundary profile",
-                AuthProfileType.ApiKeyHeader,
-                true,
-                1,
-                "synthetic-api134",
-                DateTimeOffset.UnixEpoch,
-                DateTimeOffset.UnixEpoch,
-                [new AuthProfileSecretDescriptor("x-synthetic-key", reference, 1)],
-                [new AuthProfileBindingDescriptor(bindingService, CatalogEnvironmentCodes.UatId, false,
-                    "synthetic-api134", "synthetic exact-scope boundary only", DateTimeOffset.UnixEpoch)]);
-        }
-
-        var metadata = new FakeMetadata(new MetadataCatalogSnapshot(
-            [], [service],
-            [
-                new CatalogEnvironment { Id = CatalogEnvironmentCodes.UatId, Code = CatalogEnvironmentCodes.Uat, NameAr = "اختبار", NameEn = "UAT", Active = true },
-                new CatalogEnvironment { Id = CatalogEnvironmentCodes.ProductionId, Code = CatalogEnvironmentCodes.Production, NameAr = "إنتاج", NameEn = "Production", Active = true }
-            ]));
-        var profiles = new FakeAuthProfiles(profile);
-        var resolver = new TrackingSecretResolver(mode == RuntimeMode.ForgedSecretRef);
-        var handler = new TestHandler(mode == RuntimeMode.BoundedResponse);
-        var logger = new RecordingLogger<GenericServiceExecutionEngine>();
-        var cache = new InMemoryTokenCache(new FixedClock(TestValues.Now), new TokenCacheOptions());
-        IGsipPermissionEvaluator permissions = mode == RuntimeMode.DeniedPermission
-            ? new DenyPermissionEvaluator()
-            : new AllowPermissionEvaluator();
-        var engine = new GenericServiceExecutionEngine(
-            new ServiceExecutionSecurityGate(metadata, permissions, profiles),
-            metadata,
-            profiles,
-            resolver,
-            new FakeHttpClientFactory(new HttpClient(handler, disposeHandler: false)),
-            Options.Create(new ServiceExecutionRuntimeOptions
-            {
-                MaxAttempts = 1,
-                RetryDelayMilliseconds = 0,
-                MaxRawResponseBytes = 1024
-            }),
-            logger,
-            cache);
-        return new RuntimeFixture(engine, handler, resolver, logger, cache);
-    }
-
-    public void Dispose() => Cache.Dispose();
-
-    private static CatalogService CloneService(CatalogService source) => new()
-    {
-        Id = source.Id,
-        DefinitionKey = source.DefinitionKey,
-        EntityId = source.EntityId,
-        Code = source.Code,
-        NameAr = source.NameAr,
-        NameEn = source.NameEn,
-        DescriptionAr = source.DescriptionAr,
-        DescriptionEn = source.DescriptionEn,
-        Active = true,
-        Version = source.Version,
-        IsCurrent = true,
-        Fields = [],
-        ResultMappings = [],
-        EnvironmentConfigs = source.EnvironmentConfigs.Select(CloneConfig).ToList()
-    };
-
-    private static CatalogService CloneSyntheticActiveUat(CatalogService source)
-    {
-        var clone = CloneService(source);
-        clone.EnvironmentConfigs =
-        [
-            new ServiceEnvironmentConfig
-            {
-                Id = Guid.Parse("99000000-0000-0000-0000-000000001343"),
-                ServiceId = clone.Id,
-                EnvironmentId = CatalogEnvironmentCodes.UatId,
-                BaseUrl = "https://synthetic.invalid/runtime-boundary",
-                RelativePath = "/not-an-official-api134-path",
-                HttpMethod = "POST",
-                ContentType = "application/json",
-                NonSecretHeadersJson = "{}",
-                TimeoutSeconds = 5,
-                TlsPolicy = "SystemDefault",
-                ValidateServerCertificate = true,
-                ProxyUrl = string.Empty,
-                Active = true,
-                AuthProfileId = TestValues.ProfileId
-            }
-        ];
-        return clone;
-    }
-
-    private static ServiceEnvironmentConfig CloneConfig(ServiceEnvironmentConfig source) => new()
-    {
-        Id = source.Id,
-        ServiceId = source.ServiceId,
-        EnvironmentId = source.EnvironmentId,
-        BaseUrl = source.BaseUrl,
-        RelativePath = source.RelativePath,
-        HttpMethod = source.HttpMethod,
-        ContentType = source.ContentType,
-        NonSecretHeadersJson = source.NonSecretHeadersJson,
-        TimeoutSeconds = source.TimeoutSeconds,
-        TlsPolicy = source.TlsPolicy,
-        ValidateServerCertificate = source.ValidateServerCertificate,
-        ProxyUrl = source.ProxyUrl,
-        HealthPath = source.HealthPath,
-        HealthMethod = source.HealthMethod,
-        Active = source.Active,
-        LastTestedAtUtc = source.LastTestedAtUtc,
-        LastTestStatus = source.LastTestStatus,
-        AuthProfileId = source.AuthProfileId
-    };
-}
-
-sealed class TrackingSecretResolver(bool reject) : ISecretMaterialResolver
-{
-    public int Calls { get; private set; }
-
-    public async Task<TResult> UseSecretAsync<TResult>(
-        Guid serviceId,
-        Guid environmentId,
-        Guid authProfileId,
-        string secretName,
-        SecretRef secretRef,
-        Func<ReadOnlyMemory<byte>, CancellationToken, ValueTask<TResult>> operation,
-        CancellationToken cancellationToken = default)
-    {
-        Calls++;
-        if (reject)
-            throw new SecretReferenceRejectedException();
-
-        var material = Encoding.UTF8.GetBytes(TestValues.SyntheticSecretMaterial);
-        try
-        {
-            return await operation(material, cancellationToken);
-        }
-        finally
-        {
-            Array.Clear(material);
-        }
-    }
-}
-
-sealed class FakeAuthProfiles(AuthProfileDescriptor? profile) : IAuthProfileService
-{
-    public Task<AuthProfileDescriptor?> ResolveAsync(Guid serviceId, Guid environmentId, CancellationToken cancellationToken = default) =>
-        Task.FromResult(profile);
-    public Task<AuthProfileDescriptor> GetAsync(Guid authProfileId, CancellationToken cancellationToken = default) =>
-        profile is not null && authProfileId == profile.Id
-            ? Task.FromResult(profile)
-            : Task.FromException<AuthProfileDescriptor>(new KeyNotFoundException());
-    public Task<AuthProfileDescriptor> CreateAsync(CreateAuthProfileCommand command, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-    public Task<AuthProfileDescriptor> ShareAsync(ShareAuthProfileCommand command, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-    public Task<AuthProfileDescriptor> UpdateAsync(UpdateAuthProfileCommand command, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-    public Task<AuthProfileDescriptor> UnbindAsync(UnbindAuthProfileCommand command, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-    public Task<AuthProfileDescriptor> SetSecretReferenceAsync(Guid authProfileId, string secretName, SecretRef secretRef, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-    public Task<bool> ActivateSecretReferenceAsync(Guid serviceId, Guid environmentId, Guid authProfileId, string secretName, SecretRef expectedCurrentReference, int expectedGeneration, SecretRef stagedReference, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-    public Task<AuthProfileDescriptor> SetEnabledAsync(Guid authProfileId, bool enabled, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-}
-
-sealed class FakeMetadata(MetadataCatalogSnapshot snapshot) : IMetadataCatalogService
-{
-    public Task<MetadataCatalogSnapshot> GetSnapshotAsync(CancellationToken cancellationToken = default) => Task.FromResult(snapshot);
-    public Task MarkServiceUsedAsync(Guid serviceId, CancellationToken cancellationToken = default) => Task.CompletedTask;
-    public Task<CatalogEntity> CreateEntityAsync(EntityInput input, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-    public Task<CatalogEntity> UpdateEntityAsync(Guid entityId, EntityInput input, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-    public Task DeactivateEntityAsync(Guid entityId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-    public Task<CatalogService> CreateServiceAsync(Guid entityId, ServiceInput input, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-    public Task<CatalogService> UpdateServiceAsync(Guid serviceId, ServiceInput input, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-    public Task<CatalogService> DeactivateServiceAsync(Guid serviceId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-    public Task<string> ExportJsonAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
-    public Task<MetadataImportResult> ImportJsonAsync(string json, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-}
-
-sealed class AllowPermissionEvaluator : IGsipPermissionEvaluator
-{
-    public Task<bool> HasPermissionAsync(ClaimsPrincipal principal, string permission, CancellationToken cancellationToken = default) => Task.FromResult(true);
-    public Task<bool> HasServicePermissionAsync(ClaimsPrincipal principal, string serviceCode, string permission, CancellationToken cancellationToken = default) => Task.FromResult(true);
-}
-
-sealed class DenyPermissionEvaluator : IGsipPermissionEvaluator
-{
-    public Task<bool> HasPermissionAsync(ClaimsPrincipal principal, string permission, CancellationToken cancellationToken = default) => Task.FromResult(false);
-    public Task<bool> HasServicePermissionAsync(ClaimsPrincipal principal, string serviceCode, string permission, CancellationToken cancellationToken = default) => Task.FromResult(false);
-}
-
-sealed class FakeHttpClientFactory(HttpClient client) : IHttpClientFactory
-{
-    public HttpClient CreateClient(string name)
-    {
-        if (!string.Equals(name, "GSIP.Execution", StringComparison.Ordinal))
-            throw new InvalidOperationException("Runtime did not use the canonical named client.");
-        return client;
-    }
-}
-
-sealed class TestHandler(bool returnOversize) : HttpMessageHandler
-{
-    public int Calls { get; private set; }
-    public bool SyntheticHeaderObserved { get; private set; }
-
-    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-    {
-        Calls++;
-        if (!returnOversize)
-            throw new InvalidOperationException("API134 fail-closed boundary acceptance must never reach transport.");
-
-        SyntheticHeaderObserved = request.Headers.TryGetValues("x-synthetic-key", out var values)
-            && values.SingleOrDefault() == TestValues.SyntheticSecretMaterial;
-        var body = new string('X', 2048) + TestValues.ProcurationSentinel;
-        return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
-        {
-            Content = new StringContent(body, Encoding.UTF8, "application/json")
-        });
-    }
-}
-
-sealed class RecordingLogger<T> : ILogger<T>
-{
-    public List<string> Messages { get; } = [];
-    public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-    public bool IsEnabled(LogLevel logLevel) => true;
-    public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
-        Func<TState, Exception?, string> formatter) => Messages.Add(formatter(state, exception));
 }
 
 sealed class FixedClock(DateTimeOffset utcNow) : ISystemClock

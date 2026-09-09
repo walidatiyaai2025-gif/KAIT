@@ -23,6 +23,7 @@ $required = @(
     'docs/evidence/P08_CONTRACT_RECONCILIATION.md',
     'docs/evidence/P08_POST_CLOSURE_COMPOSITE_AUTH_REPAIR.md',
     'src/GSIP.Infrastructure/Execution/GenericServiceExecutionEngine.cs',
+    'src/GSIP.Infrastructure/Execution/TokenEndpointContractMetadata.cs',
     'src/GSIP.Web/Controllers/AuthProfileAuthenticationController.cs',
     'tests/GSIP.P08AuthenticationChecks/GSIP.P08AuthenticationChecks.csproj',
     'tests/GSIP.P08MojAuthRuntimeChecks/GSIP.P08MojAuthRuntimeChecks.csproj',
@@ -33,7 +34,8 @@ $required = @(
 $required | ForEach-Object { Require-File $_ }
 
 Require-Text 'execution/GSIP_Full_Execution.json' 'P08 - MOJ authentication token flow' 'Canonical P08 execution-plan entry is missing.'
-Require-Text 'src/GSIP.Infrastructure/Execution/GenericServiceExecutionEngine.cs' 'X-GSIP-TokenEndpointPath' 'Metadata-driven token endpoint control is missing.'
+Require-Text 'src/GSIP.Infrastructure/Execution/TokenEndpointContractMetadata.cs' 'X-GSIP-TokenEndpointPath' 'Metadata-driven token endpoint control is missing from its canonical metadata owner.'
+Require-Text 'src/GSIP.Infrastructure/Execution/GenericServiceExecutionEngine.cs' 'TokenEndpointContractMetadata' 'Generic execution runtime is no longer wired to canonical token endpoint metadata.'
 Require-Text 'src/GSIP.Web/Controllers/AuthProfileAuthenticationController.cs' 'ServiceSecretsManage' 'Administration authentication probe is not server-authorized.'
 Require-Text 'src/GSIP.Web/Controllers/AuthProfileAuthenticationController.cs' 'ValidateAntiForgeryToken' 'Administration authentication probe is missing anti-forgery protection.'
 Require-Text 'src/GSIP.Web/Controllers/AuthProfileAuthenticationController.cs' 'TestTokenGeneration' 'Administration token-generation Test action is missing.'

@@ -1,14 +1,19 @@
 {
   "schemaVersion": 1,
   "phase": "P09",
-  "unit": "P09::official-contract-capture",
-  "capturedAtUtc": "2026-09-09T07:50:00Z",
-  "evidencePolicy": "Official CAIT OpenAPI/Swagger or equivalent official evidence only; unknown contract items remain DEFERRED_EXTERNAL.",
+  "unit": "P09::official-contract-convergence",
+  "capturedAtUtc": "2026-09-09T10:00:00Z",
+  "evidencePolicy": "Owner-supplied authenticated official CAIT Swagger/OpenAPI text and screenshots are authoritative; only explicitly supported UAT contract facts are promoted. Production operation details and unresolved operation-level API-key applicability remain DEFERRED_EXTERNAL, not PASS.",
   "services": [
-    {"apiId":129,"serviceName":"Marriage Cases Service","officialSource":"https://developer.api.cait.gov.kw/api/129","snapshot":"api-129-marriage-cases.contract.json","captureStatus":"PARTIAL_PROVEN"},
-    {"apiId":132,"serviceName":"Is Single Basic Service","officialSource":"https://developer.api.cait.gov.kw/api/132","snapshot":"api-132-is-single-basic.contract.json","captureStatus":"DEFERRED_EXTERNAL"},
-    {"apiId":130,"serviceName":"Marriage Couple Last Case Service","officialSource":"https://developer.api.cait.gov.kw/api/130","snapshot":"api-130-marriage-couple-last-case.contract.json","captureStatus":"DEFERRED_EXTERNAL"},
-    {"apiId":196,"serviceName":"Family Judgment Text Service","officialSource":"https://developer.api.cait.gov.kw/api/196","snapshot":"api-196-family-judgment-text.contract.json","captureStatus":"DEFERRED_EXTERNAL"},
-    {"apiId":134,"serviceName":"Procuration Status Service","officialSource":"https://developer.api.cait.gov.kw/api/134","snapshot":"api-134-procuration-status.contract.json","captureStatus":"DEFERRED_EXTERNAL"}
+    {"apiId":129,"serviceName":"Marriage Cases Service","officialSource":"https://developer.api.cait.gov.kw/api/129","snapshot":"api-129-marriage-cases.contract.json","captureStatus":"PROVEN_UAT_CONTRACT"},
+    {"apiId":132,"serviceName":"Is Single Basic Service","officialSource":"https://developer.api.cait.gov.kw/api/132","snapshot":"api-132-is-single-basic.contract.json","captureStatus":"PROVEN_UAT_CONTRACT"},
+    {"apiId":130,"serviceName":"Marriage Couple Last Case Service","officialSource":"https://developer.api.cait.gov.kw/api/130","snapshot":"api-130-marriage-couple-last-case.contract.json","captureStatus":"PROVEN_UAT_CONTRACT"},
+    {"apiId":196,"serviceName":"Family Judgment Text Service","officialSource":"https://developer.api.cait.gov.kw/api/196","snapshot":"api-196-family-judgment-text.contract.json","captureStatus":"PROVEN_UAT_CONTRACT"},
+    {"apiId":134,"serviceName":"Procuration Status Service","officialSource":"https://developer.api.cait.gov.kw/api/134","snapshot":"api-134-procuration-status.contract.json","captureStatus":"PROVEN_UAT_CONTRACT"}
+  ],
+  "ownerLastDeferred": [
+    "Service-specific Production operation URLs/auth/payload contracts beyond the proven Production gateway prefix.",
+    "Exact operation-level x-api-key applicability for API132/API130/API196/API134 where the supplied operation text proves Bearer but no generated request proves the API-key header on that exact operation.",
+    "Live backend data validation for API196/API134 because official CAIT identifies their UAT try-out targets as mocks."
   ]
 }

@@ -3,60 +3,83 @@
   "apiId": 129,
   "serviceName": "Marriage Cases Service",
   "officialSource": "https://developer.api.cait.gov.kw/api/129",
-  "captureStatus": "PARTIAL_PROVEN",
+  "captureStatus": "PROVEN_UAT_CONTRACT",
   "evidence": {
     "classification": "OWNER_SUPPLIED_AUTHENTICATED_OFFICIAL_CAIT_SWAGGER",
     "environmentScope": "UAT_ONLY",
-    "automatedPortalSpecificationRetrieval": "DEFERRED_EXTERNAL",
     "notes": [
-      "Owner supplied authenticated official CAIT Swagger evidence for the UAT Marriage Cases service.",
-      "Owner executed the Swagger token call successfully with HTTP 200.",
-      "No Production operation suffix, request schema, authentication applicability, response schema, or error schema is inferred."
+      "Authenticated official CAIT Swagger text supplied by the owner defines the token and Marriage Cases request/response contracts.",
+      "An owner-executed UAT Swagger call previously proved transient x-api-key on /genToken and x-api-key plus Bearer on /marriageCasesAPIGEE.",
+      "No numeric token lifetime is documented; the phrase specific duration is not converted into a TTL.",
+      "Production operation suffixes and payload/auth applicability remain DEFERRED_EXTERNAL."
     ]
   },
   "environments": {
     "uat": {"status":"PROVEN","baseUrl":"https://moj-uat.api-non-prod.cait.gov.kw/WSWEB/WS/v1/marriage"},
-    "production": {"status":"DEFERRED_EXTERNAL","baseUrl":null,"missing":"Service-specific Production base/path contract is not proven by the available API 129 evidence."}
+    "production": {"status":"DEFERRED_EXTERNAL","gatewayPrefix":"https://moj.api.cait.gov.kw","baseUrl":null}
   },
   "operations": [
     {
-      "name": "Generate Token",
-      "status": "PROVEN_UAT",
-      "method": "POST",
-      "relativePath": "/genToken",
-      "requestContentType": "application/x-www-form-urlencoded",
-      "authentication": [{"scheme":"ApiKeyHeader","headerName":"x-api-key","status":"PROVEN_UAT"}],
-      "requestFields": [
-        {"name":"username","type":"string","required":true,"documentedValidation":null,"validationStatus":"DEFERRED_EXTERNAL"},
-        {"name":"password","type":"string","required":true,"documentedValidation":null,"validationStatus":"DEFERRED_EXTERNAL"}
+      "name":"Generate Authentication Token",
+      "status":"PROVEN_UAT_CONTRACT",
+      "method":"POST",
+      "relativePath":"/genToken",
+      "requestContentType":"application/x-www-form-urlencoded",
+      "authentication":[{"scheme":"ApiKeyHeader","headerName":"x-api-key","status":"PROVEN_UAT_EXECUTION"}],
+      "requestFields":[
+        {"name":"username","type":"string","required":true,"sensitive":true},
+        {"name":"password","type":"string","required":true,"sensitive":true}
       ],
-      "successResponses": [{
-        "statusCode": 200,
-        "status": "PROVEN_UAT_EXECUTION",
-        "contentType": null,
-        "contentTypeStatus": "DEFERRED_EXTERNAL",
-        "schema": {"type":"object","fields":[{"name":"data","type":"string","required":null,"requiredStatus":"DEFERRED_EXTERNAL"}]}
-      }],
-      "documentedErrorResponses": {"status":"DEFERRED_EXTERNAL","responses":[]},
-      "resultMappingCandidates": [{"sourcePath":"data","purpose":"Transient bearer token","status":"PROVEN_UAT"}],
-      "readOnlyNonDestructive": {"status":"DEFERRED_EXTERNAL","value":null}
+      "tokenResponsePath":"data",
+      "tokenLifetime":{"status":"DEFERRED_EXTERNAL","seconds":null},
+      "responses":[
+        {"statusCode":200,"contentType":"application/json","schema":{"type":"object","fields":[{"name":"data","type":"string"}]}},
+        {"statusCode":401,"contentType":"application/json","schema":{"type":"object","fields":[{"name":"error","type":"string"}]}}
+      ]
     },
     {
-      "name": "Marriage Cases",
-      "status": "PARTIAL_PROVEN_UAT",
-      "method": "POST",
-      "relativePath": "/marriageCasesAPIGEE",
-      "requestContentType": "application/x-www-form-urlencoded",
-      "authentication": [
-        {"scheme":"ApiKeyHeader","headerName":"x-api-key","status":"PROVEN_UAT"},
-        {"scheme":"Bearer","headerName":"Authorization","status":"PROVEN_UAT"}
+      "name":"Get Marriage Cases",
+      "status":"PROVEN_UAT_CONTRACT",
+      "method":"POST",
+      "relativePath":"/marriageCasesAPIGEE",
+      "requestContentType":"application/x-www-form-urlencoded",
+      "authentication":[
+        {"scheme":"ApiKeyHeader","headerName":"x-api-key","status":"PROVEN_UAT_EXECUTION"},
+        {"scheme":"Bearer","headerName":"Authorization","status":"PROVEN_UAT_EXECUTION"}
       ],
-      "requestFields": [{"name":"civilId","type":null,"typeStatus":"DEFERRED_EXTERNAL","required":true,"documentedValidation":null,"validationStatus":"DEFERRED_EXTERNAL"}],
-      "successResponses": {"status":"DEFERRED_EXTERNAL","responses":[]},
-      "documentedErrorResponses": {"status":"DEFERRED_EXTERNAL","responses":[]},
-      "responseFields": {"status":"DEFERRED_EXTERNAL","fields":[]},
-      "resultMappingCandidates": {"status":"DEFERRED_EXTERNAL","fields":[]},
-      "readOnlyNonDestructive": {"status":"DEFERRED_EXTERNAL","value":null}
+      "requestFields":[{"name":"civilId","type":"string","required":true,"sensitive":true,"documentedValidation":null}],
+      "responses":[
+        {"statusCode":200,"contentType":"application/json","schemaRef":"MarriageCasesSuccess"},
+        {"statusCode":400,"contentType":"application/json","schemaRef":"ErrorDtoEnvelope"},
+        {"statusCode":401,"contentType":"application/json","schemaRef":"SimpleError"},
+        {"statusCode":404,"contentType":"application/json","schemaRef":"ErrorDtoEnvelope"}
+      ],
+      "responseFields":[
+        {"path":"data[0].CIVILID","type":"string","sensitive":true},
+        {"path":"data[0].CONTRACT_DATE","type":"string","sensitive":false},
+        {"path":"data[0].CONTRACT_NO","type":"string","sensitive":true},
+        {"path":"data[0].CONTRACT_TYPE","type":"string","sensitive":false},
+        {"path":"data[0].FEMALE_NAME","type":"string","sensitive":true},
+        {"path":"data[0].FEM_CIVILID","type":"string","sensitive":true},
+        {"path":"data[0].LEGAL_PRIVACY","type":"string","sensitive":true},
+        {"path":"data[0].MALE_NAME","type":"string","sensitive":true},
+        {"path":"data[0].NO_DAT","type":"string","sensitive":false},
+        {"path":"data[0].marriedCouple","type":"boolean","sensitive":false},
+        {"path":"data[0].typPrf","type":"string","sensitive":false},
+        {"path":"data[0].x1","type":"string","sensitive":true},
+        {"path":"data[0].x3","type":"string","sensitive":true},
+        {"path":"data[0].x4","type":"string","sensitive":true},
+        {"path":"errorDTO.errorCode","type":"string","sensitive":false},
+        {"path":"errorDTO.errorDescription","type":"string","sensitive":false},
+        {"path":"errorDTO.isClean","type":"boolean","sensitive":false},
+        {"path":"errorDTO.civilID","type":"string","sensitive":true}
+      ],
+      "readOnlyNonDestructive":{"status":"DEFERRED_EXTERNAL","value":null}
     }
-  ]
+  ],
+  "schemas": {
+    "MarriageCasesSuccess":{"dataItemFields":["CIVILID","CONTRACT_DATE","CONTRACT_NO","CONTRACT_TYPE","FEMALE_NAME","FEM_CIVILID","LEGAL_PRIVACY","MALE_NAME","NO_DAT","marriedCouple","typPrf","x1","x3","x4"],"errorDtoFields":["errorCode","errorDescription","isClean","civilID"]},
+    "ErrorDtoEnvelope":{"fields":["data","errorDTO.errorCode","errorDTO.errorDescription","errorDTO.isClean","errorDTO.civilID"]},
+    "SimpleError":{"fields":["error"]}
+  }
 }
