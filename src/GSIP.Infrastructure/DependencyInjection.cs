@@ -37,6 +37,7 @@ public static class DependencyInjection
         services.AddSingleton<ITokenCache, InMemoryTokenCache>();
         services.AddScoped<ISetupService, SetupService>();
         services.AddScoped<IMetadataCatalogService, MetadataCatalogService>();
+        services.AddScoped<MojMetadataSeedService>();
         services.AddScoped<IServiceExecutionSecurityGate, ServiceExecutionSecurityGate>();
         services.Configure<ServiceExecutionRuntimeOptions>(configuration.GetSection("ServiceExecutionRuntime"));
         services.AddHttpClient("GSIP.Execution");
@@ -99,6 +100,7 @@ public static class DependencyInjection
         services.AddScoped<IAccountAuthenticationService, AccountAuthenticationService>();
         services.AddHostedService<IdentityDatabaseMigrationService>();
         services.AddHostedService<RbacBootstrapService>();
+        services.AddHostedService<MojMetadataBootstrapService>();
         return services;
     }
 
