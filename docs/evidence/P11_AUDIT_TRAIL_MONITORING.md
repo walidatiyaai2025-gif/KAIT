@@ -1,8 +1,10 @@
 # P11 — Audit Trail, Tamper Evidence and Monitoring
 
-Status: **CANDIDATE / STACKED GOVERNANCE EXCEPTION — NOT CANONICAL PHASE CLOSURE**
+Status: **OPEN-PHASE IMPLEMENTATION CANDIDATE — NOT P11 CLOSURE**
 
-This evidence describes the cloud-actionable P11 candidate on `worker/p11-audit-tamper-monitoring`. Canonical phase authority remains governed by `CURRENT_PHASE.md` / `PROJECT_CONTROL.md` / `docs/TASK_LEDGER.md`. P11 must not be represented as canonical CLOSED or merged ahead of unresolved predecessor reconciliation.
+This evidence describes the cloud-actionable P11 implementation on the canonical existing branch `worker/p11-audit-tamper-monitoring`. Canonical phase authority is `CURRENT_PHASE.md` / `PROJECT_CONTROL.md` / `docs/TASK_LEDGER.md`.
+
+P10 is CLOSED after PR #66 normally merged at exact `main` SHA `951901869dece4771a3ad99f4854ab5f0c7a5be4`; that exact main completed **29/29 push workflows SUCCESS**, with failure=0, queued=0 and in-progress=0 after completion. P11 is therefore the canonical **OPEN / READY** phase. Nothing in this document marks P11 CLOSED; normal integration plus exact-new-main closure evidence is still required.
 
 ## Canonical audit architecture
 
@@ -49,6 +51,14 @@ The bilingual `/audit` dashboard is derived from the canonical audit service and
 
 The global navigation links the canonical request-history and audit surfaces; authorization remains server-side.
 
+## Recovered integrity regression
+
+The recovered historical P11 branch initially failed fresh-chain LocalDB integrity verification. Root cause was schema-level fixed-width padding: the migration declared `PreviousHash` as `char(64)`, while the first record stores the sentinel `GENESIS`. SQL Server returned that value padded to 64 characters, so the unchanged verifier correctly rejected the record.
+
+The canonical branch repair changed only `PreviousHash` storage to variable-length `nvarchar(64)`; `RecordHash` remains the fixed-width SHA-256 representation. No integrity, tamper, append-only, concurrency or retention assertion was weakened. On repaired head `0593d97c176cb76e855a3209c3413201f76d9a39`, both the P00 baseline workflow and the dedicated P11 workflow completed SUCCESS, including append-only, integrity, concurrency, retention, monitoring and tamper-detection acceptance.
+
+The branch was then reconciled with exact P10-closed main without force-push and stale closed-phase content was replaced by exact-main versions. Final PR-head acceptance must be rerun on the reconciled branch before integration.
+
 ## Executable acceptance
 
 `.github/workflows/p11-audit-monitoring.yml` binds evidence to the exact candidate SHA and contains two independent jobs:
@@ -73,10 +83,10 @@ The global navigation links the canonical request-history and audit surfaces; au
    - monitoring snapshot behavior;
    - exact-candidate evidence manifest and artifact upload.
 
-P00 build/package/hash remains an independent regression baseline.
+P00 build/package/hash and all closed-phase workflows remain independent regression baselines.
 
-## Predecessor and external truth
+## External / owner-last truth
 
-P11 is stacked on the legitimate P10 candidate and retains P10 ancestry. It is not eligible for a normal merge until predecessor phase/governance reconciliation permits it. This document does not convert queued, running, failed or unexecuted CI into PASS.
+P11 implementation and its automated acceptance do not require owner credentials or personal MOJ data. The historical P09 authorized live-UAT smoke and unproven Production operation proof remain `DEFERRED_EXTERNAL_NOT_PASS` / `PRODUCTION_DEFERRED_EXTERNAL_NOT_PASS` under the tracker and owner-last policy; P11 does not rewrite them as PASS.
 
-Operational validation requiring a deployed owner environment may be recorded later as `OWNER_LAST` / `DEFERRED_EXTERNAL`; it is not treated as automated evidence.
+Any later operational validation that genuinely requires a deployed owner environment must be recorded as `OWNER_LAST` or `DEFERRED_EXTERNAL` with an exact acceptance action. It is never substituted by automated evidence or called PASS without the real owner-side result.
