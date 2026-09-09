@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="ExecutionTitle" xml:space="preserve"><value>تنفيذ الخدمة</value></data>
+  <data name="Breadcrumb" xml:space="preserve"><value>الخدمات / تنفيذ الخدمة</value></data>
+  <data name="Entity" xml:space="preserve"><value>الجهة</value></data>
+  <data name="Service" xml:space="preserve"><value>الخدمة</value></data>
+  <data name="Environment" xml:space="preserve"><value>البيئة</value></data>
+  <data name="SelectEntity" xml:space="preserve"><value>اختر الجهة</value></data>
+  <data name="SelectService" xml:space="preserve"><value>اختر الخدمة</value></data>
+  <data name="SelectEnvironment" xml:space="preserve"><value>اختر البيئة</value></data>
+  <data name="RequestData" xml:space="preserve"><value>بيانات الطلب</value></data>
+  <data name="DynamicHint" xml:space="preserve"><value>يتم إنشاء الحقول من بيانات تعريف الخدمة المختارة.</value></data>
+  <data name="RunRequest" xml:space="preserve"><value>تنفيذ الاستعلام</value></data>
+  <data name="BackendPending" xml:space="preserve"><value>محرك الإرسال غير موصول ضمن وحدة مطابقة الواجهة الحالية.</value></data>
+  <data name="ServiceInformation" xml:space="preserve"><value>معلومات الخدمة المختارة</value></data>
+  <data name="Authentication" xml:space="preserve"><value>المصادقة</value></data>
+  <data name="Configured" xml:space="preserve"><value>مهيأة</value></data>
+  <data name="None" xml:space="preserve"><value>بدون</value></data>
+  <data name="RequestMethod" xml:space="preserve"><value>طريقة الطلب</value></data>
+  <data name="Endpoint" xml:space="preserve"><value>مسار نقطة الخدمة</value></data>
+  <data name="Timeout" xml:space="preserve"><value>المهلة</value></data>
+  <data name="Seconds" xml:space="preserve"><value>ثانية</value></data>
+  <data name="Result" xml:space="preserve"><value>النتيجة</value></data>
+  <data name="RawResponse" xml:space="preserve"><value>الاستجابة الخام</value></data>
+  <data name="History" xml:space="preserve"><value>السجل</value></data>
+  <data name="NoResult" xml:space="preserve"><value>لم يتم تنفيذ أي طلب بعد.</value></data>
+  <data name="RequestMetadata" xml:space="preserve"><value>معلومات الطلب</value></data>
+  <data name="RequestId" xml:space="preserve"><value>رقم الطلب</value></data>
+  <data name="Status" xml:space="preserve"><value>الحالة</value></data>
+  <data name="NotExecuted" xml:space="preserve"><value>لم ينفذ</value></data>
+  <data name="Required" xml:space="preserve"><value>مطلوب</value></data>
+  <data name="Sensitive" xml:space="preserve"><value>حساس</value></data>
+  <data name="NoAuthorizedServices" xml:space="preserve"><value>لا توجد خدمات مسموح بتنفيذها لهذا الحساب.</value></data>
+</root>

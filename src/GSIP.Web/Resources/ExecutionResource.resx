@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="ExecutionTitle" xml:space="preserve"><value>Service Execution</value></data>
+  <data name="Breadcrumb" xml:space="preserve"><value>Services / Service Execution</value></data>
+  <data name="Entity" xml:space="preserve"><value>Entity</value></data>
+  <data name="Service" xml:space="preserve"><value>Service</value></data>
+  <data name="Environment" xml:space="preserve"><value>Environment</value></data>
+  <data name="SelectEntity" xml:space="preserve"><value>Select entity</value></data>
+  <data name="SelectService" xml:space="preserve"><value>Select service</value></data>
+  <data name="SelectEnvironment" xml:space="preserve"><value>Select environment</value></data>
+  <data name="RequestData" xml:space="preserve"><value>Request Data</value></data>
+  <data name="DynamicHint" xml:space="preserve"><value>Fields are generated from the selected service metadata.</value></data>
+  <data name="RunRequest" xml:space="preserve"><value>Run Request</value></data>
+  <data name="BackendPending" xml:space="preserve"><value>Execution transport is not connected in this UI parity slice.</value></data>
+  <data name="ServiceInformation" xml:space="preserve"><value>Selected Service Information</value></data>
+  <data name="Authentication" xml:space="preserve"><value>Authentication</value></data>
+  <data name="Configured" xml:space="preserve"><value>Configured</value></data>
+  <data name="None" xml:space="preserve"><value>None</value></data>
+  <data name="RequestMethod" xml:space="preserve"><value>Request Method</value></data>
+  <data name="Endpoint" xml:space="preserve"><value>Endpoint Alias</value></data>
+  <data name="Timeout" xml:space="preserve"><value>Timeout</value></data>
+  <data name="Seconds" xml:space="preserve"><value>sec</value></data>
+  <data name="Result" xml:space="preserve"><value>Result</value></data>
+  <data name="RawResponse" xml:space="preserve"><value>Raw Response</value></data>
+  <data name="History" xml:space="preserve"><value>History</value></data>
+  <data name="NoResult" xml:space="preserve"><value>No request has been executed yet.</value></data>
+  <data name="RequestMetadata" xml:space="preserve"><value>Request Metadata</value></data>
+  <data name="RequestId" xml:space="preserve"><value>Request ID</value></data>
+  <data name="Status" xml:space="preserve"><value>Status</value></data>
+  <data name="NotExecuted" xml:space="preserve"><value>Not executed</value></data>
+  <data name="Required" xml:space="preserve"><value>Required</value></data>
+  <data name="Sensitive" xml:space="preserve"><value>Sensitive</value></data>
+  <data name="NoAuthorizedServices" xml:space="preserve"><value>No executable services are assigned to your account.</value></data>
+</root>

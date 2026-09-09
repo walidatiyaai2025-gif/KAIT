@@ -1,0 +1,148 @@
+@using System.Globalization
+@model ServiceExecutionViewModel
+@inject ExecutionText L
+@{
+    ViewData["Title"] = L["ExecutionTitle"];
+    var culture = CultureInfo.CurrentUICulture.Name;
+    var details = Model.SelectedService;
+}
+
+<section class="execution-hero" aria-labelledby="execution-title">
+    <div>
+        <span class="eyebrow">GSIP · P07</span>
+        <h1 id="execution-title">@L["ExecutionTitle"]</h1>
+        <p class="execution-breadcrumb">@L["Breadcrumb"]</p>
+    </div>
+</section>
+
+<form class="execution-selectors" method="get" action="/execute" aria-label="@L["ExecutionTitle"]">
+    <input type="hidden" name="culture" value="@culture" />
+    <label class="selector-card">
+        <span>@L["Entity"]</span>
+        <select name="entityId" onchange="this.form.submit()" aria-label="@L["Entity"]">
+            <option value="">@L["SelectEntity"]</option>
+            @foreach (var option in Model.Entities)
+            {
+                <option value="@option.Id" selected="@(option.Id == Model.SelectedEntityId)">@option.Label</option>
+            }
+        </select>
+    </label>
+    <label class="selector-card">
+        <span>@L["Service"]</span>
+        <select name="serviceId" onchange="this.form.submit()" aria-label="@L["Service"]">
+            <option value="">@L["SelectService"]</option>
+            @foreach (var option in Model.Services)
+            {
+                <option value="@option.Id" selected="@(option.Id == Model.SelectedServiceId)">@option.Label</option>
+            }
+        </select>
+    </label>
+    <label class="selector-card">
+        <span>@L["Environment"]</span>
+        <select name="environmentId" onchange="this.form.submit()" aria-label="@L["Environment"]">
+            <option value="">@L["SelectEnvironment"]</option>
+            @foreach (var option in Model.Environments)
+            {
+                <option value="@option.Id" selected="@(option.Id == Model.SelectedEnvironmentId)">@option.Label</option>
+            }
+        </select>
+    </label>
+</form>
+
+@if (details is null)
+{
+    <section class="execution-empty" role="status">
+        <span aria-hidden="true">◇</span>
+        <strong>@L["NoAuthorizedServices"]</strong>
+    </section>
+}
+else
+{
+    <div class="execution-main-grid">
+        <section class="execution-card request-card" aria-labelledby="request-data-title">
+            <div class="execution-card-heading">
+                <div>
+                    <h2 id="request-data-title">@L["RequestData"]</h2>
+                    <p>@L["DynamicHint"]</p>
+                </div>
+                <span class="environment-chip">@details.EnvironmentCode</span>
+            </div>
+            <div class="dynamic-fields">
+                @foreach (var field in details.Fields)
+                {
+                    var inputId = $"field-{field.Key}";
+                    <div class="dynamic-field">
+                        <label for="@inputId">
+                            @field.Label
+                            @if (field.Required)
+                            {
+                                <span class="required-mark" aria-label="@L["Required"]">*</span>
+                            }
+                        </label>
+                        <div class="execution-input-shell">
+                            <input id="@inputId"
+                                   name="@field.Key"
+                                   type="@(field.FieldType.Equals("number", StringComparison.OrdinalIgnoreCase) ? "number" : "text")"
+                                   minlength="@field.MinLength"
+                                   maxlength="@field.MaxLength"
+                                   min="@field.Minimum"
+                                   max="@field.Maximum"
+                                   pattern="@(string.IsNullOrWhiteSpace(field.Regex) ? null : field.Regex)"
+                                   required="@field.Required"
+                                   autocomplete="off"
+                                   inputmode="@(field.Key.Contains("CIVIL", StringComparison.OrdinalIgnoreCase) ? "numeric" : null)"
+                                   dir="@(field.Key.Contains("CIVIL", StringComparison.OrdinalIgnoreCase) ? "ltr" : null)"
+                                   aria-describedby="@(field.Sensitive ? $"{inputId}-hint" : null)" />
+                            @if (field.Sensitive)
+                            {
+                                <span class="sensitive-chip" id="@($"{inputId}-hint")">@L["Sensitive"]</span>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+            <div class="execution-action-row">
+                <button class="run-request-button" type="button" disabled aria-disabled="true">@L["RunRequest"]</button>
+                <p class="execution-pending-note">@L["BackendPending"]</p>
+            </div>
+        </section>
+
+        <aside class="execution-card service-info-card" aria-labelledby="service-info-title">
+            <div class="service-icon" aria-hidden="true">⇄</div>
+            <h2 id="service-info-title">@L["ServiceInformation"]</h2>
+            <strong class="selected-service-name">@details.ServiceName</strong>
+            <span class="selected-entity-name">@details.EntityName</span>
+            @if (!string.IsNullOrWhiteSpace(details.Description))
+            {
+                <p class="service-description">@details.Description</p>
+            }
+            <dl class="service-facts">
+                <div><dt>@L["Authentication"]</dt><dd><span class="auth-chip">@(details.HasAuthProfile ? L["Configured"] : L["None"])</span></dd></div>
+                <div><dt>@L["RequestMethod"]</dt><dd><span class="method-chip">@details.Method</span></dd></div>
+                <div><dt>@L["Endpoint"]</dt><dd><code dir="ltr">@details.RelativePath</code></dd></div>
+                <div><dt>@L["Timeout"]</dt><dd>@details.TimeoutSeconds @L["Seconds"]</dd></div>
+            </dl>
+        </aside>
+    </div>
+
+    <section class="execution-card result-workspace" aria-labelledby="result-title">
+        <div class="result-tabs" role="tablist" aria-label="@L["Result"]">
+            <button id="result-title" class="result-tab active" type="button" role="tab" aria-selected="true">@L["Result"]</button>
+            <button class="result-tab" type="button" role="tab" aria-selected="false" disabled>@L["RawResponse"]</button>
+            <button class="result-tab" type="button" role="tab" aria-selected="false" disabled>@L["History"]</button>
+        </div>
+        <div class="result-content-grid">
+            <div class="result-empty-state" role="status">
+                <span class="result-status-icon" aria-hidden="true">✓</span>
+                <div><strong>@L["NoResult"]</strong><small>@L["BackendPending"]</small></div>
+            </div>
+            <aside class="request-metadata-card" aria-labelledby="request-metadata-title">
+                <h3 id="request-metadata-title">@L["RequestMetadata"]</h3>
+                <dl>
+                    <div><dt>@L["RequestId"]</dt><dd dir="ltr">—</dd></div>
+                    <div><dt>@L["Status"]</dt><dd><span class="pending-chip">@L["NotExecuted"]</span></dd></div>
+                </dl>
+            </aside>
+        </div>
+    </section>
+}
