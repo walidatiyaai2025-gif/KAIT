@@ -171,9 +171,10 @@ try
     var beforeIds = services.Select(item => item.Id).Order().ToArray();
     var beforeCounts = await CaptureCountsAsync(db);
     await seed.SeedAsync();
-    var afterIds = await db.CatalogServices.AsNoTracking()
+    var afterIds = (await db.CatalogServices.AsNoTracking()
         .Where(item => item.EntityId == entity.Id && item.IsCurrent)
-        .Select(item => item.Id).OrderBy(item => item).ToArrayAsync();
+        .Select(item => item.Id)
+        .ToArrayAsync()).Order().ToArray();
     Check(beforeIds.SequenceEqual(afterIds), "Metadata seed idempotency changed stable service identities.");
     Check(beforeCounts == await CaptureCountsAsync(db), "Metadata seed idempotency changed persisted object counts.");
 
