@@ -1,0 +1,80 @@
+name: P08 Security Acceptance
+
+on:
+  push:
+    branches:
+      - 'worker/p08-security-acceptance-ci'
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  p08-security-acceptance:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    env:
+      CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+      GSIP_P08_EVIDENCE_DIR: artifacts/p08-security-acceptance
+      GSIP_P08_SQL: Server=(localdb)\MSSQLLocalDB;Database=GSIP_P08_AuthIsolation_${{ github.run_id }}_${{ github.run_attempt }};Trusted_Connection=True;TrustServerCertificate=True
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          fetch-depth: 0
+      - name: Assert exact candidate SHA
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+      - name: Set up pinned .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Start SQL LocalDB
+        shell: pwsh
+        run: |
+          sqllocaldb start MSSQLLocalDB
+          sqllocaldb info MSSQLLocalDB
+      - name: Restore solution and acceptance projects
+        shell: bash
+        run: |
+          dotnet restore GSIP.sln
+          dotnet restore tests/GSIP.P08SecurityAcceptanceChecks/GSIP.P08SecurityAcceptanceChecks.csproj
+          dotnet restore tests/GSIP.P08SecurityAcceptanceChecks/MojRuntime/GSIP.P08MojRuntimeAcceptance.csproj
+          dotnet restore tests/GSIP.P07ExecutionSecurityChecks/GSIP.P07ExecutionSecurityChecks.csproj
+          dotnet restore tests/GSIP.P06TokenCacheChecks/GSIP.P06TokenCacheChecks.csproj
+          if [ -f tests/GSIP.P08AuthIsolationChecks/GSIP.P08AuthIsolationChecks.csproj ]; then
+            dotnet restore tests/GSIP.P08AuthIsolationChecks/GSIP.P08AuthIsolationChecks.csproj
+          fi
+      - name: Build solution Release
+        run: dotnet build GSIP.sln -c Release --no-restore
+      - name: Build acceptance projects Release
+        shell: bash
+        run: |
+          dotnet build tests/GSIP.P08SecurityAcceptanceChecks/GSIP.P08SecurityAcceptanceChecks.csproj -c Release --no-restore
+          dotnet build tests/GSIP.P08SecurityAcceptanceChecks/MojRuntime/GSIP.P08MojRuntimeAcceptance.csproj -c Release --no-restore
+          dotnet build tests/GSIP.P07ExecutionSecurityChecks/GSIP.P07ExecutionSecurityChecks.csproj -c Release --no-restore
+          dotnet build tests/GSIP.P06TokenCacheChecks/GSIP.P06TokenCacheChecks.csproj -c Release --no-restore
+          if [ -f tests/GSIP.P08AuthIsolationChecks/GSIP.P08AuthIsolationChecks.csproj ]; then
+            dotnet build tests/GSIP.P08AuthIsolationChecks/GSIP.P08AuthIsolationChecks.csproj -c Release --no-restore
+          fi
+      - name: Run independent P08 security acceptance and leakage scan
+        shell: pwsh
+        run: ./scripts/verify-p08-security-acceptance.ps1 -Configuration Release -EvidenceDirectory $env:GSIP_P08_EVIDENCE_DIR
+      - name: Validate execution plan and governance
+        run: python scripts/validate_execution_plan.py
+      - name: Verify evidence is non-secret
+        shell: bash
+        run: |
+          test -s artifacts/p08-security-acceptance/acceptance-summary.json
+          test -s artifacts/p08-security-acceptance/ci-evidence.json
+          ! grep -RIE 'P08-(api|bearer|token|scope|fresh)-[A-F0-9]{32,}|p08-(user|pass)-[A-F0-9]{24,}|Authorization[[:space:]]*:[[:space:]]*Bearer[[:space:]]+[^[:space:]]+|x-api-key[[:space:]]*[:=][[:space:]]*[^[:space:]]+' artifacts/p08-security-acceptance
+      - name: Upload exact-candidate P08 security evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: P08-Security-Acceptance-${{ env.CANDIDATE_SHA }}
+          path: artifacts/p08-security-acceptance/
+          if-no-files-found: error

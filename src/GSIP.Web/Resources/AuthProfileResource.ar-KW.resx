@@ -62,5 +62,6 @@
   <data name="LastRotated" xml:space="preserve"><value>آخر تدوير</value></data>
   <data name="Never" xml:space="preserve"><value>لم يتم</value></data>
   <data name="BoundCount" xml:space="preserve"><value>عمليات ربط</value></data>
+  <data name="TestAuthentication" xml:space="preserve"><value>اختبار إنشاء الرمز</value></data>
   <data name="SecretPlaintextNeverShown" xml:space="preserve"><value>لا يتم عرض النص الصريح أو استرجاعه أو تسجيله أو إدراجه في أدلة المتصفح.</value></data>
 </root>

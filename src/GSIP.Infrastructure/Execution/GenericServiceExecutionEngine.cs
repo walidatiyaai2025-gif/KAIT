@@ -6,6 +6,7 @@ using System.Security.Authentication;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using GSIP.Application.Authentication;
 using GSIP.Application.Execution;
 using GSIP.Application.Metadata;
 using GSIP.Application.Secrets;
@@ -23,9 +24,12 @@ public sealed class GenericServiceExecutionEngine(
     ISecretMaterialResolver secretResolver,
     IHttpClientFactory httpClientFactory,
     IOptions<ServiceExecutionRuntimeOptions> options,
-    ILogger<GenericServiceExecutionEngine> logger) : IServiceExecutionEngine
+    ILogger<GenericServiceExecutionEngine> logger,
+    ITokenCache? tokenCache = null) : IServiceExecutionEngine
 {
     private const string ClientName = "GSIP.Execution";
+    private const string MojTokenPathMetadataKey = "X-GSIP-TokenEndpointPath";
+    private const int MaximumTokenResponseBytes = 64 * 1024;
     private static readonly HashSet<string> BodylessMethods = new(StringComparer.OrdinalIgnoreCase) { "GET", "HEAD", "OPTIONS" };
     private static readonly HashSet<string> ForbiddenConfiguredHeaders = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -183,39 +187,284 @@ public sealed class GenericServiceExecutionEngine(
         if (profile is null)
             return await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
 
-        if (profile.AuthType == AuthProfileType.TokenEndpoint)
+        try
+        {
+            if (profile.AuthType == AuthProfileType.TokenEndpoint)
+                return await SendTokenEndpointAuthenticatedAsync(client, request, binding, profile, cancellationToken);
+
+            var secretHeaders = BuildSecretHeaderPlan(profile);
+            return await ResolveSecretAndSendAsync(0);
+
+            Task<HttpResponseMessage> ResolveSecretAndSendAsync(int index)
+            {
+                if (index >= secretHeaders.Count)
+                    return client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+
+                var planned = secretHeaders[index];
+                return secretResolver.UseSecretAsync(
+                    binding.ServiceId,
+                    binding.EnvironmentId,
+                    profile.Id,
+                    planned.Secret.Name,
+                    planned.Secret.Reference,
+                    async (material, token) =>
+                    {
+                        var secretValue = DecodeHeaderSecret(material);
+                        try
+                        {
+                            ApplySecretHeader(request, planned.Kind, planned.HeaderName, secretValue);
+                            return await ResolveSecretAndSendAsync(index + 1);
+                        }
+                        finally
+                        {
+                            RemoveSecretHeader(request, planned.Kind, planned.HeaderName);
+                        }
+                    },
+                    cancellationToken);
+            }
+        }
+        catch (SecretReferenceRejectedException)
+        {
+            throw new AuthenticationUnavailableException();
+        }
+        catch (SecretProtectionException)
+        {
+            throw new AuthenticationUnavailableException();
+        }
+    }
+
+    private async Task<HttpResponseMessage> SendTokenEndpointAuthenticatedAsync(
+        HttpClient client,
+        HttpRequestMessage request,
+        AuthorizedServiceExecutionBinding binding,
+        AuthProfileDescriptor profile,
+        CancellationToken cancellationToken)
+    {
+        if (tokenCache is null)
             throw new AuthenticationUnavailableException();
 
-        var secretHeaders = BuildSecretHeaderPlan(profile);
-        return await ResolveSecretAndSendAsync(0);
+        var tokenPath = ResolveTokenEndpointPath(binding.ConfiguredHeadersJson);
+        var usernameSecret = SingleSecret(profile, "username");
+        var passwordSecret = SingleSecret(profile, "password");
+        if (profile.Secrets.Count != 2)
+            throw new AuthenticationUnavailableException();
 
-        Task<HttpResponseMessage> ResolveSecretAndSendAsync(int index)
+        return await secretResolver.UseSecretAsync(
+            binding.ServiceId,
+            binding.EnvironmentId,
+            profile.Id,
+            usernameSecret.Name,
+            usernameSecret.Reference,
+            async (usernameMaterial, usernameToken) =>
+            {
+                var username = DecodeFormSecret(usernameMaterial);
+                return await secretResolver.UseSecretAsync(
+                    binding.ServiceId,
+                    binding.EnvironmentId,
+                    profile.Id,
+                    passwordSecret.Name,
+                    passwordSecret.Reference,
+                    async (passwordMaterial, passwordToken) =>
+                    {
+                        var password = DecodeFormSecret(passwordMaterial);
+                        var identity = TokenCacheIdentity.Create(
+                            binding.ServiceId,
+                            binding.EnvironmentId,
+                            profile.Id,
+                            profile.Version,
+                            Math.Max(usernameSecret.Generation, passwordSecret.Generation),
+                            validityParameters: new Dictionary<string, string?>(StringComparer.Ordinal)
+                            {
+                                ["token-path"] = tokenPath,
+                                ["username-generation"] = usernameSecret.Generation.ToString(CultureInfo.InvariantCulture),
+                                ["password-generation"] = passwordSecret.Generation.ToString(CultureInfo.InvariantCulture)
+                            });
+
+                        var cached = await tokenCache.GetOrRefreshAsync(
+                            identity,
+                            refreshToken => AcquireMojTokenAsync(client, binding, tokenPath, username, password, refreshToken),
+                            passwordToken);
+                        var bearer = ValidateBearerToken(cached.AccessToken);
+                        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearer);
+                        try
+                        {
+                            return await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, passwordToken);
+                        }
+                        finally
+                        {
+                            request.Headers.Authorization = null;
+                        }
+                    },
+                    usernameToken);
+            },
+            cancellationToken);
+    }
+
+    private static AuthProfileSecretDescriptor SingleSecret(AuthProfileDescriptor profile, string name)
+    {
+        var matches = profile.Secrets
+            .Where(secret => string.Equals(secret.Name, name, StringComparison.OrdinalIgnoreCase))
+            .Take(2)
+            .ToArray();
+        if (matches.Length != 1 || matches[0].Generation < 1)
+            throw new AuthenticationUnavailableException();
+        return matches[0];
+    }
+
+    private static string ResolveTokenEndpointPath(string? configuredMetadataJson)
+    {
+        if (string.IsNullOrWhiteSpace(configuredMetadataJson))
+            throw new AuthenticationUnavailableException();
+
+        try
         {
-            if (index >= secretHeaders.Count)
-                return client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            using var document = JsonDocument.Parse(configuredMetadataJson);
+            if (document.RootElement.ValueKind != JsonValueKind.Object
+                || !document.RootElement.TryGetProperty(MojTokenPathMetadataKey, out var pathElement)
+                || pathElement.ValueKind != JsonValueKind.String)
+                throw new AuthenticationUnavailableException();
 
-            var planned = secretHeaders[index];
-            return secretResolver.UseSecretAsync(
-                profile.OwnerServiceId,
-                profile.OwnerEnvironmentId,
-                profile.Id,
-                planned.Secret.Name,
-                planned.Secret.Reference,
-                async (material, token) =>
-                {
-                    var secretValue = DecodeHeaderSecret(material);
-                    try
-                    {
-                        ApplySecretHeader(request, planned.Kind, planned.HeaderName, secretValue);
-                        return await ResolveSecretAndSendAsync(index + 1);
-                    }
-                    finally
-                    {
-                        RemoveSecretHeader(request, planned.Kind, planned.HeaderName);
-                    }
-                },
-                cancellationToken);
+            var path = pathElement.GetString()?.Trim();
+            if (string.IsNullOrWhiteSpace(path)
+                || !path.StartsWith("/", StringComparison.Ordinal)
+                || path.StartsWith("//", StringComparison.Ordinal)
+                || path.Contains('\\')
+                || path.Contains('?')
+                || path.Contains('#')
+                || path.Any(character => char.IsControl(character)))
+                throw new AuthenticationUnavailableException();
+
+            return path;
         }
+        catch (JsonException)
+        {
+            throw new AuthenticationUnavailableException();
+        }
+    }
+
+    private static async Task<TokenCacheValue> AcquireMojTokenAsync(
+        HttpClient client,
+        AuthorizedServiceExecutionBinding binding,
+        string tokenPath,
+        string username,
+        string password,
+        CancellationToken cancellationToken)
+    {
+        Uri tokenEndpoint;
+        try
+        {
+            if (!Uri.TryCreate(binding.BaseUrl, UriKind.Absolute, out var baseUri)
+                || baseUri.Scheme is not ("http" or "https"))
+                throw new AuthenticationUnavailableException();
+            tokenEndpoint = new Uri(baseUri, tokenPath);
+        }
+        catch (UriFormatException)
+        {
+            throw new AuthenticationUnavailableException();
+        }
+
+        using var tokenRequest = new HttpRequestMessage(HttpMethod.Post, tokenEndpoint)
+        {
+            Content = new FormUrlEncodedContent(
+            [
+                new KeyValuePair<string, string>("username", username),
+                new KeyValuePair<string, string>("password", password)
+            ])
+        };
+        tokenRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+        HttpResponseMessage tokenResponse;
+        try
+        {
+            tokenResponse = await client.SendAsync(tokenRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        }
+        catch (HttpRequestException)
+        {
+            throw new AuthenticationUnavailableException();
+        }
+
+        using (tokenResponse)
+        {
+            if (!tokenResponse.IsSuccessStatusCode)
+                throw new AuthenticationUnavailableException();
+
+            byte[] body;
+            try
+            {
+                body = await tokenResponse.Content.ReadAsByteArrayAsync(cancellationToken);
+            }
+            catch (HttpRequestException)
+            {
+                throw new AuthenticationUnavailableException();
+            }
+
+            if (body.Length == 0 || body.Length > MaximumTokenResponseBytes)
+                throw new AuthenticationUnavailableException();
+
+            try
+            {
+                using var document = JsonDocument.Parse(body);
+                if (document.RootElement.ValueKind != JsonValueKind.Object
+                    || !document.RootElement.TryGetProperty("data", out var tokenElement)
+                    || tokenElement.ValueKind != JsonValueKind.String)
+                    throw new AuthenticationUnavailableException();
+
+                var accessToken = ValidateBearerToken(tokenElement.GetString());
+                return TokenCacheValue.Create(accessToken, ResolveTokenExpiry(accessToken));
+            }
+            catch (JsonException)
+            {
+                throw new AuthenticationUnavailableException();
+            }
+        }
+    }
+
+    private static DateTimeOffset ResolveTokenExpiry(string accessToken)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var parts = accessToken.Split('.');
+        if (parts.Length != 3)
+            return now;
+
+        try
+        {
+            var payload = parts[1].Replace('-', '+').Replace('_', '/');
+            payload = (payload.Length % 4) switch
+            {
+                0 => payload,
+                2 => payload + "==",
+                3 => payload + "=",
+                _ => throw new FormatException()
+            };
+            using var document = JsonDocument.Parse(Convert.FromBase64String(payload));
+            if (!document.RootElement.TryGetProperty("exp", out var exp)
+                || exp.ValueKind != JsonValueKind.Number
+                || !exp.TryGetInt64(out var seconds))
+                return now;
+            var expiry = DateTimeOffset.FromUnixTimeSeconds(seconds);
+            return expiry > now ? expiry : now;
+        }
+        catch (Exception exception) when (exception is FormatException or JsonException or ArgumentOutOfRangeException)
+        {
+            return now;
+        }
+    }
+
+    private static string DecodeFormSecret(ReadOnlyMemory<byte> material)
+    {
+        var value = Encoding.UTF8.GetString(material.Span);
+        if (string.IsNullOrWhiteSpace(value) || value.Any(character => character is '\r' or '\n' or '\0'))
+            throw new AuthenticationUnavailableException();
+        return value;
+    }
+
+    private static string ValidateBearerToken(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)
+            || value.Length > 16 * 1024
+            || value.Any(character => character is '\r' or '\n' or '\0'))
+            throw new AuthenticationUnavailableException();
+        return value.Trim();
     }
 
     private static IReadOnlyList<PlannedSecretHeader> BuildSecretHeaderPlan(AuthProfileDescriptor profile)
@@ -367,8 +616,6 @@ public sealed class GenericServiceExecutionEngine(
             || !binding.ValidateServerCertificate
             || !string.Equals(binding.TlsPolicy, "SystemDefault", StringComparison.OrdinalIgnoreCase))
         {
-            // Dynamic proxy/certificate policy must never be silently ignored. A later transport-policy
-            // implementation may support these values; until then, fail closed instead of weakening TLS.
             throw new ServiceExecutionRejectedException();
         }
     }
@@ -509,6 +756,13 @@ public sealed class GenericServiceExecutionEngine(
                         JsonValueKind.String when bool.TryParse(property.Value.GetString(), out var parsed) => parsed,
                         _ => throw new ServiceExecutionRejectedException()
                     };
+                    continue;
+                }
+
+                if (string.Equals(property.Name, MojTokenPathMetadataKey, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (property.Value.ValueKind != JsonValueKind.String)
+                        throw new ServiceExecutionRejectedException();
                     continue;
                 }
 
