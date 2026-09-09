@@ -77,7 +77,8 @@ jobs:
               'CandidateSha': os.environ['CANDIDATE_SHA'],
               'Unit': 'P12::admin-operations-health-diagnostics',
               'StaticAuthorizationIdorCsrfContract': 'TESTED',
-              'ExactServiceEnvironmentIsolation': 'TESTED',
+              'ExactServiceEnvironmentIsolationContract': 'TESTED',
+              'OperationalStateNoMetadataRevisionContract': 'TESTED',
               'CanonicalAuthAndRotationReuse': 'TESTED',
               'BilingualResponsiveUiContract': 'TESTED',
               'RealCredentials': False,
@@ -99,6 +100,7 @@ jobs:
     timeout-minutes: 50
     env:
       CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+      GSIP_P12_STATE_SQL: 'Server=(localdb)\MSSQLLocalDB;Database=GSIP_P12_STATE_${{ github.run_id }}_${{ github.run_attempt }};Integrated Security=true;Encrypt=false;TrustServerCertificate=true;MultipleActiveResultSets=true'
     steps:
       - name: Checkout exact candidate
         uses: actions/checkout@v4
@@ -116,15 +118,39 @@ jobs:
           global-json-file: global.json
       - name: Restore
         shell: pwsh
-        run: dotnet restore GSIP.sln
+        run: |
+          dotnet restore GSIP.sln
+          dotnet restore tests/GSIP.P12OperationsStateChecks/GSIP.P12OperationsStateChecks.csproj
       - name: Build Release
         shell: pwsh
-        run: dotnet build GSIP.sln -c Release --no-restore
+        run: |
+          dotnet build GSIP.sln -c Release --no-restore
+          dotnet build tests/GSIP.P12OperationsStateChecks/GSIP.P12OperationsStateChecks.csproj -c Release --no-restore
       - name: Start SQL Server LocalDB
         shell: pwsh
         run: |
           sqllocaldb start MSSQLLocalDB
           sqllocaldb info MSSQLLocalDB
+      - name: Run exact Service Environment operational-state isolation acceptance
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force artifacts/p12-operations-runtime-ui | Out-Null
+          dotnet run --project tests/GSIP.P12OperationsStateChecks/GSIP.P12OperationsStateChecks.csproj -c Release --no-build -- $env:GSIP_P12_STATE_SQL | Tee-Object artifacts/p12-operations-runtime-ui/operational-state-isolation.txt
+          if ($LASTEXITCODE -ne 0) { throw 'P12 operational-state isolation acceptance failed.' }
+          $stateEvidence = Get-Content artifacts/p12-operations-runtime-ui/operational-state-isolation.txt -Raw
+          if ($stateEvidence -notmatch 'P12_OPERATIONAL_STATE_ISOLATION=PASS') { throw 'P12 operational-state PASS marker is missing.' }
+          [pscustomobject]@{
+            CandidateSha = $env:CANDIDATE_SHA
+            Unit = 'P12::operational-state-isolation'
+            UsedServiceIdPreserved = 'TESTED'
+            MetadataVersionPreserved = 'TESTED'
+            ExactEnvironmentRowPreserved = 'TESTED'
+            UatProductionIsolation = 'TESTED'
+            UnauthorizedForgedInactiveParentFailClosed = 'TESTED'
+            SyntheticOnly = $true
+            RealCredentials = $false
+            PersonalData = $false
+          } | ConvertTo-Json | Set-Content artifacts/p12-operations-runtime-ui/operational-state-manifest.json -Encoding utf8
       - name: Run protected bilingual operations runtime and browser acceptance
         shell: pwsh
         run: ./scripts/verify-p12-operations-runtime-ui.ps1

@@ -1,9 +1,5 @@
-using System.Security.Claims;
-using GSIP.Application.Auditing;
 using GSIP.Application.Authorization;
-using GSIP.Application.Metadata;
 using GSIP.Application.Operations;
-using GSIP.Domain.Metadata;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -13,9 +9,7 @@ namespace GSIP.Web.Controllers;
 [Route("operations")]
 public sealed class OperationsController(
     IAdminOperationsService operations,
-    IMetadataCatalogService catalog,
-    IGsipPermissionEvaluator permissions,
-    IAuditTrailWriter auditTrail) : Controller
+    IAdminOperationalStateService operationalState) : Controller
 {
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
@@ -115,111 +109,29 @@ public sealed class OperationsController(
         string? culture,
         CancellationToken cancellationToken)
     {
-        if (serviceId == Guid.Empty || environmentId == Guid.Empty)
+        try
         {
-            return NotFound();
+            var result = await operationalState.SetEnvironmentStateAsync(
+                User,
+                serviceId,
+                environmentId,
+                isActive,
+                cancellationToken);
+            TempData["OperationsSuccess"] = result.IsActive ? "EnvironmentActivated" : "EnvironmentDisabled";
+            return RedirectToIndex(culture);
         }
-
-        var snapshot = await catalog.GetSnapshotAsync(cancellationToken);
-        var serviceMatches = snapshot.Services.Where(item => item.Id == serviceId && item.IsCurrent).Take(2).ToArray();
-        var environmentMatches = snapshot.Environments.Where(item => item.Id == environmentId).Take(2).ToArray();
-        if (serviceMatches.Length != 1 || environmentMatches.Length != 1)
-        {
-            return NotFound();
-        }
-
-        var service = serviceMatches[0];
-        var environment = environmentMatches[0];
-        var configs = service.EnvironmentConfigs.Where(item => item.EnvironmentId == environmentId).Take(2).ToArray();
-        if (configs.Length != 1)
-        {
-            return NotFound();
-        }
-
-        if (!await permissions.HasServicePermissionAsync(User, service.Code, GsipPermissions.ServicesManage, cancellationToken))
+        catch (AdminOperationsAccessDeniedException)
         {
             return Forbid();
         }
-
-        if (isActive && (!service.Active || !environment.Active))
+        catch (AdminOperationsTargetRejectedException)
+        {
+            return NotFound();
+        }
+        catch (AdminOperationsStateConflictException)
         {
             return Conflict("An inactive service or environment cannot be activated through the operational binding.");
         }
-
-        var input = BuildServiceInput(snapshot, service, environmentId, isActive);
-        await catalog.UpdateServiceAsync(service.Id, input, cancellationToken);
-
-        await auditTrail.WriteAsync(new AuditTrailEvent(
-            ReadActorId(User),
-            isActive ? "Admin.Environment.Activate" : "Admin.Environment.Disable",
-            "ServiceEnvironmentConfig",
-            $"{service.Code}:{environment.Code}",
-            true,
-            isActive ? "Activated" : "Disabled",
-            ServiceCode: service.Code,
-            Metadata: new Dictionary<string, object?>
-            {
-                ["environmentCode"] = environment.Code,
-                ["active"] = isActive
-            }), cancellationToken);
-
-        TempData["OperationsSuccess"] = isActive ? "EnvironmentActivated" : "EnvironmentDisabled";
-        return RedirectToIndex(culture);
-    }
-
-    private static ServiceInput BuildServiceInput(
-        MetadataCatalogSnapshot snapshot,
-        CatalogService service,
-        Guid targetEnvironmentId,
-        bool targetActive)
-    {
-        var environmentCodes = snapshot.Environments.ToDictionary(item => item.Id, item => item.Code);
-        return new ServiceInput(
-            service.Code,
-            service.NameAr,
-            service.NameEn,
-            service.DescriptionAr,
-            service.DescriptionEn,
-            service.Active,
-            service.EnvironmentConfigs.OrderBy(item => environmentCodes[item.EnvironmentId], StringComparer.OrdinalIgnoreCase).Select(config =>
-                new ServiceEnvironmentInput(
-                    environmentCodes[config.EnvironmentId],
-                    config.BaseUrl,
-                    config.RelativePath,
-                    config.HttpMethod,
-                    config.ContentType,
-                    config.NonSecretHeadersJson,
-                    config.TimeoutSeconds,
-                    config.TlsPolicy,
-                    config.ValidateServerCertificate,
-                    config.ProxyUrl,
-                    config.HealthPath,
-                    config.HealthMethod,
-                    config.EnvironmentId == targetEnvironmentId ? targetActive : config.Active,
-                    config.AuthProfileId)).ToList(),
-            service.Fields.OrderBy(item => item.DisplayOrder).Select(field => new ServiceFieldInput(
-                field.Key,
-                field.LabelAr,
-                field.LabelEn,
-                field.FieldType,
-                field.Required,
-                field.Regex,
-                field.Minimum,
-                field.Maximum,
-                field.MinLength,
-                field.MaxLength,
-                field.OptionsJson,
-                field.DisplayOrder,
-                field.Sensitive,
-                field.Masking)).ToList(),
-            service.ResultMappings.OrderBy(item => item.DisplayOrder).Select(mapping => new ResultMappingInput(
-                mapping.SourcePath,
-                mapping.LabelAr,
-                mapping.LabelEn,
-                mapping.ResultType,
-                mapping.Formatter,
-                mapping.Sensitive,
-                mapping.DisplayOrder)).ToList());
     }
 
     private void SetDiagnostic(OperationalDiagnostic result)
@@ -232,7 +144,4 @@ public sealed class OperationsController(
 
     private static string NormalizeCulture(string? culture) =>
         string.Equals(culture, "ar-KW", StringComparison.OrdinalIgnoreCase) ? "ar-KW" : "en";
-
-    private static Guid? ReadActorId(ClaimsPrincipal principal) =>
-        Guid.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;
 }

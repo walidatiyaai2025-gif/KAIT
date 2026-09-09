@@ -8,9 +8,11 @@ This evidence describes the cloud-actionable P12 implementation on the canonical
 
 P11 closure reconciliation merged normally through PR #68 at exact `main` SHA `a81f5d196aa3e35e125735cde2a62e90c7d75c16`. That transition main completed **30/30 push workflows SUCCESS**, with failure=0, queued=0 and in-progress=0 after completion.
 
-The pre-existing P12 branch was not replaced. Historical branch head `5444317a3bf882bd7393c4f1baf163f0064d56af` was recovered by a non-force merge that preserved its four legitimate P12 commits while taking the exact P11-closed main as ancestry and integrated baseline. Recovered head `199c9044d21451ccfe4f880c15b2dfe175371c4f` was behind main by zero and retained only the legitimate P12 Operations contracts/service plus additive dependency-injection registrations before the current convergence work.
+The pre-existing P12 branch was not replaced. Historical branch head `5444317a3bf882bd7393c4f1baf163f0064d56af` was recovered by a non-force merge that preserved its four legitimate P12 commits while taking the exact P11-closed main as ancestry and integrated baseline. Recovered head `199c9044d21451ccfe4f880c15b2dfe175371c4f` was behind main by zero and retained only the legitimate P12 Operations contracts/service plus additive dependency-injection registrations before convergence.
 
 PR #69 is the single canonical P12 integration line. P13-P17 remain locked.
+
+Historical candidate `08680d5388cf1dfb3a5ddeabc6ac247f2e65ef5e` completed **35/35 pull-request workflows SUCCESS**, including both P12 jobs and candidate-bound static/runtime artifacts. That head is **superseded, not closure evidence**, because post-gate semantic review found that its Activate/Disable controller reused `IMetadataCatalogService.UpdateServiceAsync`. For an already-used service, the canonical metadata service deliberately creates a new definition revision; therefore an operational toggle could change the current `ServiceId` and destabilize exact AuthProfile/SecretRef scope even though the then-current tests were green. The acceptance gap is being closed rather than waived.
 
 ## Operational health architecture
 
@@ -31,25 +33,32 @@ P12 extends the existing metadata/authentication/secret/audit architecture rathe
 
 Health diagnostics never resolve or attach secret material to endpoint reachability probes. Integration health uses only configured `GET`/`HEAD`, preserves the configured BaseUrl scheme/host/port boundary and adds only a correlation identifier. Authentication testing remains a separate protected action through the canonical AuthProfile/SecretRef boundary.
 
-## Exact Service + Environment isolation
+## Exact Service + Environment operational-state isolation
 
-Operational targets are fail-closed:
+Operational state mutation is intentionally separated from metadata definition versioning through `IAdminOperationalStateService` / `AdminOperationalStateService`.
 
-- empty, unknown or duplicate Service/Environment identifiers are rejected;
-- the exact Service must be current;
-- the exact Environment must exist;
-- the exact ServiceEnvironmentConfig binding must exist once;
-- service-level `Services.Manage` authorization is required for integration diagnostics and operational state mutation;
-- authentication diagnostics additionally require `ServiceSecrets.Manage` and the exact configured AuthProfileId;
-- UAT and Production are changed independently; activating/disabling one binding does not rewrite another binding;
-- an inactive Service or global Environment cannot be implicitly reactivated by an environment-binding action;
-- no Production-to-UAT fallback is introduced.
+The state command:
+
+- accepts only one exact current ServiceId + EnvironmentId binding;
+- enforces exact service-level `Services.Manage` authorization in addition to the MVC global policy;
+- rejects empty, unknown or mismatched target identifiers;
+- rejects activation when the parent Service or global Environment is inactive;
+- updates only `ServiceEnvironmentConfig.Active` on the exact existing row;
+- does not call metadata revision APIs;
+- does not change ServiceId, definition version, AuthProfileId, SecretRef ownership, endpoint metadata or sibling UAT/Production configuration;
+- writes the state change and its sanitized P11 audit event within the same database transaction;
+- rolls back the state mutation if auditing fails.
+
+A dedicated Windows LocalDB executable acceptance uses an already-used synthetic service (`FirstUsedAtUtc` populated) specifically to exercise the metadata-revision boundary. It asserts that disable and activate retain the exact ServiceId, metadata version and configuration row identity; UAT toggles leave Production state/endpoint/timeout/diagnostic status unchanged; and unauthorized, forged-environment and inactive-parent paths fail closed.
+
+No Production-to-UAT fallback is introduced.
 
 ## Reuse of canonical administration boundaries
 
 P12 deliberately reuses closed-phase administration instead of duplicating it:
 
-- `/metadata` remains the canonical Edit surface for Service + Environment endpoint, timeout, TLS, certificate validation, proxy, health, active state and AuthProfile metadata;
+- `/metadata` remains the canonical Edit surface for Service + Environment endpoint, timeout, TLS, certificate validation, proxy, health and AuthProfile metadata;
+- operational Activate/Disable no longer uses metadata-definition revisioning and is handled by the dedicated P12 state command;
 - `/auth-profiles` remains the canonical write-only secret administration and masked display surface;
 - canonical authentication testing remains anti-forgery protected and permission protected;
 - canonical secret rotation remains the P06 atomic `stage -> activate -> discard-on-failure` implementation, preserving current valid material on failed rotation and preventing plaintext redisplay.
@@ -98,7 +107,8 @@ The job:
 - checks out/asserts the exact candidate SHA;
 - restores and builds the full solution under the pinned SDK;
 - executes `scripts/verify_p12_operations_ui.py`;
-- verifies server-side authorization, exact-target/IDOR rejection contracts, anti-forgery coverage, exact-environment state mutation, canonical authentication/rotation reuse, bilingual RTL/LTR/responsive UI and no secret-bearing view fields;
+- verifies server-side authorization, exact-target/IDOR rejection contracts, anti-forgery coverage, the dedicated no-revision operational-state boundary, canonical authentication/rotation reuse, bilingual RTL/LTR/responsive UI and no secret-bearing view fields;
+- verifies source-level presence of executable already-used-service identity and UAT/Production isolation acceptance;
 - preserves execution-plan governance;
 - rejects forbidden credential/personal-data evidence patterns;
 - emits a candidate-bound manifest and evidence artifact.
@@ -108,9 +118,11 @@ The job:
 The job:
 
 - checks out/asserts the exact candidate SHA;
-- builds the full solution;
+- builds the full solution and the dedicated `GSIP.P12OperationsStateChecks` executable with warnings-as-errors;
 - starts SQL Server LocalDB;
-- creates only synthetic setup/users in an isolated database;
+- executes the already-used-service operational-state identity/isolation acceptance in a unique synthetic database;
+- emits candidate-bound operational-state evidence only after the executable PASS marker is observed;
+- creates only synthetic setup/users for the browser database;
 - starts the real GSIP web runtime in the dedicated regression environment;
 - verifies unauthenticated challenge;
 - verifies authenticated Read Only denial without `Diagnostics.Run`;
@@ -120,9 +132,9 @@ The job:
 - proves forged Service + Environment diagnostic/state targets return rejection;
 - captures desktop/narrow Chrome or Edge screenshots;
 - rejects bearer/API-key/synthetic-password/12-digit-personal-data evidence patterns;
-- writes an exact-head synthetic-only evidence manifest.
+- uploads the state-isolation and browser/runtime evidence together.
 
-The workflow presence is not itself PASS. Only terminal SUCCESS results on the exact final PR head can be used as P12 acceptance evidence.
+The workflow presence is not itself PASS. Only terminal SUCCESS results on the exact final PR head can be used as P12 acceptance evidence. The prior `08680d5…` successful wave is retained as historical evidence only and cannot satisfy the final gate after this repair.
 
 ## External / owner-last truth
 
@@ -134,7 +146,7 @@ Any operational validation that genuinely requires the owner deployment remains 
 
 This document does **not** close P12. Closure requires:
 
-1. exact final PR-head full workflow matrix terminal green, including the dedicated P12 workflow;
+1. exact final PR-head full workflow matrix terminal green, including the strengthened dedicated P12 workflow;
 2. normal integration of the canonical PR;
 3. exact-new-main regression verification terminal green;
 4. reconciliation of `CURRENT_PHASE.md`, `PROJECT_CONTROL.md` and `docs/TASK_LEDGER.md` from the exact integrated evidence;

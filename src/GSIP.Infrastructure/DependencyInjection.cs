@@ -115,6 +115,7 @@ public static class DependencyInjection
         services.AddScoped<IAuditTrailWriter>(serviceProvider => serviceProvider.GetRequiredService<AuditTrailWriter>());
         services.AddScoped<IAuditTrailService, AuditTrailService>();
         services.AddScoped<IAdminOperationsService, AdminOperationsService>();
+        services.AddScoped<IAdminOperationalStateService, AdminOperationalStateService>();
         services.AddScoped<IAuthenticationAuditWriter, AuthenticationAuditWriter>();
         services.AddScoped<IAccountAuthenticationService, AccountAuthenticationService>();
         services.AddHostedService<IdentityDatabaseMigrationService>();
