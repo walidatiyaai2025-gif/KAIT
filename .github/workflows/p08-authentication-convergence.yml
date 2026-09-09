@@ -1,0 +1,64 @@
+name: P08 Authentication Convergence
+
+on:
+  push:
+    branches:
+      - 'worker/p08-moj-authentication-convergence'
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  authentication-convergence:
+    runs-on: ubuntu-latest
+    env:
+      CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+      - name: Assert exact candidate SHA
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Restore
+        shell: bash
+        run: |
+          dotnet restore GSIP.sln
+          dotnet restore tests/GSIP.P08AuthenticationChecks/GSIP.P08AuthenticationChecks.csproj
+          dotnet restore tests/GSIP.P08MojAuthRuntimeChecks/GSIP.P08MojAuthRuntimeChecks.csproj
+          dotnet restore tests/GSIP.P08AuthIsolationChecks/GSIP.P08AuthIsolationChecks.csproj
+      - name: Build Release
+        shell: bash
+        run: |
+          dotnet build GSIP.sln -c Release --no-restore
+          dotnet build tests/GSIP.P08AuthenticationChecks/GSIP.P08AuthenticationChecks.csproj -c Release --no-restore
+          dotnet build tests/GSIP.P08MojAuthRuntimeChecks/GSIP.P08MojAuthRuntimeChecks.csproj -c Release --no-restore
+          dotnet build tests/GSIP.P08AuthIsolationChecks/GSIP.P08AuthIsolationChecks.csproj -c Release --no-restore
+      - name: Run P08 contract and administration checks
+        shell: bash
+        run: |
+          dotnet run --project tests/GSIP.P08AuthenticationChecks/GSIP.P08AuthenticationChecks.csproj -c Release --no-build
+          dotnet run --project tests/GSIP.P08MojAuthRuntimeChecks/GSIP.P08MojAuthRuntimeChecks.csproj -c Release --no-build
+          dotnet run --project tests/GSIP.P08AuthIsolationChecks/GSIP.P08AuthIsolationChecks.csproj -c Release --no-build
+      - name: Run independent security acceptance when integrated
+        shell: bash
+        run: |
+          if [ -f tests/GSIP.P08SecurityAcceptanceChecks/GSIP.P08SecurityAcceptanceChecks.csproj ]; then
+            dotnet restore tests/GSIP.P08SecurityAcceptanceChecks/GSIP.P08SecurityAcceptanceChecks.csproj
+            dotnet build tests/GSIP.P08SecurityAcceptanceChecks/GSIP.P08SecurityAcceptanceChecks.csproj -c Release --no-restore
+            dotnet run --project tests/GSIP.P08SecurityAcceptanceChecks/GSIP.P08SecurityAcceptanceChecks.csproj -c Release --no-build
+          fi
+      - name: Validate governance
+        run: python scripts/validate_execution_plan.py
+      - name: Reject plaintext evidence
+        shell: bash
+        run: |
+          ! grep -RIE '(SYNTHETIC_P08_ADMIN_PASSWORD|SYNTHETIC_P08_PASSWORD_9c4d|SYNTHETIC_P08_API_KEY_31f7)' docs/evidence 2>/dev/null || exit 1
