@@ -3,25 +3,71 @@
   "apiId": 134,
   "serviceName": "Procuration Status Service",
   "officialSource": "https://developer.api.cait.gov.kw/api/134",
-  "captureStatus": "DEFERRED_EXTERNAL",
+  "captureStatus": "PROVEN_UAT_CONTRACT",
   "evidence": {
-    "classification": "OFFICIAL_CAIT_SPECIFICATION_NOT_RETRIEVABLE_WITHOUT_SIGN_IN",
-    "automatedPortalSpecificationRetrieval": "DEFERRED_EXTERNAL",
-    "missingDependency": "Authenticated CAIT Developer Portal operation specification/OpenAPI for this exact API.",
-    "retrievalDiscipline": "No method, path, field, validation, auth, response, error, or read-only property is inferred from service name or non-authoritative hints."
+    "classification": "OWNER_SUPPLIED_AUTHENTICATED_OFFICIAL_CAIT_SWAGGER",
+    "environmentScope": "UAT_ONLY",
+    "uatTarget":"MOCK_TARGET",
+    "notes": [
+      "Official CAIT states the UAT try-out is connected to a mock target using producer-supplied sample responses; this proves structural integration behavior only, not live entity-backend data.",
+      "The Swagger authorization dialog exposes ApiKeyAuth in header x-api-key and BearerAuth; Bearer is explicitly required by the service text. Exact operation-level ApiKeyAuth applicability remains OWNER_LAST_DEFERRED_EXTERNAL.",
+      "The authentication token lifetime is explicitly documented as 6 hours.",
+      "Production service-specific URL/auth details remain DEFERRED_EXTERNAL."
+    ]
   },
-  "contractItems": {
-    "uatServerBaseUrl":{"status":"DEFERRED_EXTERNAL","value":null},
-    "productionServerBaseUrl":{"status":"DEFERRED_EXTERNAL","value":null},
-    "httpMethod":{"status":"DEFERRED_EXTERNAL","value":null},
-    "relativePath":{"status":"DEFERRED_EXTERNAL","value":null},
-    "requestContentType":{"status":"DEFERRED_EXTERNAL","value":null},
-    "requestFields":{"status":"DEFERRED_EXTERNAL","fields":[]},
-    "operationAuthentication":{"status":"DEFERRED_EXTERNAL","requirements":[]},
-    "successStatusesAndSchema":{"status":"DEFERRED_EXTERNAL","responses":[]},
-    "errorStatusesAndSchemas":{"status":"DEFERRED_EXTERNAL","responses":[]},
-    "responseFields":{"status":"DEFERRED_EXTERNAL","fields":[]},
-    "resultMappingCandidates":{"status":"DEFERRED_EXTERNAL","fields":[]},
-    "readOnlyNonDestructive":{"status":"DEFERRED_EXTERNAL","value":null}
-  }
+  "environments": {
+    "uat":{"status":"PROVEN","baseUrl":"https://moj-uat.api-non-prod.cait.gov.kw/MOJProcuration/V1/api","targetType":"MOCK"},
+    "production":{"status":"DEFERRED_EXTERNAL","gatewayPrefix":"https://moj.api.cait.gov.kw","baseUrl":null}
+  },
+  "authorizationSchemes":[
+    {"scheme":"ApiKeyAuth","type":"apiKey","headerName":"x-api-key","status":"PROVEN_SERVICE_SCHEME_OPERATION_APPLICABILITY_DEFERRED"},
+    {"scheme":"BearerAuth","type":"http-bearer","status":"PROVEN_SERVICE_SCHEME"}
+  ],
+  "tokenContract": {
+    "method":"POST",
+    "relativePath":"/Authenticate/Token",
+    "requestContentType":"application/json",
+    "requestFields":[
+      {"name":"UserName","type":"string","required":null,"requiredStatus":"NOT_EXPLICIT_IN_SUPPLIED_SCHEMA","sensitive":true,"canonicalSecretName":"username"},
+      {"name":"Password","type":"string","required":null,"requiredStatus":"NOT_EXPLICIT_IN_SUPPLIED_SCHEMA","sensitive":true,"canonicalSecretName":"password"},
+      {"name":"Geha","type":"string","required":null,"requiredStatus":"NOT_EXPLICIT_IN_SUPPLIED_SCHEMA","sensitive":true,"canonicalSecretName":"geha"}
+    ],
+    "tokenResponsePath":"token",
+    "tokenLifetime":{"status":"PROVEN","seconds":21600},
+    "responses":[
+      {"statusCode":200,"schema":{"fields":[{"name":"token","type":"string"}]}},
+      {"statusCode":401,"schema":{"fields":[{"name":"Status","type":"string"},{"name":"Message","type":"string"}]}}
+    ]
+  },
+  "operation": {
+    "name":"Get Procuration Status",
+    "status":"PROVEN_UAT_CONTRACT",
+    "method":"POST",
+    "relativePath":"/Procuration/ProcurationStatus",
+    "requestContentType":"application/json",
+    "authentication":[
+      {"scheme":"Bearer","headerName":"Authorization","status":"PROVEN_UAT_CONTRACT"},
+      {"scheme":"ApiKeyHeader","headerName":"x-api-key","status":"OWNER_LAST_DEFERRED_EXTERNAL_OPERATION_APPLICABILITY"}
+    ],
+    "requestFields":[
+      {"name":"CivilClient","type":"string","required":null,"requiredStatus":"NOT_EXPLICIT_IN_SUPPLIED_SCHEMA","sensitive":true},
+      {"name":"CivilAgent","type":"string","required":null,"requiredStatus":"NOT_EXPLICIT_IN_SUPPLIED_SCHEMA","sensitive":true},
+      {"name":"year","type":"string","required":null,"requiredStatus":"NOT_EXPLICIT_IN_SUPPLIED_SCHEMA","sensitive":false},
+      {"name":"Number","type":"string","required":null,"requiredStatus":"NOT_EXPLICIT_IN_SUPPLIED_SCHEMA","sensitive":true}
+    ],
+    "responses":[
+      {"statusCode":200,"schema":{"fields":[{"path":"Status","type":"string"},{"path":"Message","type":"string"},{"path":"Data.type","type":"string"},{"path":"Data.Status","type":"string"}]}},
+      {"statusCode":400,"schemaRef":"StatusMessage"},
+      {"statusCode":401,"schemaRef":"StatusMessage"},
+      {"statusCode":404,"schemaRef":"StatusMessage"}
+    ],
+    "responseFields":[
+      {"path":"Status","type":"string","sensitive":false},
+      {"path":"Message","type":"string","sensitive":false},
+      {"path":"Data.type","type":"string","sensitive":false},
+      {"path":"Data.Status","type":"string","sensitive":false}
+    ],
+    "readOnlyNonDestructive":{"status":"PROVEN_BY_SERVICE_DESCRIPTION","value":true}
+  },
+  "schemas":{"StatusMessage":{"fields":["Status","Message"]}}
 }

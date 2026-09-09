@@ -9,7 +9,7 @@ using GSIP.Domain.Secrets;
 namespace GSIP.Infrastructure.Execution;
 
 /// <summary>
-/// Administration diagnostic for the canonical MOJ TokenEndpoint contract.
+/// Administration diagnostic for the canonical metadata-driven TokenEndpoint contract.
 /// It performs only a fresh token-generation probe, returns no token material,
 /// and validates the exact catalog/AuthProfile binding before secret resolution.
 /// It is not a second service-execution runtime.
@@ -21,9 +21,6 @@ public sealed class MojAuthenticationProbeService(
     IHttpClientFactory httpClientFactory) : IAuthenticationProbeService
 {
     private const string ClientName = "GSIP.Execution";
-    private const string TokenPathMetadataKey = "X-GSIP-TokenEndpointPath";
-    private const string ApiKeySecretName = "x-api-key";
-    private const int MaximumTokenResponseBytes = 64 * 1024;
 
     public async Task TestTokenGenerationAsync(
         Guid serviceId,
@@ -37,110 +34,80 @@ public sealed class MojAuthenticationProbeService(
         try
         {
             var snapshot = await metadataCatalog.GetSnapshotAsync(cancellationToken);
-            var serviceMatches = snapshot.Services
-                .Where(service => service.Id == serviceId && service.IsCurrent && service.Active)
-                .Take(2)
-                .ToArray();
-            if (serviceMatches.Length != 1)
-                throw new AuthenticationProbeRejectedException();
+            var serviceMatches = snapshot.Services.Where(service => service.Id == serviceId && service.IsCurrent && service.Active).Take(2).ToArray();
+            if (serviceMatches.Length != 1) throw new AuthenticationProbeRejectedException();
 
-            var environmentMatches = snapshot.Environments
-                .Where(environment => environment.Id == environmentId && environment.Active)
-                .Take(2)
-                .ToArray();
-            if (environmentMatches.Length != 1)
-                throw new AuthenticationProbeRejectedException();
+            var environmentMatches = snapshot.Environments.Where(environment => environment.Id == environmentId && environment.Active).Take(2).ToArray();
+            if (environmentMatches.Length != 1) throw new AuthenticationProbeRejectedException();
 
             var configMatches = serviceMatches[0].EnvironmentConfigs
-                .Where(config => config.ServiceId == serviceId
-                    && config.EnvironmentId == environmentId
-                    && config.Active
-                    && config.AuthProfileId == authProfileId)
-                .Take(2)
-                .ToArray();
-            if (configMatches.Length != 1)
-                throw new AuthenticationProbeRejectedException();
+                .Where(config => config.ServiceId == serviceId && config.EnvironmentId == environmentId && config.Active && config.AuthProfileId == authProfileId)
+                .Take(2).ToArray();
+            if (configMatches.Length != 1) throw new AuthenticationProbeRejectedException();
 
             var profile = await authProfiles.GetAsync(authProfileId, cancellationToken);
             if (!profile.IsEnabled || profile.Id != authProfileId || profile.AuthType != AuthProfileType.TokenEndpoint)
                 throw new AuthenticationProbeRejectedException();
 
-            var exactBindings = profile.Bindings
-                .Where(binding => binding.ServiceId == serviceId && binding.EnvironmentId == environmentId)
-                .Take(2)
-                .ToArray();
-            if (exactBindings.Length != 1)
-                throw new AuthenticationProbeRejectedException();
-
+            var exactBindings = profile.Bindings.Where(binding => binding.ServiceId == serviceId && binding.EnvironmentId == environmentId).Take(2).ToArray();
+            if (exactBindings.Length != 1) throw new AuthenticationProbeRejectedException();
             var ownsExactScope = profile.OwnerServiceId == serviceId && profile.OwnerEnvironmentId == environmentId;
-            if (!ownsExactScope && !exactBindings[0].IsShared)
-                throw new AuthenticationProbeRejectedException();
+            if (!ownsExactScope && !exactBindings[0].IsShared) throw new AuthenticationProbeRejectedException();
+
+            TokenEndpointContractMetadata contract;
+            try { contract = TokenEndpointContractMetadata.Parse(configMatches[0].NonSecretHeadersJson); }
+            catch (InvalidOperationException) { throw new AuthenticationProbeRejectedException(); }
 
             var usernameSecret = SingleSecret(profile, "username");
             var passwordSecret = SingleSecret(profile, "password");
-            var apiKeySecret = OptionalSingleSecret(profile, ApiKeySecretName);
-            if (profile.Secrets.Count != (apiKeySecret is null ? 2 : 3))
-                throw new AuthenticationProbeRejectedException();
+            var gehaSecret = contract.GehaField is null ? null : SingleSecret(profile, TokenEndpointContractMetadata.GehaSecretName);
+            var apiKeySecret = OptionalSingleSecret(profile, TokenEndpointContractMetadata.ApiKeySecretName);
+            if (contract.ApiKeyRequired && apiKeySecret is null) throw new AuthenticationProbeRejectedException();
+            var expectedCount = 2 + (gehaSecret is null ? 0 : 1) + (apiKeySecret is null ? 0 : 1);
+            if (profile.Secrets.Count != expectedCount) throw new AuthenticationProbeRejectedException();
 
             var config = configMatches[0];
-            var tokenPath = ResolveTokenPath(config.NonSecretHeadersJson);
             var client = httpClientFactory.CreateClient(ClientName);
 
             await secretResolver.UseSecretAsync(
-                serviceId,
-                environmentId,
-                profile.Id,
-                usernameSecret.Name,
-                usernameSecret.Reference,
+                serviceId, environmentId, profile.Id, usernameSecret.Name, usernameSecret.Reference,
                 async (usernameMaterial, usernameToken) =>
                 {
                     var username = DecodeSecret(usernameMaterial);
                     return await secretResolver.UseSecretAsync(
-                        serviceId,
-                        environmentId,
-                        profile.Id,
-                        passwordSecret.Name,
-                        passwordSecret.Reference,
+                        serviceId, environmentId, profile.Id, passwordSecret.Name, passwordSecret.Reference,
                         async (passwordMaterial, passwordToken) =>
                         {
                             var password = DecodeSecret(passwordMaterial);
-                            if (apiKeySecret is null)
-                            {
-                                await ProbeTokenEndpointAsync(
-                                    client,
-                                    config.BaseUrl,
-                                    tokenPath,
-                                    username,
-                                    password,
-                                    null,
-                                    passwordToken);
-                                return true;
-                            }
+                            if (gehaSecret is null)
+                                return await ResolveApiKeyAndProbeAsync(username, password, null, passwordToken);
 
                             return await secretResolver.UseSecretAsync(
-                                serviceId,
-                                environmentId,
-                                profile.Id,
-                                apiKeySecret.Name,
-                                apiKeySecret.Reference,
-                                async (apiKeyMaterial, apiKeyToken) =>
+                                serviceId, environmentId, profile.Id, gehaSecret.Name, gehaSecret.Reference,
+                                async (gehaMaterial, gehaToken) =>
                                 {
-                                    var apiKey = DecodeSecret(apiKeyMaterial);
-                                    await ProbeTokenEndpointAsync(
-                                        client,
-                                        config.BaseUrl,
-                                        tokenPath,
-                                        username,
-                                        password,
-                                        apiKey,
-                                        apiKeyToken);
-                                    return true;
-                                },
-                                passwordToken);
-                        },
-                        usernameToken);
-                },
-                cancellationToken);
+                                    var geha = DecodeSecret(gehaMaterial);
+                                    return await ResolveApiKeyAndProbeAsync(username, password, geha, gehaToken);
+                                }, passwordToken);
+                        }, usernameToken);
+                }, cancellationToken);
+
+            async ValueTask<bool> ResolveApiKeyAndProbeAsync(string username, string password, string? geha, CancellationToken token)
+            {
+                if (apiKeySecret is null)
+                {
+                    await ProbeTokenEndpointAsync(client, config.BaseUrl, contract, username, password, geha, null, token);
+                    return true;
+                }
+                return await secretResolver.UseSecretAsync(
+                    serviceId, environmentId, profile.Id, apiKeySecret.Name, apiKeySecret.Reference,
+                    async (apiMaterial, apiToken) =>
+                    {
+                        var apiKey = DecodeSecret(apiMaterial);
+                        await ProbeTokenEndpointAsync(client, config.BaseUrl, contract, username, password, geha, apiKey, apiToken);
+                        return true;
+                    }, token);
+            }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -150,13 +117,7 @@ public sealed class MojAuthenticationProbeService(
         {
             throw;
         }
-        catch (Exception exception) when (exception is
-            SecretReferenceRejectedException or
-            SecretProtectionException or
-            KeyNotFoundException or
-            InvalidOperationException or
-            ArgumentException or
-            HttpRequestException)
+        catch (Exception exception) when (exception is SecretReferenceRejectedException or SecretProtectionException or KeyNotFoundException or InvalidOperationException or ArgumentException or HttpRequestException)
         {
             throw new AuthenticationProbeRejectedException();
         }
@@ -164,55 +125,16 @@ public sealed class MojAuthenticationProbeService(
 
     private static AuthProfileSecretDescriptor SingleSecret(AuthProfileDescriptor profile, string name)
     {
-        var matches = profile.Secrets
-            .Where(secret => string.Equals(secret.Name, name, StringComparison.OrdinalIgnoreCase))
-            .Take(2)
-            .ToArray();
-        if (matches.Length != 1 || matches[0].Generation < 1)
-            throw new AuthenticationProbeRejectedException();
+        var matches = profile.Secrets.Where(secret => string.Equals(secret.Name, name, StringComparison.OrdinalIgnoreCase)).Take(2).ToArray();
+        if (matches.Length != 1 || matches[0].Generation < 1) throw new AuthenticationProbeRejectedException();
         return matches[0];
     }
 
     private static AuthProfileSecretDescriptor? OptionalSingleSecret(AuthProfileDescriptor profile, string name)
     {
-        var matches = profile.Secrets
-            .Where(secret => string.Equals(secret.Name, name, StringComparison.OrdinalIgnoreCase))
-            .Take(2)
-            .ToArray();
-        if (matches.Length > 1 || (matches.Length == 1 && matches[0].Generation < 1))
-            throw new AuthenticationProbeRejectedException();
+        var matches = profile.Secrets.Where(secret => string.Equals(secret.Name, name, StringComparison.OrdinalIgnoreCase)).Take(2).ToArray();
+        if (matches.Length > 1 || (matches.Length == 1 && matches[0].Generation < 1)) throw new AuthenticationProbeRejectedException();
         return matches.SingleOrDefault();
-    }
-
-    private static string ResolveTokenPath(string? metadataJson)
-    {
-        if (string.IsNullOrWhiteSpace(metadataJson))
-            throw new AuthenticationProbeRejectedException();
-
-        try
-        {
-            using var document = JsonDocument.Parse(metadataJson);
-            if (document.RootElement.ValueKind != JsonValueKind.Object
-                || !document.RootElement.TryGetProperty(TokenPathMetadataKey, out var value)
-                || value.ValueKind != JsonValueKind.String)
-                throw new AuthenticationProbeRejectedException();
-
-            var path = value.GetString()?.Trim();
-            if (string.IsNullOrWhiteSpace(path)
-                || !path.StartsWith("/", StringComparison.Ordinal)
-                || path.StartsWith("//", StringComparison.Ordinal)
-                || path.Contains('\\')
-                || path.Contains('?')
-                || path.Contains('#')
-                || path.Any(char.IsControl))
-                throw new AuthenticationProbeRejectedException();
-
-            return path;
-        }
-        catch (JsonException)
-        {
-            throw new AuthenticationProbeRejectedException();
-        }
     }
 
     private static string DecodeSecret(ReadOnlyMemory<byte> material)
@@ -226,70 +148,57 @@ public sealed class MojAuthenticationProbeService(
     private static async Task ProbeTokenEndpointAsync(
         HttpClient client,
         string baseUrl,
-        string tokenPath,
+        TokenEndpointContractMetadata contract,
         string username,
         string password,
+        string? geha,
         string? apiKey,
         CancellationToken cancellationToken)
     {
-        if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var baseUri)
-            || baseUri.Scheme is not ("http" or "https"))
+        if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var baseUri) || baseUri.Scheme is not ("http" or "https"))
+            throw new AuthenticationProbeRejectedException();
+        var relative = contract.Path.StartsWith('/') ? contract.Path[1..] : contract.Path;
+        if (!Uri.TryCreate(baseUri.ToString().TrimEnd('/') + "/" + relative, UriKind.Absolute, out var endpoint))
             throw new AuthenticationProbeRejectedException();
 
-        var relativeTokenPath = tokenPath.StartsWith('/') ? tokenPath[1..] : tokenPath;
-        if (!Uri.TryCreate(baseUri.ToString().TrimEnd('/') + "/" + relativeTokenPath, UriKind.Absolute, out var endpoint))
-            throw new AuthenticationProbeRejectedException();
+        HttpContent content;
+        try { content = contract.BuildRequestContent(username, password, geha); }
+        catch (InvalidOperationException) { throw new AuthenticationProbeRejectedException(); }
 
-        using var request = new HttpRequestMessage(HttpMethod.Post, endpoint)
+        using (content)
+        using (var request = new HttpRequestMessage(HttpMethod.Post, endpoint) { Content = content })
         {
-            Content = new FormUrlEncodedContent(
-            [
-                new KeyValuePair<string, string>("username", username),
-                new KeyValuePair<string, string>("password", password)
-            ])
-        };
-        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        if (apiKey is not null && !request.Headers.TryAddWithoutValidation(ApiKeySecretName, apiKey))
-            throw new AuthenticationProbeRejectedException();
-
-        HttpResponseMessage response;
-        try
-        {
-            response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-        }
-        finally
-        {
-            if (apiKey is not null)
-                request.Headers.Remove(ApiKeySecretName);
-        }
-
-        using (response)
-        {
-            if (!response.IsSuccessStatusCode)
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            if (apiKey is not null && !request.Headers.TryAddWithoutValidation(TokenEndpointContractMetadata.ApiKeySecretName, apiKey))
                 throw new AuthenticationProbeRejectedException();
 
-            var body = await response.Content.ReadAsByteArrayAsync(cancellationToken);
-            if (body.Length == 0 || body.Length > MaximumTokenResponseBytes)
-                throw new AuthenticationProbeRejectedException();
-
+            HttpResponseMessage response;
             try
             {
-                using var document = JsonDocument.Parse(body);
-                if (document.RootElement.ValueKind != JsonValueKind.Object
-                    || !document.RootElement.TryGetProperty("data", out var tokenElement)
-                    || tokenElement.ValueKind != JsonValueKind.String)
-                    throw new AuthenticationProbeRejectedException();
-
-                var token = tokenElement.GetString()?.Trim();
-                if (string.IsNullOrWhiteSpace(token)
-                    || token.Length > 16 * 1024
-                    || token.Any(character => character is '\r' or '\n' or '\0')
-                    || IsExplicitlyExpiredJwt(token))
-                    throw new AuthenticationProbeRejectedException();
+                response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             }
-            catch (JsonException)
+            finally
             {
-                throw new AuthenticationProbeRejectedException();
+                if (apiKey is not null) request.Headers.Remove(TokenEndpointContractMetadata.ApiKeySecretName);
+            }
+
+            using (response)
+            {
+                if (!response.IsSuccessStatusCode) throw new AuthenticationProbeRejectedException();
+                var body = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+                if (body.Length == 0 || body.Length > TokenEndpointContractMetadata.MaximumResponseBytes)
+                    throw new AuthenticationProbeRejectedException();
+                try
+                {
+                    using var document = JsonDocument.Parse(body);
+                    if (document.RootElement.ValueKind != JsonValueKind.Object) throw new AuthenticationProbeRejectedException();
+                    var token = contract.ResolveToken(document.RootElement);
+                    if (IsExplicitlyExpiredJwt(token)) throw new AuthenticationProbeRejectedException();
+                }
+                catch (Exception exception) when (exception is JsonException or InvalidOperationException)
+                {
+                    throw new AuthenticationProbeRejectedException();
+                }
             }
         }
     }
@@ -297,9 +206,7 @@ public sealed class MojAuthenticationProbeService(
     private static bool IsExplicitlyExpiredJwt(string token)
     {
         var parts = token.Split('.');
-        if (parts.Length != 3)
-            return false;
-
+        if (parts.Length != 3) return false;
         try
         {
             var payload = parts[1].Replace('-', '+').Replace('_', '/');

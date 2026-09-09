@@ -3,25 +3,66 @@
   "apiId": 132,
   "serviceName": "Is Single Basic Service",
   "officialSource": "https://developer.api.cait.gov.kw/api/132",
-  "captureStatus": "DEFERRED_EXTERNAL",
+  "captureStatus": "PROVEN_UAT_CONTRACT",
   "evidence": {
-    "classification": "OFFICIAL_CAIT_SPECIFICATION_NOT_RETRIEVABLE_WITHOUT_SIGN_IN",
-    "automatedPortalSpecificationRetrieval": "DEFERRED_EXTERNAL",
-    "missingDependency": "Authenticated CAIT Developer Portal operation specification/OpenAPI for this exact API.",
-    "retrievalDiscipline": "No method, path, field, validation, auth, response, error, or read-only property is inferred from service name or non-authoritative hints."
+    "classification": "OWNER_SUPPLIED_AUTHENTICATED_OFFICIAL_CAIT_SWAGGER",
+    "environmentScope": "UAT_ONLY",
+    "notes": [
+      "The official service description states that the service checks whether a person is single/unmarried for a specified civil ID.",
+      "The page uses the common Marriage Token API before the protected operation and requires Bearer on the target operation.",
+      "The exact API-key applicability for this operation is not promoted from another Marriage API; the runtime can support an independently configured x-api-key when required.",
+      "Production operation details remain DEFERRED_EXTERNAL."
+    ]
   },
-  "contractItems": {
-    "uatServerBaseUrl":{"status":"DEFERRED_EXTERNAL","value":null},
-    "productionServerBaseUrl":{"status":"DEFERRED_EXTERNAL","value":null},
-    "httpMethod":{"status":"DEFERRED_EXTERNAL","value":null},
-    "relativePath":{"status":"DEFERRED_EXTERNAL","value":null},
-    "requestContentType":{"status":"DEFERRED_EXTERNAL","value":null},
-    "requestFields":{"status":"DEFERRED_EXTERNAL","fields":[]},
-    "operationAuthentication":{"status":"DEFERRED_EXTERNAL","requirements":[]},
-    "successStatusesAndSchema":{"status":"DEFERRED_EXTERNAL","responses":[]},
-    "errorStatusesAndSchemas":{"status":"DEFERRED_EXTERNAL","responses":[]},
-    "responseFields":{"status":"DEFERRED_EXTERNAL","fields":[]},
-    "resultMappingCandidates":{"status":"DEFERRED_EXTERNAL","fields":[]},
+  "environments": {
+    "uat":{"status":"PROVEN","baseUrl":"https://moj-uat.api-non-prod.cait.gov.kw/WSWEB/WS/v1/marriage"},
+    "production":{"status":"DEFERRED_EXTERNAL","gatewayPrefix":"https://moj.api.cait.gov.kw","baseUrl":null}
+  },
+  "tokenContract": {
+    "provenance":"COMMON_OFFICIAL_MARRIAGE_TOKEN_CONTRACT",
+    "method":"POST",
+    "relativePath":"/genToken",
+    "requestContentType":"application/x-www-form-urlencoded",
+    "requestFields":[
+      {"name":"username","type":"string","required":true,"sensitive":true},
+      {"name":"password","type":"string","required":true,"sensitive":true}
+    ],
+    "tokenResponsePath":"data",
+    "responses":[
+      {"statusCode":200,"schema":{"fields":[{"name":"data","type":"string"}]}},
+      {"statusCode":401,"schema":{"fields":[{"name":"error","type":"string"}]}}
+    ],
+    "tokenLifetime":{"status":"DEFERRED_EXTERNAL","seconds":null}
+  },
+  "operation": {
+    "name":"Is Single Basic",
+    "status":"PROVEN_UAT_CONTRACT",
+    "method":"POST",
+    "relativePath":"/isSingleBasicAPIGEE",
+    "requestContentType":"application/x-www-form-urlencoded",
+    "authentication":[{"scheme":"Bearer","headerName":"Authorization","status":"PROVEN_UAT_CONTRACT"}],
+    "requestFields":[{"name":"civilId","type":"string","required":true,"sensitive":true,"documentedValidation":null}],
+    "responses":[
+      {"statusCode":200,"schemaRef":"IsSingleSuccess"},
+      {"statusCode":401,"schemaRef":"SimpleError"},
+      {"statusCode":404,"schemaRef":"ErrorDtoEnvelope"}
+    ],
+    "responseFields":[
+      {"path":"data[0].FENATI_NAME","type":"string","sensitive":true},
+      {"path":"data[0].NATI_NAME","type":"string","sensitive":true},
+      {"path":"data[0].maritalStatus","type":"string","sensitive":true},
+      {"path":"data[0].marriageFree","type":"string","sensitive":true},
+      {"path":"data[0].marriedCouple","type":"boolean","sensitive":true},
+      {"path":"errorDTO.errorCode","type":"string","sensitive":false},
+      {"path":"errorDTO.errorDescription","type":"string","sensitive":false},
+      {"path":"errorDTO.isClean","type":"boolean","sensitive":false},
+      {"path":"errorDTO.civilID","type":"string","sensitive":true}
+    ],
     "readOnlyNonDestructive":{"status":"DEFERRED_EXTERNAL","value":null}
+  },
+  "schemas": {
+    "IsSingleSuccess":{"dataItemFields":["FENATI_NAME","NATI_NAME","maritalStatus","marriageFree","marriedCouple"],"errorDtoFields":["errorCode","errorDescription","isClean","civilID"]},
+    "ErrorDtoEnvelope":{"fields":["data","errorDTO.errorCode","errorDTO.errorDescription","errorDTO.isClean","errorDTO.civilID"]},
+    "SimpleError":{"fields":["error"]}
   }
 }

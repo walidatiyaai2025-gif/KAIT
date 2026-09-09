@@ -28,9 +28,6 @@ public sealed class GenericServiceExecutionEngine(
     ITokenCache? tokenCache = null) : IServiceExecutionEngine
 {
     private const string ClientName = "GSIP.Execution";
-    private const string MojTokenPathMetadataKey = "X-GSIP-TokenEndpointPath";
-    private const string MojApiKeySecretName = "x-api-key";
-    private const int MaximumTokenResponseBytes = 64 * 1024;
     private static readonly HashSet<string> BodylessMethods = new(StringComparer.OrdinalIgnoreCase) { "GET", "HEAD", "OPTIONS" };
     private static readonly HashSet<string> ForbiddenConfiguredHeaders = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -47,8 +44,7 @@ public sealed class GenericServiceExecutionEngine(
 
         var binding = await securityGate.AuthorizeAsync(command.Principal, command.ServiceId, command.EnvironmentId, cancellationToken);
         var snapshot = await metadataCatalog.GetSnapshotAsync(cancellationToken);
-        var service = snapshot.Services.SingleOrDefault(candidate =>
-            candidate.Id == binding.ServiceId && candidate.IsCurrent && candidate.Active)
+        var service = snapshot.Services.SingleOrDefault(candidate => candidate.Id == binding.ServiceId && candidate.IsCurrent && candidate.Active)
             ?? throw new ServiceExecutionRejectedException();
 
         var validatedInputs = ValidateInputs(service.Fields, command.Inputs ?? new Dictionary<string, string?>());
@@ -67,7 +63,6 @@ public sealed class GenericServiceExecutionEngine(
             {
                 throw new ServiceExecutionRejectedException();
             }
-
             if (!profile.IsEnabled || profile.Id != profileId || profile.Version != binding.AuthProfileVersion)
                 throw new ServiceExecutionRejectedException();
         }
@@ -82,7 +77,6 @@ public sealed class GenericServiceExecutionEngine(
         var client = httpClientFactory.CreateClient(ClientName);
 
         await metadataCatalog.MarkServiceUsedAsync(service.Id, cancellationToken);
-
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(TimeSpan.FromSeconds(Math.Clamp(binding.TimeoutSeconds, 1, 300)));
 
@@ -200,7 +194,6 @@ public sealed class GenericServiceExecutionEngine(
             {
                 if (index >= secretHeaders.Count)
                     return client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-
                 var planned = secretHeaders[index];
                 return secretResolver.UseSecretAsync(
                     binding.ServiceId,
@@ -244,11 +237,25 @@ public sealed class GenericServiceExecutionEngine(
         if (tokenCache is null)
             throw new AuthenticationUnavailableException();
 
-        var tokenPath = ResolveTokenEndpointPath(binding.ConfiguredHeadersJson);
+        TokenEndpointContractMetadata contract;
+        try
+        {
+            contract = TokenEndpointContractMetadata.Parse(binding.ConfiguredHeadersJson);
+        }
+        catch (InvalidOperationException)
+        {
+            throw new AuthenticationUnavailableException();
+        }
+
         var usernameSecret = SingleSecret(profile, "username");
         var passwordSecret = SingleSecret(profile, "password");
-        var apiKeySecret = OptionalSingleSecret(profile, MojApiKeySecretName);
-        if (profile.Secrets.Count != (apiKeySecret is null ? 2 : 3))
+        var gehaSecret = contract.GehaField is null ? null : SingleSecret(profile, TokenEndpointContractMetadata.GehaSecretName);
+        var apiKeySecret = OptionalSingleSecret(profile, TokenEndpointContractMetadata.ApiKeySecretName);
+        if (contract.ApiKeyRequired && apiKeySecret is null)
+            throw new AuthenticationUnavailableException();
+
+        var expectedSecretCount = 2 + (gehaSecret is null ? 0 : 1) + (apiKeySecret is null ? 0 : 1);
+        if (profile.Secrets.Count != expectedSecretCount)
             throw new AuthenticationUnavailableException();
 
         return await secretResolver.UseSecretAsync(
@@ -259,7 +266,7 @@ public sealed class GenericServiceExecutionEngine(
             usernameSecret.Reference,
             async (usernameMaterial, usernameToken) =>
             {
-                var username = DecodeFormSecret(usernameMaterial);
+                var username = DecodeCredentialSecret(usernameMaterial);
                 return await secretResolver.UseSecretAsync(
                     binding.ServiceId,
                     binding.EnvironmentId,
@@ -268,81 +275,187 @@ public sealed class GenericServiceExecutionEngine(
                     passwordSecret.Reference,
                     async (passwordMaterial, passwordToken) =>
                     {
-                        var password = DecodeFormSecret(passwordMaterial);
-                        if (apiKeySecret is null)
-                            return await ExecuteTokenEndpointFlowAsync(null, null, passwordToken);
+                        var password = DecodeCredentialSecret(passwordMaterial);
+                        if (gehaSecret is null)
+                            return await ResolveApiKeyAndExecuteAsync(username, password, null, passwordToken);
 
                         return await secretResolver.UseSecretAsync(
                             binding.ServiceId,
                             binding.EnvironmentId,
                             profile.Id,
-                            apiKeySecret.Name,
-                            apiKeySecret.Reference,
-                            async (apiKeyMaterial, apiKeyToken) =>
+                            gehaSecret.Name,
+                            gehaSecret.Reference,
+                            async (gehaMaterial, gehaToken) =>
                             {
-                                var apiKey = DecodeHeaderSecret(apiKeyMaterial);
-                                return await ExecuteTokenEndpointFlowAsync(apiKeySecret, apiKey, apiKeyToken);
+                                var geha = DecodeCredentialSecret(gehaMaterial);
+                                return await ResolveApiKeyAndExecuteAsync(username, password, geha, gehaToken);
                             },
                             passwordToken);
-
-                        async ValueTask<HttpResponseMessage> ExecuteTokenEndpointFlowAsync(
-                            AuthProfileSecretDescriptor? resolvedApiKeySecret,
-                            string? apiKey,
-                            CancellationToken flowToken)
-                        {
-                            var secretGeneration = Math.Max(usernameSecret.Generation, passwordSecret.Generation);
-                            var validityParameters = new Dictionary<string, string?>(StringComparer.Ordinal)
-                            {
-                                ["token-path"] = tokenPath,
-                                ["username-generation"] = usernameSecret.Generation.ToString(CultureInfo.InvariantCulture),
-                                ["password-generation"] = passwordSecret.Generation.ToString(CultureInfo.InvariantCulture)
-                            };
-                            if (resolvedApiKeySecret is not null)
-                            {
-                                secretGeneration = Math.Max(secretGeneration, resolvedApiKeySecret.Generation);
-                                validityParameters["api-key-generation"] = resolvedApiKeySecret.Generation.ToString(CultureInfo.InvariantCulture);
-                                validityParameters["api-key-header"] = MojApiKeySecretName;
-                            }
-
-                            var identity = TokenCacheIdentity.Create(
-                                binding.ServiceId,
-                                binding.EnvironmentId,
-                                profile.Id,
-                                profile.Version,
-                                secretGeneration,
-                                validityParameters: validityParameters);
-
-                            var cached = await tokenCache.GetOrRefreshAsync(
-                                identity,
-                                refreshToken => AcquireMojTokenAsync(client, binding, tokenPath, username, password, apiKey, refreshToken),
-                                flowToken);
-                            var bearer = ValidateBearerToken(cached.AccessToken);
-                            if (apiKey is not null)
-                                ApplySecretHeader(request, SecretHeaderKind.Header, MojApiKeySecretName, apiKey);
-                            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearer);
-                            try
-                            {
-                                return await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, flowToken);
-                            }
-                            finally
-                            {
-                                request.Headers.Authorization = null;
-                                if (apiKey is not null)
-                                    RemoveSecretHeader(request, SecretHeaderKind.Header, MojApiKeySecretName);
-                            }
-                        }
                     },
                     usernameToken);
             },
             cancellationToken);
+
+        async ValueTask<HttpResponseMessage> ResolveApiKeyAndExecuteAsync(
+            string username,
+            string password,
+            string? geha,
+            CancellationToken flowToken)
+        {
+            if (apiKeySecret is null)
+                return await ExecuteTokenEndpointFlowAsync(username, password, geha, null, flowToken);
+
+            return await secretResolver.UseSecretAsync(
+                binding.ServiceId,
+                binding.EnvironmentId,
+                profile.Id,
+                apiKeySecret.Name,
+                apiKeySecret.Reference,
+                async (apiKeyMaterial, apiKeyToken) =>
+                {
+                    var apiKey = DecodeHeaderSecret(apiKeyMaterial);
+                    return await ExecuteTokenEndpointFlowAsync(username, password, geha, apiKey, apiKeyToken);
+                },
+                flowToken);
+        }
+
+        async ValueTask<HttpResponseMessage> ExecuteTokenEndpointFlowAsync(
+            string username,
+            string password,
+            string? geha,
+            string? apiKey,
+            CancellationToken flowToken)
+        {
+            var secretGeneration = Math.Max(usernameSecret.Generation, passwordSecret.Generation);
+            if (gehaSecret is not null) secretGeneration = Math.Max(secretGeneration, gehaSecret.Generation);
+            if (apiKeySecret is not null) secretGeneration = Math.Max(secretGeneration, apiKeySecret.Generation);
+
+            var identity = TokenCacheIdentity.Create(
+                binding.ServiceId,
+                binding.EnvironmentId,
+                profile.Id,
+                profile.Version,
+                secretGeneration,
+                validityParameters: contract.ValidityParameters(
+                    usernameSecret.Generation,
+                    passwordSecret.Generation,
+                    gehaSecret?.Generation,
+                    apiKeySecret?.Generation));
+
+            var cached = await tokenCache.GetOrRefreshAsync(
+                identity,
+                refreshToken => AcquireTokenAsync(client, binding, contract, username, password, geha, apiKey, refreshToken),
+                flowToken);
+            var bearer = ValidateBearerToken(cached.AccessToken);
+            if (apiKey is not null)
+                ApplySecretHeader(request, SecretHeaderKind.Header, TokenEndpointContractMetadata.ApiKeySecretName, apiKey);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearer);
+            try
+            {
+                return await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, flowToken);
+            }
+            finally
+            {
+                request.Headers.Authorization = null;
+                if (apiKey is not null)
+                    RemoveSecretHeader(request, SecretHeaderKind.Header, TokenEndpointContractMetadata.ApiKeySecretName);
+            }
+        }
+    }
+
+    private static async Task<TokenCacheValue> AcquireTokenAsync(
+        HttpClient client,
+        AuthorizedServiceExecutionBinding binding,
+        TokenEndpointContractMetadata contract,
+        string username,
+        string password,
+        string? geha,
+        string? apiKey,
+        CancellationToken cancellationToken)
+    {
+        Uri tokenEndpoint;
+        try
+        {
+            if (!Uri.TryCreate(binding.BaseUrl, UriKind.Absolute, out var baseUri) || baseUri.Scheme is not ("http" or "https"))
+                throw new AuthenticationUnavailableException();
+            var relativeTokenPath = contract.Path.StartsWith('/') ? contract.Path[1..] : contract.Path;
+            if (!Uri.TryCreate(baseUri.ToString().TrimEnd('/') + "/" + relativeTokenPath, UriKind.Absolute, out var resolved) || resolved is null)
+                throw new AuthenticationUnavailableException();
+            tokenEndpoint = resolved;
+        }
+        catch (UriFormatException)
+        {
+            throw new AuthenticationUnavailableException();
+        }
+
+        HttpContent content;
+        try
+        {
+            content = contract.BuildRequestContent(username, password, geha);
+        }
+        catch (InvalidOperationException)
+        {
+            throw new AuthenticationUnavailableException();
+        }
+
+        using (content)
+        using (var tokenRequest = new HttpRequestMessage(HttpMethod.Post, tokenEndpoint) { Content = content })
+        {
+            tokenRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            if (apiKey is not null && !tokenRequest.Headers.TryAddWithoutValidation(TokenEndpointContractMetadata.ApiKeySecretName, apiKey))
+                throw new AuthenticationUnavailableException();
+
+            HttpResponseMessage tokenResponse;
+            try
+            {
+                tokenResponse = await client.SendAsync(tokenRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            }
+            catch (HttpRequestException)
+            {
+                throw new AuthenticationUnavailableException();
+            }
+            finally
+            {
+                if (apiKey is not null)
+                    tokenRequest.Headers.Remove(TokenEndpointContractMetadata.ApiKeySecretName);
+            }
+
+            using (tokenResponse)
+            {
+                if (!tokenResponse.IsSuccessStatusCode)
+                    throw new AuthenticationUnavailableException();
+
+                byte[] body;
+                try
+                {
+                    body = await tokenResponse.Content.ReadAsByteArrayAsync(cancellationToken);
+                }
+                catch (HttpRequestException)
+                {
+                    throw new AuthenticationUnavailableException();
+                }
+                if (body.Length == 0 || body.Length > TokenEndpointContractMetadata.MaximumResponseBytes)
+                    throw new AuthenticationUnavailableException();
+
+                try
+                {
+                    using var document = JsonDocument.Parse(body);
+                    if (document.RootElement.ValueKind != JsonValueKind.Object)
+                        throw new AuthenticationUnavailableException();
+                    var accessToken = contract.ResolveToken(document.RootElement);
+                    return TokenCacheValue.Create(accessToken, contract.ResolveExpiry(accessToken, DateTimeOffset.UtcNow));
+                }
+                catch (Exception exception) when (exception is JsonException or InvalidOperationException)
+                {
+                    throw new AuthenticationUnavailableException();
+                }
+            }
+        }
     }
 
     private static AuthProfileSecretDescriptor SingleSecret(AuthProfileDescriptor profile, string name)
     {
-        var matches = profile.Secrets
-            .Where(secret => string.Equals(secret.Name, name, StringComparison.OrdinalIgnoreCase))
-            .Take(2)
-            .ToArray();
+        var matches = profile.Secrets.Where(secret => string.Equals(secret.Name, name, StringComparison.OrdinalIgnoreCase)).Take(2).ToArray();
         if (matches.Length != 1 || matches[0].Generation < 1)
             throw new AuthenticationUnavailableException();
         return matches[0];
@@ -350,167 +463,13 @@ public sealed class GenericServiceExecutionEngine(
 
     private static AuthProfileSecretDescriptor? OptionalSingleSecret(AuthProfileDescriptor profile, string name)
     {
-        var matches = profile.Secrets
-            .Where(secret => string.Equals(secret.Name, name, StringComparison.OrdinalIgnoreCase))
-            .Take(2)
-            .ToArray();
+        var matches = profile.Secrets.Where(secret => string.Equals(secret.Name, name, StringComparison.OrdinalIgnoreCase)).Take(2).ToArray();
         if (matches.Length > 1 || (matches.Length == 1 && matches[0].Generation < 1))
             throw new AuthenticationUnavailableException();
         return matches.SingleOrDefault();
     }
 
-    private static string ResolveTokenEndpointPath(string? configuredMetadataJson)
-    {
-        if (string.IsNullOrWhiteSpace(configuredMetadataJson))
-            throw new AuthenticationUnavailableException();
-
-        try
-        {
-            using var document = JsonDocument.Parse(configuredMetadataJson);
-            if (document.RootElement.ValueKind != JsonValueKind.Object
-                || !document.RootElement.TryGetProperty(MojTokenPathMetadataKey, out var pathElement)
-                || pathElement.ValueKind != JsonValueKind.String)
-                throw new AuthenticationUnavailableException();
-
-            var path = pathElement.GetString()?.Trim();
-            if (string.IsNullOrWhiteSpace(path)
-                || !path.StartsWith("/", StringComparison.Ordinal)
-                || path.StartsWith("//", StringComparison.Ordinal)
-                || path.Contains('\\')
-                || path.Contains('?')
-                || path.Contains('#')
-                || path.Any(character => char.IsControl(character)))
-                throw new AuthenticationUnavailableException();
-
-            return path;
-        }
-        catch (JsonException)
-        {
-            throw new AuthenticationUnavailableException();
-        }
-    }
-
-    private static async Task<TokenCacheValue> AcquireMojTokenAsync(
-        HttpClient client,
-        AuthorizedServiceExecutionBinding binding,
-        string tokenPath,
-        string username,
-        string password,
-        string? apiKey,
-        CancellationToken cancellationToken)
-    {
-        Uri tokenEndpoint;
-        try
-        {
-            if (!Uri.TryCreate(binding.BaseUrl, UriKind.Absolute, out var baseUri)
-                || baseUri.Scheme is not ("http" or "https"))
-                throw new AuthenticationUnavailableException();
-            var relativeTokenPath = tokenPath.StartsWith('/') ? tokenPath[1..] : tokenPath;
-            if (!Uri.TryCreate(baseUri.ToString().TrimEnd('/') + "/" + relativeTokenPath, UriKind.Absolute, out var resolvedTokenEndpoint)
-                || resolvedTokenEndpoint is null)
-                throw new AuthenticationUnavailableException();
-            tokenEndpoint = resolvedTokenEndpoint;
-        }
-        catch (UriFormatException)
-        {
-            throw new AuthenticationUnavailableException();
-        }
-
-        using var tokenRequest = new HttpRequestMessage(HttpMethod.Post, tokenEndpoint)
-        {
-            Content = new FormUrlEncodedContent(
-            [
-                new KeyValuePair<string, string>("username", username),
-                new KeyValuePair<string, string>("password", password)
-            ])
-        };
-        tokenRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        if (apiKey is not null && !tokenRequest.Headers.TryAddWithoutValidation(MojApiKeySecretName, apiKey))
-            throw new AuthenticationUnavailableException();
-
-        HttpResponseMessage tokenResponse;
-        try
-        {
-            tokenResponse = await client.SendAsync(tokenRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-        }
-        catch (HttpRequestException)
-        {
-            throw new AuthenticationUnavailableException();
-        }
-        finally
-        {
-            if (apiKey is not null)
-                tokenRequest.Headers.Remove(MojApiKeySecretName);
-        }
-
-        using (tokenResponse)
-        {
-            if (!tokenResponse.IsSuccessStatusCode)
-                throw new AuthenticationUnavailableException();
-
-            byte[] body;
-            try
-            {
-                body = await tokenResponse.Content.ReadAsByteArrayAsync(cancellationToken);
-            }
-            catch (HttpRequestException)
-            {
-                throw new AuthenticationUnavailableException();
-            }
-
-            if (body.Length == 0 || body.Length > MaximumTokenResponseBytes)
-                throw new AuthenticationUnavailableException();
-
-            try
-            {
-                using var document = JsonDocument.Parse(body);
-                if (document.RootElement.ValueKind != JsonValueKind.Object
-                    || !document.RootElement.TryGetProperty("data", out var tokenElement)
-                    || tokenElement.ValueKind != JsonValueKind.String)
-                    throw new AuthenticationUnavailableException();
-
-                var accessToken = ValidateBearerToken(tokenElement.GetString());
-                return TokenCacheValue.Create(accessToken, ResolveTokenExpiry(accessToken));
-            }
-            catch (JsonException)
-            {
-                throw new AuthenticationUnavailableException();
-            }
-        }
-    }
-
-    private static DateTimeOffset ResolveTokenExpiry(string accessToken)
-    {
-        var now = DateTimeOffset.UtcNow;
-        var parts = accessToken.Split('.');
-        if (parts.Length != 3)
-            return now;
-
-        try
-        {
-            var payload = parts[1].Replace('-', '+').Replace('_', '/');
-            payload = (payload.Length % 4) switch
-            {
-                0 => payload,
-                2 => payload + "==",
-                3 => payload + "=",
-                _ => throw new FormatException()
-            };
-            using var document = JsonDocument.Parse(Convert.FromBase64String(payload));
-            if (!document.RootElement.TryGetProperty("exp", out var exp)
-                || exp.ValueKind != JsonValueKind.Number
-                || !exp.TryGetInt64(out var seconds))
-                return now;
-            var expiry = DateTimeOffset.FromUnixTimeSeconds(seconds);
-            return expiry > now ? expiry : now;
-        }
-        catch (Exception exception) when (exception is FormatException or JsonException or ArgumentOutOfRangeException)
-        {
-            return now;
-        }
-    }
-
-    private static string DecodeFormSecret(ReadOnlyMemory<byte> material)
+    private static string DecodeCredentialSecret(ReadOnlyMemory<byte> material)
     {
         var value = Encoding.UTF8.GetString(material.Span);
         if (string.IsNullOrWhiteSpace(value) || value.Any(character => character is '\r' or '\n' or '\0'))
@@ -520,9 +479,7 @@ public sealed class GenericServiceExecutionEngine(
 
     private static string ValidateBearerToken(string? value)
     {
-        if (string.IsNullOrWhiteSpace(value)
-            || value.Length > 16 * 1024
-            || value.Any(character => character is '\r' or '\n' or '\0'))
+        if (string.IsNullOrWhiteSpace(value) || value.Length > 16 * 1024 || value.Any(character => character is '\r' or '\n' or '\0'))
             throw new AuthenticationUnavailableException();
         return value.Trim();
     }
@@ -551,13 +508,8 @@ public sealed class GenericServiceExecutionEngine(
         var headerSecrets = secrets.Where(secret => !string.Equals(secret.Name, "bearer", StringComparison.OrdinalIgnoreCase)).ToArray();
         if (bearer is null || headerSecrets.Length == 0)
             throw new AuthenticationUnavailableException();
-
-        var result = new List<PlannedSecretHeader>
-        {
-            new(SecretHeaderKind.Bearer, "Authorization", bearer)
-        };
-        result.AddRange(headerSecrets.Select(secret =>
-            new PlannedSecretHeader(SecretHeaderKind.Header, ValidateSecretHeaderName(secret.Name), secret)));
+        var result = new List<PlannedSecretHeader> { new(SecretHeaderKind.Bearer, "Authorization", bearer) };
+        result.AddRange(headerSecrets.Select(secret => new PlannedSecretHeader(SecretHeaderKind.Header, ValidateSecretHeaderName(secret.Name), secret)));
         return result;
     }
 
@@ -576,17 +528,14 @@ public sealed class GenericServiceExecutionEngine(
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", value);
             return;
         }
-
         if (!request.Headers.TryAddWithoutValidation(headerName, value))
             throw new AuthenticationUnavailableException();
     }
 
     private static void RemoveSecretHeader(HttpRequestMessage request, SecretHeaderKind kind, string headerName)
     {
-        if (kind == SecretHeaderKind.Bearer)
-            request.Headers.Authorization = null;
-        else
-            request.Headers.Remove(headerName);
+        if (kind == SecretHeaderKind.Bearer) request.Headers.Authorization = null;
+        else request.Headers.Remove(headerName);
     }
 
     private static string ValidateSecretHeaderName(string name)
@@ -594,7 +543,8 @@ public sealed class GenericServiceExecutionEngine(
         var normalized = name.Trim();
         if (!HeaderNamePattern.IsMatch(normalized)
             || ForbiddenConfiguredHeaders.Contains(normalized)
-            || string.Equals(normalized, ServiceExecutionRuntimeOptions.SafeToRetryMetadataHeader, StringComparison.OrdinalIgnoreCase))
+            || string.Equals(normalized, ServiceExecutionRuntimeOptions.SafeToRetryMetadataHeader, StringComparison.OrdinalIgnoreCase)
+            || TokenEndpointContractMetadata.IsReservedMetadataKey(normalized))
             throw new AuthenticationUnavailableException();
         return normalized;
     }
@@ -615,19 +565,15 @@ public sealed class GenericServiceExecutionEngine(
             if (!request.Headers.TryAddWithoutValidation(header.Key, header.Value))
                 throw new ServiceExecutionRejectedException();
         }
-
         if (!BodylessMethods.Contains(binding.HttpMethod) && inputs.Count > 0)
-        {
             request.Content = BuildContent(binding.ContentType, inputs);
-        }
         return request;
     }
 
     private static HttpContent BuildContent(string contentType, IReadOnlyDictionary<string, object?> inputs)
     {
         var mediaType = contentType.Split(';', 2, StringSplitOptions.TrimEntries)[0];
-        if (string.Equals(mediaType, "application/json", StringComparison.OrdinalIgnoreCase)
-            || mediaType.EndsWith("+json", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(mediaType, "application/json", StringComparison.OrdinalIgnoreCase) || mediaType.EndsWith("+json", StringComparison.OrdinalIgnoreCase))
         {
             var content = new StringContent(JsonSerializer.Serialize(inputs), Encoding.UTF8, "application/json");
             content.Headers.ContentType = MediaTypeHeaderValue.Parse(contentType);
@@ -649,21 +595,17 @@ public sealed class GenericServiceExecutionEngine(
 
     private static Uri BuildEndpoint(AuthorizedServiceExecutionBinding binding, IReadOnlyDictionary<string, object?> inputs)
     {
-        if (!Uri.TryCreate(binding.BaseUrl, UriKind.Absolute, out var baseUri)
-            || baseUri.Scheme is not ("http" or "https"))
+        if (!Uri.TryCreate(binding.BaseUrl, UriKind.Absolute, out var baseUri) || baseUri.Scheme is not ("http" or "https"))
             throw new ServiceExecutionRejectedException();
-
         var relative = binding.RelativePath.StartsWith('/') ? binding.RelativePath[1..] : binding.RelativePath;
         if (!Uri.TryCreate(baseUri.ToString().TrimEnd('/') + "/" + relative, UriKind.Absolute, out var endpoint))
             throw new ServiceExecutionRejectedException();
-
         if (!BodylessMethods.Contains(binding.HttpMethod) || inputs.Count == 0)
             return endpoint;
 
         var builder = new UriBuilder(endpoint);
         var query = new List<string>();
-        if (!string.IsNullOrWhiteSpace(builder.Query))
-            query.Add(builder.Query.TrimStart('?'));
+        if (!string.IsNullOrWhiteSpace(builder.Query)) query.Add(builder.Query.TrimStart('?'));
         query.AddRange(inputs.Select(pair =>
             $"{Uri.EscapeDataString(pair.Key)}={Uri.EscapeDataString(Convert.ToString(pair.Value, CultureInfo.InvariantCulture) ?? string.Empty)}"));
         builder.Query = string.Join("&", query.Where(value => value.Length > 0));
@@ -675,9 +617,7 @@ public sealed class GenericServiceExecutionEngine(
         if (!string.IsNullOrWhiteSpace(binding.ProxyUrl)
             || !binding.ValidateServerCertificate
             || !string.Equals(binding.TlsPolicy, "SystemDefault", StringComparison.OrdinalIgnoreCase))
-        {
             throw new ServiceExecutionRejectedException();
-        }
     }
 
     private static IReadOnlyDictionary<string, object?> ValidateInputs(
@@ -687,10 +627,7 @@ public sealed class GenericServiceExecutionEngine(
         var definitions = fields.ToDictionary(field => field.Key, StringComparer.OrdinalIgnoreCase);
         var errors = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var suppliedKey in supplied.Keys)
-        {
-            if (!definitions.ContainsKey(suppliedKey))
-                errors[suppliedKey] = "UnknownField";
-        }
+            if (!definitions.ContainsKey(suppliedKey)) errors[suppliedKey] = "UnknownField";
 
         var result = new Dictionary<string, object?>(StringComparer.Ordinal);
         foreach (var field in definitions.Values.OrderBy(field => field.DisplayOrder))
@@ -702,7 +639,6 @@ public sealed class GenericServiceExecutionEngine(
                 if (field.Required) errors[field.Key] = "Required";
                 continue;
             }
-
             if (field.MinLength is int minLength && value.Length < minLength) errors[field.Key] = "MinLength";
             if (field.MaxLength is int maxLength && value.Length > maxLength) errors[field.Key] = "MaxLength";
             if (!string.IsNullOrWhiteSpace(field.Regex))
@@ -712,47 +648,29 @@ public sealed class GenericServiceExecutionEngine(
                     if (!Regex.IsMatch(value, field.Regex, RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(250)))
                         errors[field.Key] = "Pattern";
                 }
-                catch (ArgumentException)
-                {
-                    errors[field.Key] = "InvalidMetadataPattern";
-                }
-                catch (RegexMatchTimeoutException)
-                {
-                    errors[field.Key] = "PatternTimeout";
-                }
+                catch (ArgumentException) { errors[field.Key] = "InvalidMetadataPattern"; }
+                catch (RegexMatchTimeoutException) { errors[field.Key] = "PatternTimeout"; }
             }
 
             object typedValue = value;
             if (IsIntegerType(field.FieldType))
             {
-                if (!long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var integer))
-                    errors[field.Key] = "Integer";
-                else
-                {
-                    typedValue = integer;
-                    ValidateNumericRange(field, integer, errors);
-                }
+                if (!long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var integer)) errors[field.Key] = "Integer";
+                else { typedValue = integer; ValidateNumericRange(field, integer, errors); }
             }
             else if (IsNumberType(field.FieldType))
             {
-                if (!decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var number))
-                    errors[field.Key] = "Number";
-                else
-                {
-                    typedValue = number;
-                    ValidateNumericRange(field, number, errors);
-                }
+                if (!decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var number)) errors[field.Key] = "Number";
+                else { typedValue = number; ValidateNumericRange(field, number, errors); }
             }
             else if (IsBooleanType(field.FieldType))
             {
                 if (!bool.TryParse(value, out var boolean)) errors[field.Key] = "Boolean";
                 else typedValue = boolean;
             }
-
             if (!IsAllowedOption(field.OptionsJson, value)) errors[field.Key] = "Option";
             if (!errors.ContainsKey(field.Key)) result[field.Key] = typedValue;
         }
-
         if (errors.Count > 0) throw new ServiceExecutionValidationException(errors);
         return result;
     }
@@ -770,29 +688,21 @@ public sealed class GenericServiceExecutionEngine(
         {
             using var document = JsonDocument.Parse(optionsJson);
             if (document.RootElement.ValueKind != JsonValueKind.Array) return false;
-            var options = new List<string>();
+            var values = new List<string>();
             foreach (var item in document.RootElement.EnumerateArray())
             {
-                if (item.ValueKind == JsonValueKind.String) options.Add(item.GetString() ?? string.Empty);
-                else if (item.ValueKind == JsonValueKind.Object && item.TryGetProperty("value", out var property))
-                    options.Add(property.ToString());
+                if (item.ValueKind == JsonValueKind.String) values.Add(item.GetString() ?? string.Empty);
+                else if (item.ValueKind == JsonValueKind.Object && item.TryGetProperty("value", out var property)) values.Add(property.ToString());
             }
-            return options.Count == 0 || options.Contains(value, StringComparer.Ordinal);
+            return values.Count == 0 || values.Contains(value, StringComparer.Ordinal);
         }
-        catch (JsonException)
-        {
-            return false;
-        }
+        catch (JsonException) { return false; }
     }
 
     private static bool IsIntegerType(string type) => type.Equals("int", StringComparison.OrdinalIgnoreCase)
-        || type.Equals("integer", StringComparison.OrdinalIgnoreCase)
-        || type.Equals("long", StringComparison.OrdinalIgnoreCase);
-
+        || type.Equals("integer", StringComparison.OrdinalIgnoreCase) || type.Equals("long", StringComparison.OrdinalIgnoreCase);
     private static bool IsNumberType(string type) => type.Equals("number", StringComparison.OrdinalIgnoreCase)
-        || type.Equals("decimal", StringComparison.OrdinalIgnoreCase)
-        || type.Equals("double", StringComparison.OrdinalIgnoreCase);
-
+        || type.Equals("decimal", StringComparison.OrdinalIgnoreCase) || type.Equals("double", StringComparison.OrdinalIgnoreCase);
     private static bool IsBooleanType(string type) => type.Equals("bool", StringComparison.OrdinalIgnoreCase)
         || type.Equals("boolean", StringComparison.OrdinalIgnoreCase);
 
@@ -818,14 +728,12 @@ public sealed class GenericServiceExecutionEngine(
                     };
                     continue;
                 }
-
-                if (string.Equals(property.Name, MojTokenPathMetadataKey, StringComparison.OrdinalIgnoreCase))
+                if (TokenEndpointContractMetadata.IsReservedMetadataKey(property.Name))
                 {
-                    if (property.Value.ValueKind != JsonValueKind.String)
+                    if (property.Value.ValueKind is not (JsonValueKind.String or JsonValueKind.Number or JsonValueKind.True or JsonValueKind.False))
                         throw new ServiceExecutionRejectedException();
                     continue;
                 }
-
                 if (!HeaderNamePattern.IsMatch(property.Name)
                     || ForbiddenConfiguredHeaders.Contains(property.Name)
                     || property.Name.StartsWith("X-GSIP-", StringComparison.OrdinalIgnoreCase))
@@ -859,9 +767,7 @@ public sealed class GenericServiceExecutionEngine(
         return Encoding.UTF8.GetString(buffer.ToArray());
     }
 
-    private static IReadOnlyList<StructuredServiceResultItem> MapStructuredResult(
-        IEnumerable<ResultMappingDefinition> mappings,
-        string rawResponse)
+    private static IReadOnlyList<StructuredServiceResultItem> MapStructuredResult(IEnumerable<ResultMappingDefinition> mappings, string rawResponse)
     {
         var ordered = mappings.OrderBy(mapping => mapping.DisplayOrder).ToArray();
         if (ordered.Length == 0 || string.IsNullOrWhiteSpace(rawResponse)) return [];
@@ -872,19 +778,14 @@ public sealed class GenericServiceExecutionEngine(
             foreach (var mapping in ordered)
             {
                 if (!TryResolveJsonPath(document.RootElement, mapping.SourcePath, out var element)) continue;
-                var value = element.ValueKind is JsonValueKind.Object or JsonValueKind.Array
-                    ? element.GetRawText()
-                    : element.ToString();
+                var value = element.ValueKind is JsonValueKind.Object or JsonValueKind.Array ? element.GetRawText() : element.ToString();
                 value = mapping.Sensitive ? "[MASKED]" : ApplyFormatter(value, mapping.Formatter);
                 result.Add(new StructuredServiceResultItem(mapping.SourcePath, mapping.LabelAr, mapping.LabelEn,
                     mapping.ResultType, value, mapping.Sensitive, mapping.DisplayOrder));
             }
             return result;
         }
-        catch (JsonException)
-        {
-            return [];
-        }
+        catch (JsonException) { return []; }
     }
 
     private static bool TryResolveJsonPath(JsonElement root, string path, out JsonElement result)
@@ -894,7 +795,6 @@ public sealed class GenericServiceExecutionEngine(
         if (normalized.StartsWith("$.", StringComparison.Ordinal)) normalized = normalized[2..];
         else if (normalized == "$") return true;
         if (normalized.Length == 0) return false;
-
         foreach (var rawSegment in normalized.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
         {
             var segment = rawSegment;
@@ -935,8 +835,7 @@ public sealed class GenericServiceExecutionEngine(
 
     private async Task DelayBeforeRetryAsync(HttpResponseMessage response, CancellationToken cancellationToken)
     {
-        var delay = response.Headers.RetryAfter?.Delta
-            ?? TimeSpan.FromMilliseconds(Math.Max(0, _options.RetryDelayMilliseconds));
+        var delay = response.Headers.RetryAfter?.Delta ?? TimeSpan.FromMilliseconds(Math.Max(0, _options.RetryDelayMilliseconds));
         if (delay > TimeSpan.FromSeconds(2)) delay = TimeSpan.FromSeconds(2);
         if (delay > TimeSpan.Zero) await Task.Delay(delay, cancellationToken);
     }

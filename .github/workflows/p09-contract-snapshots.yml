@@ -40,12 +40,13 @@ jobs:
             Tee-Object -FilePath "$env:EVIDENCE_DIR/validation.txt"
       - name: Validate canonical execution plan
         run: python scripts/validate_execution_plan.py
-      - name: Assert evidence remains partial while material contracts are unavailable
+      - name: Assert five UAT contracts are reconciled while Production remains external
         shell: pwsh
         run: |
           $validation = Get-Content "$env:EVIDENCE_DIR/validation.txt" -Raw
           if ($validation -notmatch 'P09_CONTRACT_SNAPSHOT_VALIDATION=PASS') { throw 'P09 snapshot validation did not pass.' }
-          if ($validation -notmatch 'P09_EXTERNAL_CONTRACTS_DEFERRED=4') { throw 'P09 deferred-contract boundary drifted.' }
+          if ($validation -notmatch 'P09_UAT_CONTRACTS_RECONCILED=5') { throw 'P09 UAT contract reconciliation count drifted.' }
+          if ($validation -notmatch 'P09_PRODUCTION_OPERATION_CONTRACTS=DEFERRED_EXTERNAL') { throw 'P09 Production fail-closed boundary drifted.' }
       - name: Upload exact-candidate P09 contract evidence
         uses: actions/upload-artifact@v4
         with:
