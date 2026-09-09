@@ -7,11 +7,12 @@ using GSIP.Domain.Metadata;
 using GSIP.Domain.Secrets;
 using GSIP.Infrastructure.Execution;
 
+const string ApiKey = "SYNTHETIC_P08_ADMIN_API_KEY";
 const string Username = "SYNTHETIC_P08_ADMIN_USER";
 const string Password = "SYNTHETIC_P08_ADMIN_PASSWORD";
 const string TokenPathKey = "X-GSIP-TokenEndpointPath";
 
-await SuccessfulProbeUsesExactContractAndScopeAsync();
+await SuccessfulProbeUsesExactCompositeContractAndScopeAsync();
 await UnauthorizedProbeFailsClosedWithoutLeakAsync();
 await ExpiredJwtProbeFailsClosedAsync();
 await ForgedBindingFailsBeforeSecretsOrTransportAsync();
@@ -19,20 +20,21 @@ await ForgedBindingFailsBeforeSecretsOrTransportAsync();
 Console.WriteLine("P08 captain authentication probe checks passed.");
 return;
 
-async Task SuccessfulProbeUsesExactContractAndScopeAsync()
+async Task SuccessfulProbeUsesExactCompositeContractAndScopeAsync()
 {
     var fixture = CreateFixture(HttpStatusCode.OK, FutureJwt(), exactBinding: true);
     await fixture.Probe.TestTokenGenerationAsync(fixture.ServiceId, fixture.EnvironmentId, fixture.ProfileId);
 
     Check(fixture.Handler.CallCount == 1, "Successful probe must call token endpoint exactly once.");
-    Check(fixture.Handler.LastPath == "/genToken", "Probe ignored metadata token path.");
+    Check(fixture.Handler.LastPath == "/moj/genToken", "Probe did not preserve the configured base-path prefix.");
     Check(fixture.Handler.LastMethod == HttpMethod.Post, "Probe must POST token request.");
     Check(fixture.Handler.LastContentType == "application/x-www-form-urlencoded", "Probe content type is not form-urlencoded.");
+    Check(fixture.Handler.LastApiKey == ApiKey, "Probe did not attach exact x-api-key material to /genToken.");
     Check(fixture.Handler.LastBody?.Contains("username=" + Uri.EscapeDataString(Username), StringComparison.Ordinal) == true,
         "Probe omitted username form field.");
     Check(fixture.Handler.LastBody?.Contains("password=" + Uri.EscapeDataString(Password), StringComparison.Ordinal) == true,
         "Probe omitted password form field.");
-    Check(fixture.Resolver.Calls.Count == 2, "Probe must resolve exactly username and password.");
+    Check(fixture.Resolver.Calls.Count == 3, "Composite probe must resolve API key, username, and password exactly once.");
     Check(fixture.Resolver.Calls.All(call =>
             call.ServiceId == fixture.ServiceId
             && call.EnvironmentId == fixture.EnvironmentId
@@ -47,7 +49,8 @@ async Task UnauthorizedProbeFailsClosedWithoutLeakAsync()
         fixture.Probe.TestTokenGenerationAsync(fixture.ServiceId, fixture.EnvironmentId, fixture.ProfileId));
 
     Check(exception.Message == AuthenticationProbeRejectedException.SafeMessage, "401 probe exposed unexpected diagnostic detail.");
-    Check(!exception.ToString().Contains(Username, StringComparison.Ordinal)
+    Check(!exception.ToString().Contains(ApiKey, StringComparison.Ordinal)
+          && !exception.ToString().Contains(Username, StringComparison.Ordinal)
           && !exception.ToString().Contains(Password, StringComparison.Ordinal),
         "401 probe disclosed credential material.");
     Check(fixture.Handler.CallCount == 1, "401 probe must not retry authentication.");
@@ -111,7 +114,7 @@ static ProbeFixture CreateFixture(HttpStatusCode statusCode, string token, bool 
                 Id = Guid.Parse("88000000-0000-0000-0000-000000000806"),
                 ServiceId = serviceId,
                 EnvironmentId = environmentId,
-                BaseUrl = "https://synthetic.invalid/moj/",
+                BaseUrl = "https://synthetic.invalid/moj",
                 RelativePath = "/service",
                 HttpMethod = "GET",
                 ContentType = "application/json",
@@ -139,7 +142,7 @@ static ProbeFixture CreateFixture(HttpStatusCode statusCode, string token, bool 
         profileId,
         serviceId,
         environmentId,
-        "Synthetic P08 token",
+        "Synthetic P08 composite token",
         AuthProfileType.TokenEndpoint,
         true,
         3,
@@ -147,6 +150,7 @@ static ProbeFixture CreateFixture(HttpStatusCode statusCode, string token, bool 
         DateTimeOffset.UnixEpoch,
         DateTimeOffset.UnixEpoch,
         [
+            new AuthProfileSecretDescriptor("x-api-key", SecretRef.Parse("sr1_" + new string('K', 43)), 3),
             new AuthProfileSecretDescriptor("username", SecretRef.Parse("sr1_" + new string('U', 43)), 1),
             new AuthProfileSecretDescriptor("password", SecretRef.Parse("sr1_" + new string('P', 43)), 2)
         ],
@@ -156,6 +160,7 @@ static ProbeFixture CreateFixture(HttpStatusCode statusCode, string token, bool 
     var profiles = new FakeAuthProfiles(profile);
     var resolver = new FakeSecretResolver(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
     {
+        ["x-api-key"] = ApiKey,
         ["username"] = Username,
         ["password"] = Password
     });
@@ -198,6 +203,7 @@ sealed class RecordingHandler(HttpStatusCode statusCode, string token) : HttpMes
     public HttpMethod? LastMethod { get; private set; }
     public string? LastContentType { get; private set; }
     public string? LastBody { get; private set; }
+    public string? LastApiKey { get; private set; }
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
@@ -206,6 +212,7 @@ sealed class RecordingHandler(HttpStatusCode statusCode, string token) : HttpMes
         LastMethod = request.Method;
         LastContentType = request.Content?.Headers.ContentType?.MediaType;
         LastBody = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
+        LastApiKey = request.Headers.TryGetValues("x-api-key", out var values) ? values.SingleOrDefault() : null;
         return new HttpResponseMessage(statusCode)
         {
             Content = new StringContent(statusCode == HttpStatusCode.OK ? $"{{\"data\":\"{token}\"}}" : "{}", Encoding.UTF8, "application/json")
