@@ -36,3 +36,11 @@ The Login page is a visual shell only. Its inputs and submit control are disable
 ### Responsive behavior
 
 Desktop is the high-fidelity source. Tablet reduces four-column groups to two columns. Mobile converts the sidebar to a bottom navigation strip and stacks cards/forms without deleting the principal shell hierarchy.
+
+## P07 — Service Execution secondary-text contrast
+
+The canonical Service Execution reference remains `docs/ui-baseline/bilingual_kuwait_government_service_portal.svg`; its navy/blue/gold hierarchy, header/sidebar structure, cards, forms, result workspace, Arabic RTL and English LTR behavior remain unchanged.
+
+The inherited shell muted token `#7690aa` was too light for the 10.5–12px normal-weight secondary text used on the P07 Service Execution screen. It produced only about 3.10:1 contrast on the GSIP canvas (`#f4f8fc`) and 3.31:1 on white cards, below the 4.5:1 WCAG AA threshold for normal text.
+
+P07 therefore applies a screen-scoped muted tone of `#58738d` to the execution hero, request/service workspace and result workspace. The resulting contrast is approximately 4.63:1 on the canvas, 4.76:1 on the light result surfaces and 4.94:1 on white cards. This is an accessibility-only deviation permitted by `docs/UI_DESIGN_PARITY_GATE.md`; it does not change layout, component hierarchy, responsive breakpoints, bidi behavior, institutional branding, or introduce a generic admin template.
