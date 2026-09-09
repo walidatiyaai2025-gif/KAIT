@@ -16,6 +16,7 @@ def require(condition: bool, message: str) -> None:
 
 
 phase = read("CURRENT_PHASE.md")
+phase_upper = phase.upper()
 layout = read("src/GSIP.Web/Views/Shared/_Layout.cshtml")
 p13_css = read("src/GSIP.Web/wwwroot/css/p13.css")
 home = read("src/GSIP.Web/Views/Shell/Index.cshtml")
@@ -35,8 +36,8 @@ p11_script = read("scripts/verify-p11-audit-runtime-ui.ps1")
 evidence = read("docs/evidence/P13_UI_ACCESSIBILITY_CONVERGENCE.md")
 decisions = read("docs/DESIGN_DECISIONS.md")
 
-require("P13" in phase and "OPEN" in phase and "READY" in phase, "P13 is not the canonical OPEN / READY phase.")
-require("P14" in phase and "LOCKED" in phase, "P14 must remain locked during P13 implementation.")
+require("P13" in phase_upper and "OPEN" in phase_upper and "READY" in phase_upper, "P13 is not the canonical OPEN / READY phase.")
+require("P14" in phase_upper and "LOCKED" in phase_upper, "P14 must remain locked during P13 implementation.")
 require('<html lang="@language" dir="@direction"' in layout, "Shared shell lost first-class lang/dir rendering.")
 require('class="skip-link" href="#main-content"' in layout, "Skip-to-content link is missing.")
 require('id="main-content"' in layout and 'tabindex="-1"' in layout, "Main landmark is not keyboard focusable after skip navigation.")
@@ -64,7 +65,7 @@ require('role="alert"' in login and 'autocomplete="username"' in login and 'auto
 require('role="status"' in setup and 'aria-label="Setup progress"' in setup, "Setup status/progress accessibility semantics are missing.")
 
 baselines = {
-    "docs/ui-baseline/bilingual_kuwait_government_services_dashboard.svg": "Integrated Government Services",
+    "docs/ui-baseline/bilingual_kuwait_government_services_dashboard.svg": "Government Services Integration Portal",
     "docs/ui-baseline/bilingual_kuwait_government_service_portal.svg": "Service Execution",
     "docs/ui-baseline/bilingual_kuwait_government_permissions_dashboard.svg": "Permission",
     "docs/ui-baseline/kuwait_government_audit_dashboard.svg": "Audit",
