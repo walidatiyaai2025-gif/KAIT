@@ -244,20 +244,30 @@ try
         ownerFixture.Secret.Reference,
         "A stale AuthProfile binding resolved secret material after canonical configuration stopped selecting it.");
 
-    // Restore canonical selection, then remove the binding. Both halves are mandatory;
-    // either side missing must fail closed.
+    // Restore the canonical relationship, then exercise the supported unbind path.
+    // The schema FK makes a persisted config-without-binding state invalid by construction;
+    // after canonical unbind both halves must be absent and secret resolution must fail closed.
     targetConfig = await db.ServiceEnvironmentConfigs.SingleAsync(config =>
         config.ServiceId == targetService.Id
         && config.EnvironmentId == CatalogEnvironmentCodes.UatId);
     targetConfig.AuthProfileId = ownerProfile.Id;
     await db.SaveChangesAsync();
     db.ChangeTracker.Clear();
-    var removedBindings = await db.AuthProfileBindings
-        .Where(binding => binding.AuthProfileId == ownerProfile.Id
-                          && binding.ServiceId == targetService.Id
-                          && binding.EnvironmentId == CatalogEnvironmentCodes.UatId)
-        .ExecuteDeleteAsync();
-    Require(removedBindings == 1, "Missing-binding probe did not remove exactly one explicit shared binding.");
+    ownerProfile = await profiles.UnbindAsync(new UnbindAuthProfileCommand(
+        ownerProfile.Id,
+        targetService.Id,
+        CatalogEnvironmentCodes.UatId));
+    db.ChangeTracker.Clear();
+    targetConfig = await db.ServiceEnvironmentConfigs.AsNoTracking().SingleAsync(config =>
+        config.ServiceId == targetService.Id
+        && config.EnvironmentId == CatalogEnvironmentCodes.UatId);
+    Require(targetConfig.AuthProfileId is null,
+        "Canonical unbind left the ServiceEnvironmentConfig selecting the removed AuthProfile binding.");
+    Require(!await db.AuthProfileBindings.AsNoTracking().AnyAsync(binding =>
+            binding.AuthProfileId == ownerProfile.Id
+            && binding.ServiceId == targetService.Id
+            && binding.EnvironmentId == CatalogEnvironmentCodes.UatId),
+        "Canonical unbind left a stale explicit shared AuthProfileBinding.");
     await ExpectSecretRejectedWithoutMaterialAsync(
         vault,
         targetService.Id,
@@ -265,7 +275,7 @@ try
         ownerProfile.Id,
         "api-key",
         ownerFixture.Secret.Reference,
-        "ServiceEnvironmentConfig alone resolved credentials after its AuthProfileBinding was removed.");
+        "A service with a missing AuthProfile binding resolved credentials after canonical unbind.");
 
     // A formerly valid reference becomes stale immediately after revocation.
     await vault.RevokeAsync(
