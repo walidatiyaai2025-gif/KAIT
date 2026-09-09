@@ -39,7 +39,7 @@ public sealed class RequestExecutionRecord
     public string MaskedInputJson { get; set; } = "{}";
     public byte[]? ProtectedStructuredResult { get; set; }
     public byte[]? ProtectedRawResponse { get; set; }
-    [MaxLength(24)] public RequestLifecycleStatus LifecycleStatus { get; set; }
+    public RequestLifecycleStatus LifecycleStatus { get; set; }
     [MaxLength(80)] public string OutcomeCode { get; set; } = string.Empty;
     public int? HttpStatusCode { get; set; }
     public long DurationMilliseconds { get; set; }
@@ -58,6 +58,8 @@ public sealed class RequestHistoryOptions
     public bool StoreRawResponse { get; set; }
     public int RetentionDays { get; set; } = 90;
     public int MaxStoredPayloadBytes { get; set; } = 262_144;
+    public int MaxExportRows { get; set; } = 5000;
+    public int MaxPdfRows { get; set; } = 1000;
     public Dictionary<string, RequestHistoryServiceOptions> Services { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }
 
