@@ -17,7 +17,7 @@ function Require-Text([string]$Path, [string]$Pattern, [string]$Message) {
 }
 
 $required = @(
-    'docs/moj-api-reference/README.md',
+    'docs/moj-api-reference/INDEX.md',
     'docs/moj-api-reference/P08_AUTH_CONTRACT_MATRIX.md',
     'docs/evidence/P08_MOJ_AUTHENTICATION_INTEGRATION.md',
     'docs/evidence/P08_CONTRACT_RECONCILIATION.md',
