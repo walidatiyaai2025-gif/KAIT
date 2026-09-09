@@ -110,11 +110,11 @@ public sealed partial class SetupService : ISetupService
             _ = await command.ExecuteScalarAsync(cancellationToken);
             return SetupOperationResult.Ok("SQL_CONNECTION_OK", "SQL Server connection succeeded.");
         }
-        catch (SqlException)
+        catch (SqlException exception)
         {
-            return SetupOperationResult.Fail("SQL_CONNECTION_FAILED", "SQL Server connection failed. Verify server, authentication, TLS and network settings.");
+            return SetupSqlFailureClassifier.Classify(exception);
         }
-        catch (InvalidOperationException)
+        catch (Exception exception) when (exception is InvalidOperationException or ArgumentException)
         {
             return SetupOperationResult.Fail("SQL_CONFIGURATION_INVALID", "SQL Server connection configuration is invalid.");
         }
