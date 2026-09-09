@@ -6,7 +6,7 @@
 - Repository: `walidatiyaai2025-gif/KAIT`
 - Default branch: `main`
 - Delivery model: phase-gated autonomous implementation
-- Current planned product state: P07 CLOSED from exact integrated evidence; P08 MOJ authentication integration is the canonical current phase and is OPEN / READY
+- Current planned product state: P08 CLOSED from exact integrated evidence; P09 five-service MOJ contract implementation is the canonical current phase and is OPEN / READY
 - Initial executable version: `0.1.0`
 - Pinned SDK / target framework: .NET SDK `10.0.400` / `net10.0`
 - Initial entity: Ministry of Justice (MOJ), Kuwait
@@ -16,17 +16,21 @@
 
 ## Last closed phase evidence
 
-P07 is CLOSED from exact integrated implementation baseline `9535fa158441160ab7c7d204863776e38e560a33` after normal integration of PRs #33, #34, #36, #37 and #38, with PR #39 providing intermediate progress reconciliation. The exact-main baseline passed **16/16** push workflow runs with no failure, queued or in-progress run after completion.
+P08 is CLOSED from exact integrated implementation baseline `67968a9230dae453b36f48549eda138d7b5401c7` after normal integration of the authoritative MOJ authentication convergence through PR #47. The exact implementation baseline passed **17/17** `main` push workflow runs with zero failed, queued or in-progress runs after completion; PR #47 passed **22/22** exact-head workflows before normal merge.
 
 Closure evidence on that exact SHA includes:
 
-- P07 Generic Execution Runtime run `34305403834`: SUCCESS; artifact `P07-Generic-Execution-Runtime-9535fa158441160ab7c7d204863776e38e560a33`, 809 bytes, digest `sha256:322395583f95a1f8fd1cacab0975ca0f4b3c0c971de1a86fa44185ed3f57a8dc`;
-- P07 Service Execution UI run `34305403861`: SUCCESS; artifact `P07-Execution-UI-Evidence-9535fa158441160ab7c7d204863776e38e560a33`, 372,853 bytes, digest `sha256:5d9b9fd470d6f953fb120391c42130a01412a9b4e8a6288399170cf8399b8f78`;
-- P07 Upgrade Persistence Acceptance run `34305403851`: SUCCESS; artifact `p07-upgrade-persistence-evidence-9535fa158441160ab7c7d204863776e38e560a33`, 647 bytes, digest `sha256:5ec9fd3f01925d62cf47d375be1bf591b27dd2eebf9c3848ea448e01c00482ef`.
+- P08 Security Acceptance run `34318032200`: SUCCESS;
+- artifact `P08-Security-Acceptance-67968a9230dae453b36f48549eda138d7b5401c7`, 2,314 bytes, digest `sha256:b39ea805fec25b5a45a35c2eb445074e64622f48a44dc7c7e3ccd6a0ea8b3d98`;
+- MOJ runtime acceptance PASS, including metadata-driven token-path behavior, documented form token acquisition, Bearer attachment and malformed/failure cases;
+- P08 Auth Scope Isolation PASS for forged/stale profile/ref, cross-service/environment, Production→UAT fallback and stale/wrong-scope token paths;
+- protected administration Test Authentication PASS;
+- secret/token leakage acceptance PASS;
+- all closed P00–P07 regressions remained green on the integrated baseline.
 
-Acceptance covers exact authorized Service + Environment + AuthProfile resolution, no cross-service/environment fallback, metadata-generated execution forms, client/server validation, RequestId/CorrelationId, `IHttpClientFactory` execution, bounded timeout/retry with POST retry only when explicitly `SafeToRetry`, ResultMappings, bounded response reads, required HTTP/TLS/network error classification, secret-safe status/duration/endpoint-alias telemetry, sensitive raw-response masking, bilingual responsive Service Execution UI, accessibility/visual evidence, fake endpoints, persistence/upgrade safety and preservation of P00–P06 security/isolation contracts. No owner-only or external P07 evidence is deferred.
+Exact operation-level applicability of `ApiKeyAuth` to `/genToken` remains `DEFERRED_EXTERNAL`, not PASS, pending authenticated CAIT/MOJ operation evidence or authorized UAT configuration. This does not authorize an assumption: the integrated runtime supports governed composition of documented mechanisms and must fail closed on unsupported configuration. Owner/operator follow-up is recorded in `docs/evidence/P08_MOJ_AUTHENTICATION_INTEGRATION.md`.
 
-The P07 final closure reconciliation is governance/evidence-only and introduces no P08 implementation.
+The P08 final closure reconciliation is governance/evidence/CI-only and introduces no P09 service payload implementation.
 
 ## Authoritative documents
 
@@ -43,17 +47,18 @@ Priority order when instructions conflict:
 9. `docs/OWNER_LAST_EXECUTION_POLICY.md`
 10. `docs/plans/GSIP_Complete_Implementation_Plan_AR.md`
 
-No old prompt, screenshot caption, branch description, or stale ledger overrides live evidence.
+No old prompt, screenshot caption, branch description, stale ledger or superseded evidence overrides live evidence.
 
 ## Phase policy
 
 - Exactly one canonical current phase exists at a time.
-- P00, P01, P02, P03, P04, P05, P06 and P07 are CLOSED.
-- P08 is the canonical current legal implementation phase and is OPEN / READY.
-- P09–P17 remain locked until P08 is formally CLOSED.
+- P00, P01, P02, P03, P04, P05, P06, P07 and P08 are CLOSED.
+- P09 is the canonical current legal implementation phase and is OPEN / READY.
+- P10–P17 remain locked until P09 is formally CLOSED.
 - Phase exit requires implementation + tests + evidence + documentation reconciliation + pushed commit + required CI + exact-main recheck.
 - Integration recovery and exact-main regressions take priority over new feature work.
 - A phase-transition branch does not authorize new-phase implementation until that transition is integrated and the resulting exact-main gate is green.
+- Deferred external evidence remains explicitly deferred and must never be converted to PASS without real evidence.
 
 ## Branch and PR policy
 
@@ -90,7 +95,23 @@ P06 established the Secret Vault/AuthProfile and runtime token-cache safety boun
 
 ## Generic service execution contract
 
-P07 established the metadata-driven execution boundary. Execution must resolve the exact authorized Service + Environment + AuthProfile binding, never fall back across service/environment boundaries, validate metadata-driven fields on both client and server, propagate RequestId/CorrelationId, use `IHttpClientFactory` with bounded timeout/resilience, retry POST only when explicitly marked `SafeToRetry`, map structured results through canonical ResultMappings, bound response reads, classify required HTTP/TLS/network failures, and keep telemetry/diagnostics secret-free. The Service Execution UI is bilingual Arabic RTL / English LTR, responsive, accessible and high-fidelity, with Result / Raw Response / History presentation and sensitive-response masking. P08+ service-specific authentication semantics must layer onto this generic boundary rather than bypass it.
+P07 established the metadata-driven execution boundary. Execution must resolve the exact authorized Service + Environment + AuthProfile binding, never fall back across service/environment boundaries, validate metadata-driven fields on both client and server, propagate RequestId/CorrelationId, use `IHttpClientFactory` with bounded timeout/resilience, retry POST only when explicitly marked `SafeToRetry`, map structured results through canonical ResultMappings, bound response reads, classify required HTTP/TLS/network failures, and keep telemetry/diagnostics secret-free. The Service Execution UI is bilingual Arabic RTL / English LTR, responsive, accessible and high-fidelity, with Result / Raw Response / History presentation and sensitive-response masking. Service-specific authentication semantics layer onto this generic boundary rather than bypass it.
+
+## MOJ authentication contract
+
+P08 established the MOJ authentication layer using repository-preserved official evidence and the existing P06/P07 boundaries. Runtime supports the documented `x-api-key` mechanism where governed metadata requires it, documented `POST /genToken` form-urlencoded username/password token acquisition with the token consumed from response `data`, and transient `Authorization: Bearer ...` attachment where the governed operation requires Bearer authentication. Base URL, header name and token path are configuration/metadata driven. Secrets remain in the Secret Vault; token/cache identity remains exact Service + Environment + AuthProfile + configuration/generation scope; cross-service/environment and Production→UAT fallback fail closed. Administration exposes a server-authorized, anti-forgery protected Test Authentication action that never redisplays token plaintext. Unknown operation applicability is not guessed; owner-last external evidence remains explicitly deferred where necessary.
+
+## P09 MOJ five-service contract boundary
+
+P09 may seed/implement only these five services from official OpenAPI/Swagger or equivalent approved MOJ evidence:
+
+1. Marriage Cases Service
+2. Is Single Basic Service
+3. Marriage Couple Last Case Service
+4. Family Judgment Text Service
+5. Procuration Status Service
+
+Do not invent request/response fields, validation, paths or per-operation auth rules. Unconfirmed schema details remain blocked/deferred until official evidence is available. Any authorized UAT smoke must be limited, non-destructive and secret-safe.
 
 ## Service environment / Go-Live control
 

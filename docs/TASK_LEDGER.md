@@ -1,6 +1,6 @@
 # TASK_LEDGER.md — GSIP Canonical Phase Ledger
 
-This ledger is evidence-driven. Never mark a phase CLOSED because a prompt says it should be closed. Update status only from live implementation/tests/CI/evidence on the exact integrated commit.
+This ledger is evidence-driven. Never mark a phase CLOSED because a prompt says it should be closed. Update status only from live implementation/tests/CI/evidence on the exact integrated commit. `DEFERRED_EXTERNAL` is never equivalent to PASS.
 
 | Phase | Status | Scope / closure focus |
 |---|---|---|
@@ -11,9 +11,9 @@ This ledger is evidence-driven. Never mark a phase CLOSED because a prompt says 
 | P04 | CLOSED | Closed from exact-main SHA `c3aa76a8d456c9b951b602001bcbe1023ae26dd9`; 8/8 applicable exact-main workflows SUCCESS; RBAC, Default Deny, server-side/service authorization, admin/IDOR and bilingual Permissions UI evidence verified and artifact produced/hashed |
 | P05 | CLOSED | Closed from exact-main implementation SHA `4d706fab57071236e9847670342f5a399b3527e6`; 10/10 applicable exact-main workflows SUCCESS; metadata catalog, versioning, isolation/security, JSON-schema import/export, generic sample proof and bilingual protected administration verified; artifact produced/hashed |
 | P06 | CLOSED | Corrected closure baseline exact-main implementation/security SHA `fef5882abf8a6f12990c3e7c0e9f849d08cd7947`; 13/13 exact-main workflow runs SUCCESS; scoped SecretRefs, isolated/explicitly shared AuthProfiles, atomic rotation CAS, centralized redaction, runtime token-cache identity/expiry/single-flight safety, protected bilingual administration and independent negative/no-leak evidence verified and artifacts produced/hashed; final reconciliation PR #32 integrated at `90b3068ea39a342392222ae581e568b94f7f9004` with 15/15 post-reconciliation exact-main push workflows SUCCESS |
-| P07 | CLOSED | Closed from exact integrated implementation baseline `9535fa158441160ab7c7d204863776e38e560a33`; PRs #33, #34, #36, #37 and #38 integrated; PR #39 was intermediate progress reconciliation; 16/16 exact-main workflows SUCCESS; dedicated runtime, Service Execution UI and upgrade-persistence artifacts produced and SHA-256 hashed; exact Service + Environment + AuthProfile isolation, generic metadata-driven execution, resilience, response mapping/masking and bilingual responsive UI evidence verified; no owner/external evidence deferred |
-| P08 | OPEN / READY | Canonical current phase: MOJ x-api-key + `/genToken` + Bearer flow based on official docs/fixtures without assuming credentials are shared between MOJ services |
-| P09 | LOCKED | MOJ entity + five services, exact official request/response contracts, independent endpoint/auth bindings, tests and authorized UAT smoke if available |
+| P07 | CLOSED | Closed from exact integrated implementation baseline `9535fa158441160ab7c7d204863776e38e560a33`; PRs #33, #34, #36, #37 and #38 integrated; 16/16 exact-main workflows SUCCESS; runtime/UI/upgrade evidence verified and hashed; no owner/external evidence deferred |
+| P08 | CLOSED | Closed from exact integrated implementation baseline `67968a9230dae453b36f48549eda138d7b5401c7`; PR #47 converged metadata-driven x-api-key + `/genToken` + Bearer runtime, exact Service+Environment+AuthProfile isolation, protected Test Authentication, independent negative/no-leak acceptance; PR-head 22/22 SUCCESS and exact-main 17/17 SUCCESS; exact-main P08 Security Acceptance run `34318032200` SUCCESS with hashed artifact; exact `/genToken` operation-level ApiKeyAuth applicability remains `DEFERRED_EXTERNAL` and is not claimed PASS |
+| P09 | OPEN / READY | Canonical current phase: seed/implement MOJ Entity and exactly five services from official OpenAPI/Swagger evidence only; no invented request/response/auth fields; independent endpoint/auth bindings, contract tests and authorized non-destructive UAT smoke if available |
 | P10 | LOCKED | Request/result history, masking, scoped access and permissioned exports |
 | P11 | LOCKED | Tamper-evident audit trail, monitoring, high-fidelity Audit dashboard and evidence |
 | P12 | LOCKED | Admin operations for Entity -> Service -> Environments -> UAT/Production, Edit/Test Connection/Test Authentication/Activate/Disable/Rotate Secret, health/diagnostics and operational alerts |
@@ -74,7 +74,58 @@ Exact-main P07 evidence:
 
 Acceptance covers server-side `Services.Execute` authorization; exact Service + Environment + AuthProfile resolution; forged/cross-scope rejection and no fallback; metadata-generated fields and client/server validation; RequestId/CorrelationId; `IHttpClientFactory` outbound execution; bounded timeout/retry with POST retry only when explicitly `SafeToRetry`; HTTP/TLS/network classification; bounded response reads; ResultMappings; endpoint-alias/status/duration secret-safe diagnostics; sensitive raw-response masking; required success/error UX; bilingual Arabic RTL / English LTR responsive and accessible Service Execution UI; visual/browser evidence; fake-endpoint acceptance; upgrade/data-preservation safety; and preservation of P00–P06 baselines.
 
-At closure-reconciliation start there were no open P07 PRs. No owner-only or external P07 evidence is deferred. The closure reconciliation itself introduces no P08 implementation. Detailed immutable evidence is recorded in `docs/evidence/P07_GENERIC_EXECUTION_ENGINE.md`; the former `docs/evidence/P07_INTEGRATED_PROGRESS.md` is retained only as a superseded historical progress record.
+At closure-reconciliation start there were no open P07 PRs. No owner-only or external P07 evidence is deferred. Detailed immutable evidence is recorded in `docs/evidence/P07_GENERIC_EXECUTION_ENGINE.md`.
+
+## P08 closure record
+
+P08 is **CLOSED** from exact integrated implementation baseline `67968a9230dae453b36f48549eda138d7b5401c7`.
+
+Integration/reconciliation facts:
+
+- PR #43 / #44 established and completed fail-closed AuthProfile/SecretRef scope isolation acceptance.
+- PR #45 carried the legitimate MOJ runtime line and its useful implementation was represented in final convergence rather than duplicated.
+- PR #47 normally merged the authoritative P08 convergence: metadata-driven token endpoint control, documented form token acquisition and Bearer attachment, exact-scope secret/token behavior, protected administration Test Authentication, independent security acceptance and CI wiring.
+- PR #48 was superseded after its independent acceptance delta was recovered into PR #47; it was not merged as a duplicate line.
+- PR #46 contained useful independent contract/evidence audit assets but stale pre-integration findings; those assets were recovered and reconciled in the dedicated P08 closure branch instead of merging stale status.
+
+Before normal merge, PR #47 exact head passed **22/22 workflows**. After integration, exact `main` SHA `67968a9230dae453b36f48549eda138d7b5401c7` completed **17/17 push workflows SUCCESS** with failure=0, queued=0 and in-progress=0.
+
+Exact-main P08 evidence:
+
+- P08 Security Acceptance run `34318032200` — SUCCESS.
+- Artifact `P08-Security-Acceptance-67968a9230dae453b36f48549eda138d7b5401c7`, 2,314 bytes, digest `sha256:b39ea805fec25b5a45a35c2eb445074e64622f48a44dc7c7e3ccd6a0ea8b3d98`.
+- Independent composed acceptance: 13 security-boundary cases PASS.
+- MOJ runtime acceptance: 9 cases PASS, including `valid-genToken-bearer` and malformed/empty/failure behavior.
+- P08 Auth Scope Isolation: PASS across forged/stale AuthProfile/SecretRef, cross-service/environment, Production→UAT fallback, disabled/missing binding and stale/wrong-scope token cases.
+- Protected Test Authentication: server-authorized, anti-forgery protected and no plaintext token redisplay.
+- P07 execution-security and P06 token-cache regressions: PASS within composed acceptance.
+- Secret/token leakage scan and governance validation: PASS.
+
+One irreducible operation-level fact remains `DEFERRED_EXTERNAL — NOT PASS`: whether `ApiKeyAuth` is required specifically on `/genToken` for the target authorized CAIT/MOJ environment. No assumption is embedded in closure. The integrated runtime supports governed composition from metadata and fails closed when the configured contract is invalid. Exact owner/operator action, expected result and failure handling are documented in `docs/evidence/P08_MOJ_AUTHENTICATION_INTEGRATION.md` in accordance with `docs/OWNER_LAST_EXECUTION_POLICY.md`.
+
+Detailed closure evidence:
+
+- `docs/evidence/P08_MOJ_AUTHENTICATION_INTEGRATION.md`
+- `docs/evidence/P08_CONTRACT_RECONCILIATION.md`
+- `docs/moj-api-reference/P08_AUTH_CONTRACT_MATRIX.md`
+- executable gate `scripts/verify-p08-closure.ps1`
+- CI gate `.github/workflows/p08-closure.yml`
+
+The P08 closure reconciliation changes governance/evidence/CI only and introduces **no P09 service request/response implementation**.
+
+## P09 opening record
+
+P09 is **OPEN / READY** only after the P08 closure transition is normally integrated and the resulting exact `main` gate is green.
+
+Canonical P09 scope:
+
+1. Marriage Cases Service
+2. Is Single Basic Service
+3. Marriage Couple Last Case Service
+4. Family Judgment Text Service
+5. Procuration Status Service
+
+Seed MOJ as the first Entity and implement only these five service contracts from official OpenAPI/Swagger snapshots or equivalent approved official evidence. Do not invent request/response fields, validation, endpoints or per-operation authentication rules. Unknown schema details remain blocked/deferred. Authorized UAT smoke is limited, non-destructive and owner-last when credentials/records are unavailable.
 
 ## Cross-phase gates
 
@@ -87,7 +138,7 @@ The following apply to every phase:
 - **NO SECRET LEAKAGE:** secrets and personal data must not enter Git/logs/evidence.
 - **SERVICE ISOLATION:** endpoint/auth/secret/token configuration defaults to independent Service + Environment bindings; sharing requires an explicit Shared AuthProfile.
 - **UI PARITY:** any phase touching one of the four reference screens must preserve the mandatory baseline and capture evidence.
-- **OWNER-LAST:** finish all autonomous portions before deferring an external/owner-only check.
+- **OWNER-LAST:** finish all autonomous portions before deferring an external/owner-only check; deferred is never PASS.
 - **PUSHED EVIDENCE:** no phase closure from unpushed local work.
 - **EXACT-MAIN RECHECK:** after integration, verify the exact new main SHA.
 

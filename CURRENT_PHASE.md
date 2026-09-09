@@ -2,44 +2,54 @@
 
 ## Canonical current phase
 
-**P08 — MOJ authentication integration**
+**P09 — Seed and implement the five MOJ services**
 
 Status: **OPEN / READY**
 
-P07 — Generic service execution engine is **CLOSED** from exact integrated implementation baseline `9535fa158441160ab7c7d204863776e38e560a33` after normal integration of the P07 execution authorization/binding, upgrade-persistence acceptance, Service Execution UI parity, generic runtime and final UI/runtime convergence lines through PRs #33, #34, #36, #37 and #38. PR #39 supplied intermediate progress reconciliation before final integration.
+P08 — MOJ authentication integration is **CLOSED** from exact integrated implementation baseline `67968a9230dae453b36f48549eda138d7b5401c7` after convergence of the P08 authentication runtime, scope isolation, independent security acceptance and protected administration Test Authentication flow through PR #47, with the earlier legitimate worker lines recovered rather than duplicated.
 
-On exact implementation `main` SHA `9535fa158441160ab7c7d204863776e38e560a33`, all **16/16 exact-main workflow runs succeeded**, with no failed, queued or in-progress run after completion.
+On exact implementation `main` SHA `67968a9230dae453b36f48549eda138d7b5401c7`, all **17/17 exact-main push workflow runs succeeded**, with no failed, queued or in-progress run after completion. PR #47 exact-head verification was **22/22 SUCCESS** before normal merge.
 
-P07 exact-main closure evidence includes:
+P08 exact-main evidence includes:
 
-- P07 Generic Execution Runtime run `34305403834` — **SUCCESS**; artifact `P07-Generic-Execution-Runtime-9535fa158441160ab7c7d204863776e38e560a33`, 809 bytes, digest `sha256:322395583f95a1f8fd1cacab0975ca0f4b3c0c971de1a86fa44185ed3f57a8dc`.
-- P07 Service Execution UI run `34305403861` — **SUCCESS**; artifact `P07-Execution-UI-Evidence-9535fa158441160ab7c7d204863776e38e560a33`, 372,853 bytes, digest `sha256:5d9b9fd470d6f953fb120391c42130a01412a9b4e8a6288399170cf8399b8f78`.
-- P07 Upgrade Persistence Acceptance run `34305403851` — **SUCCESS**; artifact `p07-upgrade-persistence-evidence-9535fa158441160ab7c7d204863776e38e560a33`, 647 bytes, digest `sha256:5ec9fd3f01925d62cf47d375be1bf591b27dd2eebf9c3848ea448e01c00482ef`.
+- P08 Security Acceptance run `34318032200` — **SUCCESS**.
+- Artifact `P08-Security-Acceptance-67968a9230dae453b36f48549eda138d7b5401c7`, 2,314 bytes, digest `sha256:b39ea805fec25b5a45a35c2eb445074e64622f48a44dc7c7e3ccd6a0ea8b3d98`.
+- MOJ runtime acceptance — **PASS**, including valid `/genToken` → Bearer composition and malformed/empty/failure cases.
+- P08 Auth Scope Isolation — **PASS**, including forged/stale AuthProfile and SecretRef, cross-service, cross-environment, Production→UAT fallback and stale/wrong-scope token rejection.
+- Protected administration Test Authentication — **PASS**, server-authorized and anti-forgery protected without token plaintext disclosure.
+- Independent secret/token leakage scan — **PASS**.
 
-P07 acceptance verifies exact authorized `Service + Environment + AuthProfile` resolution without fallback, metadata-driven field generation and validation, RequestId/CorrelationId propagation, `IHttpClientFactory` outbound execution with bounded resilience and POST retry only when explicitly `SafeToRetry`, structured ResultMappings, bounded response handling, secret-safe request/response diagnostics, response/error handling across required HTTP/network/TLS classes, sensitive raw-response masking, bilingual Arabic RTL / English LTR responsive Service Execution UI, accessibility/visual evidence, fake-endpoint acceptance, upgrade/data preservation and preservation of closed P00–P06 security/isolation contracts. No owner-only or external P07 evidence is deferred.
+One operation-level external fact remains explicitly **DEFERRED_EXTERNAL — NOT PASS**: authenticated CAIT/MOJ evidence establishing whether `ApiKeyAuth` is required specifically on `/genToken` for a target environment. The integrated runtime supports governed composition of the documented mechanisms without guessing this applicability. The exact owner/operator validation procedure is recorded in `docs/evidence/P08_MOJ_AUTHENTICATION_INTEGRATION.md` under the owner-last policy.
 
-The P07 final closure reconciliation is governance/evidence only and introduces **no P08 implementation**.
+The P08 closure reconciliation is governance/evidence/CI only and introduces **no P09 service payload implementation**. The P09 transition becomes authoritative only from the normally integrated `main` state and its exact-main verification.
 
 ## Legal work now
 
-P08 only, plus any repair needed to preserve closed P00–P07 baselines and repository controls.
+P09 only, plus any repair required to preserve closed P00–P08 baselines and repository controls.
 
-P08 scope is MOJ authentication integration based only on official documentation/fixtures: x-api-key, `/genToken` and Bearer-token behavior where applicable. Do not assume credentials or authentication bindings are shared between MOJ services. Continue exact Service + Environment + AuthProfile isolation and fail closed on unknown/forged/cross-scope configuration.
+P09 scope is exactly the canonical execution-plan unit: add MOJ as the first Entity and seed/implement only the five services — Marriage Cases Service, Is Single Basic Service, Marriage Couple Last Case Service, Family Judgment Text Service, and Procuration Status Service. Request fields, response fields, validation, endpoints, authentication applicability and mappings must come from official OpenAPI/Swagger snapshots or other repository-approved official evidence. Unknown fields remain blocked/deferred; do not invent them. Authorized UAT smoke, if available, must be limited and non-destructive.
 
 ## Locked future work
 
-P09–P17 remain locked. P09 service-specific MOJ request/response implementation must not begin until P08 is formally CLOSED.
+P10–P17 remain locked. Request history, audit/monitoring, broader administration, final UI convergence, security hardening, installer, full acceptance and final release convergence must not begin before their canonical phase opens.
 
-## P07 closure evidence
+## P08 closure evidence
 
-Detailed closure evidence is recorded in `docs/evidence/P07_GENERIC_EXECUTION_ENGINE.md`.
+Detailed P08 closure evidence is recorded in:
 
-- Implementation baseline: `9535fa158441160ab7c7d204863776e38e560a33`
-- Exact-main workflows: **16/16 SUCCESS**
-- Open P07 PRs at closure reconciliation start: **NONE**
-- Owner/external dependency deferred for P07: **NONE**
-- P08 implementation introduced by P07 closure reconciliation: **NONE**
+- `docs/evidence/P08_MOJ_AUTHENTICATION_INTEGRATION.md`
+- `docs/evidence/P08_CONTRACT_RECONCILIATION.md`
+- `docs/moj-api-reference/P08_AUTH_CONTRACT_MATRIX.md`
 
-## P08 exit condition
+Closure facts:
 
-P08 may be marked CLOSED only when the authoritative MOJ authentication contract is implemented from official evidence, x-api-key/token/Bearer handling is isolated to the exact Service + Environment + AuthProfile binding, credentials/tokens cannot cross service or environment boundaries, negative/security acceptance is executable, P00–P07 regressions remain green, and exact-main evidence supports closure without introducing P09+ scope.
+- Implementation baseline: `67968a9230dae453b36f48549eda138d7b5401c7`
+- Exact-main push workflows: **17/17 SUCCESS**
+- PR #47 exact-head workflows: **22/22 SUCCESS**
+- Exact-main P08 Security Acceptance: run `34318032200` — **SUCCESS**
+- Owner/external evidence: exact `/genToken` operation-level `ApiKeyAuth` applicability remains **DEFERRED_EXTERNAL — NOT PASS**
+- P09 implementation introduced by P08 closure reconciliation: **NONE**
+
+## P09 exit condition
+
+P09 may be marked CLOSED only when the five canonical MOJ services are represented from official request/response contract evidence without invented fields, their independent endpoint/auth bindings and contract tests are complete, closed P00–P08 regressions remain green, any unavailable authorized UAT dependency is classified under owner-last without being called PASS, and exact-main evidence supports closure without introducing P10+ scope.
