@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - 'worker/p07-generic-execution-runtime'
+      - 'worker/p07-execution-ui-runtime-wiring'
   pull_request:
     branches:
       - main
@@ -35,12 +36,16 @@ jobs:
         run: dotnet restore tests/GSIP.P07ExecutionRuntimeChecks/GSIP.P07ExecutionRuntimeChecks.csproj
       - name: Restore P07 security checks
         run: dotnet restore tests/GSIP.P07ExecutionSecurityChecks/GSIP.P07ExecutionSecurityChecks.csproj
+      - name: Restore P07 sensitive response checks
+        run: dotnet restore tests/GSIP.P07SensitiveResponseChecks/GSIP.P07SensitiveResponseChecks.csproj
       - name: Build solution Release
         run: dotnet build GSIP.sln -c Release --no-restore
       - name: Build P07 runtime checks Release
         run: dotnet build tests/GSIP.P07ExecutionRuntimeChecks/GSIP.P07ExecutionRuntimeChecks.csproj -c Release --no-restore
       - name: Build P07 security checks Release
         run: dotnet build tests/GSIP.P07ExecutionSecurityChecks/GSIP.P07ExecutionSecurityChecks.csproj -c Release --no-restore
+      - name: Build P07 sensitive response checks Release
+        run: dotnet build tests/GSIP.P07SensitiveResponseChecks/GSIP.P07SensitiveResponseChecks.csproj -c Release --no-restore
       - name: Run generic execution runtime checks
         shell: bash
         run: |
@@ -48,6 +53,10 @@ jobs:
           dotnet run --project tests/GSIP.P07ExecutionRuntimeChecks/GSIP.P07ExecutionRuntimeChecks.csproj -c Release --no-build | tee evidence/runtime-checks.txt
       - name: Preserve fail-closed execution security checks
         run: dotnet run --project tests/GSIP.P07ExecutionSecurityChecks/GSIP.P07ExecutionSecurityChecks.csproj -c Release --no-build
+      - name: Verify sensitive raw-response masking
+        shell: bash
+        run: |
+          dotnet run --project tests/GSIP.P07SensitiveResponseChecks/GSIP.P07SensitiveResponseChecks.csproj -c Release --no-build | tee evidence/sensitive-response-checks.txt
       - name: Validate execution plan and governance
         run: python scripts/validate_execution_plan.py
       - name: Build sanitized runtime evidence manifest
@@ -57,19 +66,24 @@ jobs:
           import hashlib, json, os, pathlib
           p = pathlib.Path('evidence/runtime-checks.txt')
           data = p.read_bytes()
+          sensitive = pathlib.Path('evidence/sensitive-response-checks.txt')
+          sensitive_data = sensitive.read_bytes()
           manifest = {
               'CandidateSha': os.environ['CANDIDATE_SHA'],
               'RuntimeChecks': 'PASS',
               'FailClosedSecurityChecks': 'PASS',
+              'SensitiveRawResponseMasking': 'PASS',
               'Governance': 'PASS',
               'RuntimeOutputBytes': len(data),
               'RuntimeOutputSha256': hashlib.sha256(data).hexdigest(),
+              'SensitiveChecksOutputBytes': len(sensitive_data),
+              'SensitiveChecksOutputSha256': hashlib.sha256(sensitive_data).hexdigest(),
               'SyntheticOnly': True,
               'RealCredentials': False,
           }
           pathlib.Path('evidence/manifest.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
           PY
-          ! grep -RIE '(authorization:[[:space:]]*bearer|x-api-key[[:space:]]*[:=]|consumer-secret[[:space:]]*[:=]|password[[:space:]]*[:=])' evidence
+          ! grep -RIE '(authorization:[[:space:]]*bearer|x-api-key[[:space:]]*[:=]|consumer-secret[[:space:]]*[:=]|password[[:space:]]*[:=]|SYNTHETIC_SENSITIVE_RESULT_9A71_DO_NOT_EXPOSE)' evidence
       - name: Upload exact-candidate runtime evidence
         uses: actions/upload-artifact@v4
         with:
