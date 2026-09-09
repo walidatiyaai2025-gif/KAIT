@@ -171,8 +171,10 @@ async Task ForgedSecretRefAsync()
     var fixture = Fixture(service, Binding(service) with { AuthProfileId = profile.Id, AuthProfileVersion = profile.Version },
         handler, profile: profile, secretResolver: resolver);
 
-    var exception = await ExpectThrowsAsync<SecretReferenceRejectedException>(() => ExecuteAsync(fixture.Engine, service));
-    Require(!exception.ToString().Contains(bearerSentinel, StringComparison.Ordinal), "Secret rejection leaked plaintext material.");
+    var result = await ExecuteAsync(fixture.Engine, service);
+    Require(result.Outcome == ServiceExecutionOutcome.AuthenticationUnavailable,
+        "Forged SecretRef did not fail closed as AuthenticationUnavailable.");
+    Require(!result.ToString().Contains(bearerSentinel, StringComparison.Ordinal), "Secret rejection leaked plaintext material.");
     Require(handler.CallCount == 0, "Forged SecretRef reached transport.");
 }
 
