@@ -1,0 +1,88 @@
+name: P08 Phase Closure Gate
+
+on:
+  push:
+    branches:
+      - main
+      - 'worker/p08-closure-reconciliation'
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  p08-phase-closure:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+      GSIP_P08_SQL: Server=(localdb)\MSSQLLocalDB;Database=GSIP_P08_Closure_${{ github.run_id }}_${{ github.run_attempt }};Trusted_Connection=True;TrustServerCertificate=True
+      GSIP_P08_EVIDENCE_DIR: artifacts/p08-closure-security
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          fetch-depth: 0
+      - name: Assert exact candidate SHA
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+      - name: Set up pinned .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Start SQL LocalDB
+        shell: pwsh
+        run: |
+          sqllocaldb start MSSQLLocalDB
+          sqllocaldb info MSSQLLocalDB
+      - name: Restore closure projects
+        shell: bash
+        run: |
+          dotnet restore GSIP.sln
+          dotnet restore tests/GSIP.P08AuthenticationChecks/GSIP.P08AuthenticationChecks.csproj
+          dotnet restore tests/GSIP.P08MojAuthRuntimeChecks/GSIP.P08MojAuthRuntimeChecks.csproj
+          dotnet restore tests/GSIP.P08AuthIsolationChecks/GSIP.P08AuthIsolationChecks.csproj
+          dotnet restore tests/GSIP.P08SecurityAcceptanceChecks/GSIP.P08SecurityAcceptanceChecks.csproj
+          dotnet restore tests/GSIP.P08SecurityAcceptanceChecks/MojRuntime/GSIP.P08MojRuntimeAcceptance.csproj
+          dotnet restore tests/GSIP.P07ExecutionSecurityChecks/GSIP.P07ExecutionSecurityChecks.csproj
+          dotnet restore tests/GSIP.P06TokenCacheChecks/GSIP.P06TokenCacheChecks.csproj
+      - name: Build Release
+        shell: bash
+        run: |
+          dotnet build GSIP.sln -c Release --no-restore
+          dotnet build tests/GSIP.P08AuthenticationChecks/GSIP.P08AuthenticationChecks.csproj -c Release --no-restore
+          dotnet build tests/GSIP.P08MojAuthRuntimeChecks/GSIP.P08MojAuthRuntimeChecks.csproj -c Release --no-restore
+          dotnet build tests/GSIP.P08AuthIsolationChecks/GSIP.P08AuthIsolationChecks.csproj -c Release --no-restore
+          dotnet build tests/GSIP.P08SecurityAcceptanceChecks/GSIP.P08SecurityAcceptanceChecks.csproj -c Release --no-restore
+          dotnet build tests/GSIP.P08SecurityAcceptanceChecks/MojRuntime/GSIP.P08MojRuntimeAcceptance.csproj -c Release --no-restore
+          dotnet build tests/GSIP.P07ExecutionSecurityChecks/GSIP.P07ExecutionSecurityChecks.csproj -c Release --no-restore
+          dotnet build tests/GSIP.P06TokenCacheChecks/GSIP.P06TokenCacheChecks.csproj -c Release --no-restore
+      - name: Verify P08 closure contract and governance transition
+        shell: pwsh
+        run: ./scripts/verify-p08-closure.ps1 -ClosureGate
+      - name: Run P08 authoritative runtime and isolation checks
+        shell: bash
+        run: |
+          dotnet run --project tests/GSIP.P08AuthenticationChecks/GSIP.P08AuthenticationChecks.csproj -c Release --no-build
+          dotnet run --project tests/GSIP.P08MojAuthRuntimeChecks/GSIP.P08MojAuthRuntimeChecks.csproj -c Release --no-build
+          dotnet run --project tests/GSIP.P08AuthIsolationChecks/GSIP.P08AuthIsolationChecks.csproj -c Release --no-build
+      - name: Run independent P08 security acceptance and leakage scan
+        shell: pwsh
+        run: ./scripts/verify-p08-security-acceptance.ps1 -Configuration Release -EvidenceDirectory $env:GSIP_P08_EVIDENCE_DIR
+      - name: Validate canonical execution plan
+        run: python scripts/validate_execution_plan.py
+      - name: Reject plaintext closure evidence
+        shell: bash
+        run: |
+          test -s artifacts/p08-closure-security/acceptance-summary.json
+          test -s artifacts/p08-closure-security/ci-evidence.json
+          ! grep -RIE 'Authorization[[:space:]]*:[[:space:]]*Bearer[[:space:]]+[^[:space:]]+|x-api-key[[:space:]]*[:=][[:space:]]*[^[:space:]]+|password[[:space:]]*[:=][[:space:]]*[^[:space:]]+' docs/evidence artifacts/p08-closure-security
+      - name: Upload exact-candidate P08 closure evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: P08-Closure-${{ env.CANDIDATE_SHA }}
+          path: artifacts/p08-closure-security/
+          if-no-files-found: error
