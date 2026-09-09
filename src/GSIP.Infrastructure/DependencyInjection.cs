@@ -40,12 +40,18 @@ public static class DependencyInjection
         services.AddScoped<MojMetadataSeedService>();
         services.AddScoped<IServiceExecutionSecurityGate, ServiceExecutionSecurityGate>();
         services.Configure<ServiceExecutionRuntimeOptions>(configuration.GetSection("ServiceExecutionRuntime"));
+        services.Configure<RequestHistoryOptions>(configuration.GetSection(RequestHistoryOptions.SectionName));
         services.AddHttpClient("GSIP.Execution");
         services.AddScoped<GenericServiceExecutionEngine>();
         services.AddScoped<IAuthenticationProbeService, MojAuthenticationProbeService>();
-        services.AddScoped<IServiceExecutionEngine>(serviceProvider => new SensitiveResponseMaskingExecutionEngine(
+        services.AddScoped<SensitiveResponseMaskingExecutionEngine>(serviceProvider => new SensitiveResponseMaskingExecutionEngine(
             serviceProvider.GetRequiredService<GenericServiceExecutionEngine>(),
             serviceProvider.GetRequiredService<IMetadataCatalogService>()));
+        services.AddScoped<IRequestHistoryStore, RequestHistoryStore>();
+        services.AddScoped<IServiceExecutionEngine>(serviceProvider => new RequestHistoryExecutionEngine(
+            serviceProvider.GetRequiredService<SensitiveResponseMaskingExecutionEngine>(),
+            serviceProvider.GetRequiredService<IServiceExecutionSecurityGate>(),
+            serviceProvider.GetRequiredService<IRequestHistoryStore>()));
         services.AddScoped<DataProtectionSecretVault>();
         services.AddScoped<ISecretVault>(serviceProvider => serviceProvider.GetRequiredService<DataProtectionSecretVault>());
         services.AddScoped<ISecretMaterialResolver>(serviceProvider => serviceProvider.GetRequiredService<DataProtectionSecretVault>());
