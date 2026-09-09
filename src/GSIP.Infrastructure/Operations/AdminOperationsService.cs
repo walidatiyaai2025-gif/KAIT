@@ -21,7 +21,7 @@ namespace GSIP.Infrastructure.Operations;
 
 internal sealed record AdminOperationsRuntimeState(DateTimeOffset StartedAtUtc);
 
-public sealed class AdminOperationsService(
+internal sealed class AdminOperationsService(
     GsipDbContext db,
     IGsipPermissionEvaluator permissions,
     IMetadataCatalogService metadataCatalog,
