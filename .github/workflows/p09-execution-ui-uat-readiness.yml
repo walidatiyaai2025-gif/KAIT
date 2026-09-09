@@ -1,0 +1,106 @@
+name: P09 Execution UI and UAT Readiness
+
+on:
+  push:
+    branches:
+      - main
+      - 'worker/p09-execution-ui-uat-readiness'
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  p09-execution-ui-uat-readiness:
+    runs-on: windows-latest
+    timeout-minutes: 55
+    env:
+      CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+      GSIP_P09_SQL: Server=(localdb)\MSSQLLocalDB;Database=GSIP_P09_UI_${{ github.run_id }}_${{ github.run_attempt }};Integrated Security=true;TrustServerCertificate=true;MultipleActiveResultSets=true
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          fetch-depth: 0
+      - name: Assert exact candidate SHA
+        shell: pwsh
+        run: |
+          $actual = (git rev-parse HEAD).Trim()
+          if ($actual -ne $env:CANDIDATE_SHA) { throw "Exact candidate mismatch." }
+      - name: Setup pinned .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Restore
+        shell: pwsh
+        run: |
+          dotnet restore GSIP.sln
+          dotnet restore tests/GSIP.P09MetadataSeedChecks/GSIP.P09MetadataSeedChecks.csproj
+      - name: Build Release
+        shell: pwsh
+        run: |
+          dotnet build GSIP.sln -c Release --no-restore
+          dotnet build tests/GSIP.P09MetadataSeedChecks/GSIP.P09MetadataSeedChecks.csproj -c Release --no-restore
+      - name: Start SQL Server LocalDB
+        shell: pwsh
+        run: |
+          sqllocaldb start MSSQLLocalDB
+          sqllocaldb info MSSQLLocalDB
+      - name: Verify exact five-service official metadata
+        shell: pwsh
+        run: dotnet run --project tests/GSIP.P09MetadataSeedChecks/GSIP.P09MetadataSeedChecks.csproj -c Release --no-build
+      - name: Verify P09 generic UI readiness and permission safety
+        shell: pwsh
+        run: ./scripts/verify-p09-execution-ui-readiness.ps1
+      - name: Run existing P07 bilingual browser regression with synthetic data
+        shell: pwsh
+        run: ./scripts/verify-p07-execution-ui.ps1
+      - name: Validate official contracts and governance
+        shell: pwsh
+        run: |
+          python scripts/validate_p09_contract_snapshots.py
+          python scripts/validate_execution_plan.py
+      - name: Build sanitized browser evidence digest
+        shell: pwsh
+        run: |
+          @'
+          import hashlib, json, os, pathlib
+          roots = [pathlib.Path('artifacts/p09-execution-ui-readiness'), pathlib.Path('artifacts/p07-execution-ui-evidence')]
+          files = []
+          for root in roots:
+              if not root.exists():
+                  raise SystemExit(f'missing evidence directory: {root}')
+              for p in sorted(x for x in root.rglob('*') if x.is_file()):
+                  data = p.read_bytes()
+                  files.append({'path': p.as_posix(), 'bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest()})
+          manifest = {
+              'CandidateSha': os.environ['CANDIDATE_SHA'],
+              'Unit': 'P09::execution-ui-and-uat-readiness',
+              'ArabicRtlEnglishLtrBrowserRegression': 'PASS',
+              'BrowserData': 'SYNTHETIC_ONLY',
+              'OwnerLiveUat': 'DEFERRED_EXTERNAL_NOT_PASS',
+              'RealCredentials': False,
+              'PersonalData': False,
+              'Files': files,
+          }
+          pathlib.Path('artifacts/p09-execution-ui-readiness/browser-evidence-digest.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
+          '@ | python -
+      - name: Reject secret or personal evidence
+        shell: pwsh
+        run: |
+          $text = Get-ChildItem artifacts/p09-execution-ui-readiness -File -Recurse | Get-Content -Raw | Out-String
+          if ($text -match 'Authorization\s*:\s*Bearer\s+\S+' -or $text -match 'x-api-key\s*[:=]\s*\S+' -or $text -match '\b\d{12}\b') {
+            throw 'P09 UI evidence contains a forbidden secret/header/personal-data pattern.'
+          }
+      - name: Upload exact-candidate P09 UI evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: P09-Execution-UI-UAT-Readiness-${{ env.CANDIDATE_SHA }}
+          path: |
+            artifacts/p09-execution-ui-readiness/
+            artifacts/p07-execution-ui-evidence/
+          if-no-files-found: error
+          retention-days: 30
