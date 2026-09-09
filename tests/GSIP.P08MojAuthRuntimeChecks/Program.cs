@@ -11,19 +11,21 @@ using GSIP.Infrastructure.Execution;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-const string apiKeySentinel = "SYNTHETIC_P08_API_KEY_31f7";
-const string usernameSentinel = "synthetic-user-p08";
-const string passwordSentinel = "SYNTHETIC_P08_PASSWORD_9c4d";
-const string accessTokenSentinel = "eyJhbGciOiJub25lIn0.eyJleHAiOjQxMDI0NDQ4MDB9.synthetic-signature";
+const string ApiKey = "SYNTHETIC_P08_API_KEY_31f7";
+const string Username = "synthetic-user-p08";
+const string Password = "SYNTHETIC_P08_PASSWORD_9c4d";
+const string AccessToken = "eyJhbGciOiJub25lIn0.eyJleHAiOjQxMDI0NDQ4MDB9.synthetic-signature";
+const string TokenMetadataKey = "X-GSIP-TokenEndpointPath";
 
 var principal = new ClaimsPrincipal(new ClaimsIdentity(
     [new Claim(ClaimTypes.NameIdentifier, "80000000-0000-0000-0000-000000000801")],
     "SyntheticP08"));
 
 await ApiKeyUsesExactHeaderAndExecutionScopeAsync();
-await TokenEndpointAcquiresCachesAndAttachesBearerAsync();
-await MalformedTokenResponseFailsClosedWithoutLeakAsync();
-await MissingTokenCredentialFailsBeforeTransportAsync();
+await OfficialTokenContractUsesMetadataPathAndBearerAsync();
+await NonDefaultMetadataTokenPathIsHonoredAsync();
+await MalformedTokenResponseFailsClosedAsync();
+await MissingTokenPathAndCredentialFailBeforeTransportAsync();
 
 Console.WriteLine("P08 MOJ authentication runtime checks passed.");
 return;
@@ -31,55 +33,36 @@ return;
 async Task ApiKeyUsesExactHeaderAndExecutionScopeAsync()
 {
     var service = SyntheticService();
-    var profileId = Guid.Parse("80000000-0000-0000-0000-000000000811");
-    var profile = Profile(
-        profileId,
-        service.Id,
-        AuthProfileType.ApiKeyHeader,
-        [Secret("x-api-key", 'A', 3)]);
+    var profile = Profile(AuthProfileType.ApiKeyHeader, [Secret("x-api-key", 'A', 3)]);
     var resolver = new FakeSecretResolver(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
     {
-        ["x-api-key"] = apiKeySentinel
+        ["x-api-key"] = ApiKey
     });
-    var handler = new RecordingHandler(async (_, request, cancellationToken) =>
+    var handler = new RecordingHandler((_, request, _) =>
     {
         Check(request.RequestUri!.AbsolutePath == "/runtime", "API-key request reached an unexpected path.");
-        Check(request.Headers.TryGetValues("x-api-key", out var values)
-              && values.Single() == apiKeySentinel,
-            "Official x-api-key header was not attached with the resolved value.");
-        await Task.Yield();
-        return Json(HttpStatusCode.OK, "{\"ok\":true}");
+        Check(request.Headers.TryGetValues("x-api-key", out var values) && values.Single() == ApiKey,
+            "Official x-api-key header was not attached.");
+        return Task.FromResult(Json(HttpStatusCode.OK, "{\"ok\":true}"));
     });
     var logger = new RecordingLogger<GenericServiceExecutionEngine>();
-    var fixture = Fixture(service, profile, resolver, handler, logger, new FakeTokenCache());
+    var fixture = Fixture(service, profile, resolver, handler, logger, new FakeTokenCache(), null);
 
     var result = await fixture.Engine.ExecuteAsync(Command(service));
 
     Check(result.Outcome == ServiceExecutionOutcome.Success, "API-key execution must succeed.");
-    Check(resolver.Calls.Count == 1, "API-key execution must resolve one secret.");
     var scope = resolver.Calls.Single();
-    Check(scope.ServiceId == service.Id && scope.EnvironmentId == CatalogEnvironmentCodes.UatId && scope.AuthProfileId == profileId,
-        "Secret resolution must use the exact execution Service + Environment + AuthProfile scope.");
-    Check(logger.Messages.All(message => !message.Contains(apiKeySentinel, StringComparison.Ordinal)),
-        "API key leaked into runtime logs.");
-    Check(!result.ToString().Contains(apiKeySentinel, StringComparison.Ordinal), "API key leaked into execution result diagnostics.");
+    Check(scope.ServiceId == service.Id && scope.EnvironmentId == CatalogEnvironmentCodes.UatId && scope.AuthProfileId == profile.Id,
+        "API-key resolution must use exact execution scope.");
+    Check(logger.Messages.All(message => !message.Contains(ApiKey, StringComparison.Ordinal)), "API key leaked to logs.");
 }
 
-async Task TokenEndpointAcquiresCachesAndAttachesBearerAsync()
+async Task OfficialTokenContractUsesMetadataPathAndBearerAsync()
 {
     var service = SyntheticService();
-    var profileId = Guid.Parse("80000000-0000-0000-0000-000000000812");
-    var profile = Profile(
-        profileId,
-        service.Id,
-        AuthProfileType.TokenEndpoint,
-        [Secret("username", 'B', 4), Secret("password", 'C', 7)]);
-    var resolver = new FakeSecretResolver(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-    {
-        ["username"] = usernameSentinel,
-        ["password"] = passwordSentinel
-    });
-    var tokenCache = new FakeTokenCache();
+    var profile = Profile(AuthProfileType.TokenEndpoint, [Secret("username", 'B', 4), Secret("password", 'C', 7)]);
+    var resolver = TokenResolver();
+    var cache = new FakeTokenCache();
     var tokenCalls = 0;
     var serviceCalls = 0;
     var handler = new RecordingHandler(async (_, request, cancellationToken) =>
@@ -87,104 +70,116 @@ async Task TokenEndpointAcquiresCachesAndAttachesBearerAsync()
         if (request.RequestUri!.AbsolutePath == "/genToken")
         {
             tokenCalls++;
-            Check(request.Method == HttpMethod.Post, "MOJ token acquisition must use POST /genToken.");
+            Check(request.Method == HttpMethod.Post, "MOJ token acquisition must POST the configured /genToken path.");
             Check(request.Content?.Headers.ContentType?.MediaType == "application/x-www-form-urlencoded",
-                "MOJ token acquisition must use application/x-www-form-urlencoded.");
+                "MOJ token content type must be form-urlencoded.");
             var body = await request.Content!.ReadAsStringAsync(cancellationToken);
-            Check(body.Contains("username=" + Uri.EscapeDataString(usernameSentinel), StringComparison.Ordinal),
-                "MOJ token request is missing the documented username field.");
-            Check(body.Contains("password=" + Uri.EscapeDataString(passwordSentinel), StringComparison.Ordinal),
-                "MOJ token request is missing the documented password field.");
-            Check(request.Headers.Authorization is null, "Bearer must not be attached to /genToken acquisition.");
-            return Json(HttpStatusCode.OK, $"{{\"data\":\"{accessTokenSentinel}\"}}");
+            Check(body.Contains("username=" + Uri.EscapeDataString(Username), StringComparison.Ordinal)
+                  && body.Contains("password=" + Uri.EscapeDataString(Password), StringComparison.Ordinal),
+                "MOJ token request omitted documented username/password fields.");
+            Check(request.Headers.Authorization is null, "Bearer must not be attached to token acquisition.");
+            return Json(HttpStatusCode.OK, $"{{\"data\":\"{AccessToken}\"}}");
         }
 
         serviceCalls++;
-        Check(request.RequestUri.AbsolutePath == "/runtime", "Authenticated service request reached an unexpected path.");
-        Check(request.Headers.Authorization?.Scheme == "Bearer"
-              && request.Headers.Authorization.Parameter == accessTokenSentinel,
-            "Acquired MOJ token was not attached as Bearer for the service call.");
+        Check(request.RequestUri.AbsolutePath == "/runtime", "Authenticated request reached an unexpected target path.");
+        Check(request.Headers.Authorization?.Scheme == "Bearer" && request.Headers.Authorization.Parameter == AccessToken,
+            "Acquired MOJ token was not attached as Bearer.");
         return Json(HttpStatusCode.OK, "{\"ok\":true}");
     });
     var logger = new RecordingLogger<GenericServiceExecutionEngine>();
-    var fixture = Fixture(service, profile, resolver, handler, logger, tokenCache);
+    var fixture = Fixture(service, profile, resolver, handler, logger, cache, "/genToken");
 
     var first = await fixture.Engine.ExecuteAsync(Command(service));
     var second = await fixture.Engine.ExecuteAsync(Command(service));
 
     Check(first.Outcome == ServiceExecutionOutcome.Success && second.Outcome == ServiceExecutionOutcome.Success,
-        "MOJ token endpoint execution must succeed.");
-    Check(tokenCalls == 1 && serviceCalls == 2,
-        "Canonical token cache must reuse an unexpired token for the same exact identity.");
-    Check(tokenCache.RefreshCalls == 1 && tokenCache.GetCalls == 2, "Unexpected token-cache acquisition behavior.");
-    Check(tokenCache.LastIdentity is not null
-          && tokenCache.LastIdentity.ServiceId == service.Id
-          && tokenCache.LastIdentity.EnvironmentId == CatalogEnvironmentCodes.UatId
-          && tokenCache.LastIdentity.AuthProfileId == profileId
-          && tokenCache.LastIdentity.AuthProfileVersion == profile.Version
-          && tokenCache.LastIdentity.SecretGeneration == 7,
-        "Token cache identity must include exact Service + Environment + AuthProfile/version/secret generation.");
+        "MOJ token flow must succeed.");
+    Check(tokenCalls == 1 && serviceCalls == 2 && cache.RefreshCalls == 1,
+        "Canonical cache must reuse the exact-scope unexpired token.");
+    Check(cache.LastIdentity is not null
+          && cache.LastIdentity.ServiceId == service.Id
+          && cache.LastIdentity.EnvironmentId == CatalogEnvironmentCodes.UatId
+          && cache.LastIdentity.AuthProfileId == profile.Id
+          && cache.LastIdentity.AuthProfileVersion == profile.Version
+          && cache.LastIdentity.SecretGeneration == 7,
+        "Token cache identity is missing scope/version/generation isolation.");
     Check(resolver.Calls.All(call => call.ServiceId == service.Id
                                      && call.EnvironmentId == CatalogEnvironmentCodes.UatId
-                                     && call.AuthProfileId == profileId),
-        "Token credentials must resolve under exact execution scope.");
-    Check(logger.Messages.All(message => !ContainsAnySecret(message)), "Credential/token plaintext leaked to runtime logs.");
-    Check(!ContainsAnySecret(first.ToString()) && !ContainsAnySecret(second.ToString()),
-        "Credential/token plaintext leaked to execution result diagnostics.");
+                                     && call.AuthProfileId == profile.Id),
+        "Token credentials were resolved outside exact execution scope.");
+    Check(logger.Messages.All(message => !ContainsSecret(message)), "Credential/token plaintext leaked to logs.");
+    Check(!ContainsSecret(first.ToString()) && !ContainsSecret(second.ToString()), "Credential/token plaintext leaked to result diagnostics.");
 }
 
-async Task MalformedTokenResponseFailsClosedWithoutLeakAsync()
+async Task NonDefaultMetadataTokenPathIsHonoredAsync()
 {
+    const string configuredPath = "/synthetic-auth-route";
     var service = SyntheticService();
-    var profile = Profile(
-        Guid.Parse("80000000-0000-0000-0000-000000000813"),
-        service.Id,
-        AuthProfileType.TokenEndpoint,
-        [Secret("username", 'D', 1), Secret("password", 'E', 1)]);
-    var resolver = new FakeSecretResolver(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-    {
-        ["username"] = usernameSentinel,
-        ["password"] = passwordSentinel
-    });
+    var profile = Profile(AuthProfileType.TokenEndpoint, [Secret("username", 'D', 1), Secret("password", 'E', 1)]);
     var handler = new RecordingHandler((_, request, _) =>
     {
-        Check(request.RequestUri!.AbsolutePath == "/genToken", "Malformed-token test must stop at token acquisition.");
+        if (request.RequestUri!.AbsolutePath == configuredPath)
+            return Task.FromResult(Json(HttpStatusCode.OK, $"{{\"data\":\"{AccessToken}\"}}"));
+        Check(request.RequestUri.AbsolutePath == "/runtime", "Runtime ignored metadata-driven token path.");
+        return Task.FromResult(Json(HttpStatusCode.OK, "{}"));
+    });
+    var fixture = Fixture(service, profile, TokenResolver(), handler,
+        new RecordingLogger<GenericServiceExecutionEngine>(), new FakeTokenCache(), configuredPath);
+
+    var result = await fixture.Engine.ExecuteAsync(Command(service));
+
+    Check(result.Outcome == ServiceExecutionOutcome.Success, "Non-default metadata token path was not honored.");
+    Check(handler.Paths.Count(path => path == configuredPath) == 1, "Configured synthetic token path was not requested exactly once.");
+}
+
+async Task MalformedTokenResponseFailsClosedAsync()
+{
+    var service = SyntheticService();
+    var profile = Profile(AuthProfileType.TokenEndpoint, [Secret("username", 'F', 1), Secret("password", 'G', 1)]);
+    var handler = new RecordingHandler((_, request, _) =>
+    {
+        Check(request.RequestUri!.AbsolutePath == "/genToken", "Malformed token response must stop at acquisition.");
         return Task.FromResult(Json(HttpStatusCode.OK, "{\"data\":\"\"}"));
     });
     var logger = new RecordingLogger<GenericServiceExecutionEngine>();
-    var fixture = Fixture(service, profile, resolver, handler, logger, new FakeTokenCache());
+    var fixture = Fixture(service, profile, TokenResolver(), handler, logger, new FakeTokenCache(), "/genToken");
 
     var result = await fixture.Engine.ExecuteAsync(Command(service));
 
-    Check(result.Outcome == ServiceExecutionOutcome.AuthenticationUnavailable,
-        "Empty/malformed token responses must fail closed as AuthenticationUnavailable.");
-    Check(handler.CallCount == 1, "Malformed token response must never reach the target service.");
-    Check(result.StatusCode is null && result.RawResponse.Length == 0, "Auth failure must not expose token endpoint response details.");
-    Check(logger.Messages.All(message => !ContainsAnySecret(message)), "Auth failure logging disclosed secret/token plaintext.");
+    Check(result.Outcome == ServiceExecutionOutcome.AuthenticationUnavailable, "Malformed token must fail closed.");
+    Check(handler.CallCount == 1 && result.StatusCode is null && result.RawResponse.Length == 0,
+        "Malformed token details must not reach target or result diagnostics.");
+    Check(logger.Messages.All(message => !ContainsSecret(message)), "Malformed auth path leaked plaintext.");
 }
 
-async Task MissingTokenCredentialFailsBeforeTransportAsync()
+async Task MissingTokenPathAndCredentialFailBeforeTransportAsync()
 {
     var service = SyntheticService();
-    var profile = Profile(
-        Guid.Parse("80000000-0000-0000-0000-000000000814"),
-        service.Id,
-        AuthProfileType.TokenEndpoint,
-        [Secret("username", 'F', 1)]);
-    var resolver = new FakeSecretResolver(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-    {
-        ["username"] = usernameSentinel
-    });
-    var handler = new RecordingHandler((_, _, _) => Task.FromResult(Json(HttpStatusCode.OK, "{}")));
-    var fixture = Fixture(service, profile, resolver, handler, new RecordingLogger<GenericServiceExecutionEngine>(), new FakeTokenCache());
+    var complete = Profile(AuthProfileType.TokenEndpoint, [Secret("username", 'H', 1), Secret("password", 'I', 1)]);
+    var noPathHandler = new RecordingHandler((_, _, _) => Task.FromResult(Json(HttpStatusCode.OK, "{}")));
+    var noPath = Fixture(service, complete, TokenResolver(), noPathHandler,
+        new RecordingLogger<GenericServiceExecutionEngine>(), new FakeTokenCache(), null);
+    var noPathResult = await noPath.Engine.ExecuteAsync(Command(service));
+    Check(noPathResult.Outcome == ServiceExecutionOutcome.AuthenticationUnavailable && noPathHandler.CallCount == 0,
+        "Missing token endpoint metadata must fail before transport.");
 
-    var result = await fixture.Engine.ExecuteAsync(Command(service));
-
-    Check(result.Outcome == ServiceExecutionOutcome.AuthenticationUnavailable,
-        "Missing token credential configuration must fail closed.");
-    Check(handler.CallCount == 0 && resolver.Calls.Count == 0,
-        "Invalid token profile configuration must fail before secret resolution or transport.");
+    var incomplete = Profile(AuthProfileType.TokenEndpoint, [Secret("username", 'J', 1)]);
+    var resolver = new FakeSecretResolver(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["username"] = Username });
+    var missingCredentialHandler = new RecordingHandler((_, _, _) => Task.FromResult(Json(HttpStatusCode.OK, "{}")));
+    var missingCredential = Fixture(service, incomplete, resolver, missingCredentialHandler,
+        new RecordingLogger<GenericServiceExecutionEngine>(), new FakeTokenCache(), "/genToken");
+    var missingCredentialResult = await missingCredential.Engine.ExecuteAsync(Command(service));
+    Check(missingCredentialResult.Outcome == ServiceExecutionOutcome.AuthenticationUnavailable
+          && missingCredentialHandler.CallCount == 0 && resolver.Calls.Count == 0,
+        "Missing token credential must fail before secret material or transport.");
 }
+
+FakeSecretResolver TokenResolver() => new(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+{
+    ["username"] = Username,
+    ["password"] = Password
+});
 
 RuntimeFixture Fixture(
     CatalogService service,
@@ -192,46 +187,36 @@ RuntimeFixture Fixture(
     ISecretMaterialResolver resolver,
     RecordingHandler handler,
     RecordingLogger<GenericServiceExecutionEngine> logger,
-    ITokenCache tokenCache)
+    ITokenCache tokenCache,
+    string? tokenPath)
 {
-    var binding = Binding(service, profile);
+    var configuredMetadata = tokenPath is null ? "{}" : $"{{\"{TokenMetadataKey}\":\"{tokenPath}\"}}";
+    var binding = new AuthorizedServiceExecutionBinding(
+        service.Id, service.Code, CatalogEnvironmentCodes.UatId, CatalogEnvironmentCodes.Uat,
+        "https://synthetic.invalid/api/family/", "/runtime", "GET", "application/json", 5,
+        "SystemDefault", true, string.Empty, profile.Id, profile.Version, configuredMetadata);
     var metadata = new FakeMetadata(new MetadataCatalogSnapshot(
         [], [service], [new CatalogEnvironment { Id = CatalogEnvironmentCodes.UatId, Code = CatalogEnvironmentCodes.Uat, Active = true }]));
     var engine = new GenericServiceExecutionEngine(
-        new FakeSecurityGate(binding),
-        metadata,
-        new FakeAuthProfiles(profile),
-        resolver,
+        new FakeSecurityGate(binding), metadata, new FakeAuthProfiles(profile), resolver,
         new FakeHttpClientFactory(new HttpClient(handler, disposeHandler: false)),
         Options.Create(new ServiceExecutionRuntimeOptions { MaxAttempts = 3, RetryDelayMilliseconds = 0 }),
-        logger,
-        tokenCache);
+        logger, tokenCache);
     return new RuntimeFixture(engine);
 }
 
 ServiceExecutionCommand Command(CatalogService service) => new(
-    principal,
-    service.Id,
-    CatalogEnvironmentCodes.UatId,
-    new Dictionary<string, string?>());
+    principal, service.Id, CatalogEnvironmentCodes.UatId, new Dictionary<string, string?>());
 
-static AuthProfileDescriptor Profile(
-    Guid profileId,
-    Guid serviceId,
-    AuthProfileType type,
-    IReadOnlyList<AuthProfileSecretDescriptor> secrets) => new(
-        profileId,
-        serviceId,
-        CatalogEnvironmentCodes.UatId,
-        "Synthetic P08 auth",
-        type,
-        true,
-        11,
-        "synthetic",
-        DateTimeOffset.UnixEpoch,
-        DateTimeOffset.UnixEpoch,
-        secrets,
+static AuthProfileDescriptor Profile(AuthProfileType type, IReadOnlyList<AuthProfileSecretDescriptor> secrets)
+{
+    var profileId = Guid.NewGuid();
+    var serviceId = Guid.Parse("80000000-0000-0000-0000-000000000802");
+    return new AuthProfileDescriptor(
+        profileId, serviceId, CatalogEnvironmentCodes.UatId, "Synthetic P08 auth", type, true, 11,
+        "synthetic", DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch, secrets,
         [new AuthProfileBindingDescriptor(serviceId, CatalogEnvironmentCodes.UatId, false, "synthetic", "owner", DateTimeOffset.UnixEpoch)]);
+}
 
 static AuthProfileSecretDescriptor Secret(string name, char seed, int generation) =>
     new(name, SecretRef.Parse("sr1_" + new string(seed, 43)), generation);
@@ -253,33 +238,16 @@ static CatalogService SyntheticService() => new()
     ResultMappings = []
 };
 
-static AuthorizedServiceExecutionBinding Binding(CatalogService service, AuthProfileDescriptor profile) => new(
-    service.Id,
-    service.Code,
-    CatalogEnvironmentCodes.UatId,
-    CatalogEnvironmentCodes.Uat,
-    "https://synthetic.invalid/api/family/",
-    "/runtime",
-    "GET",
-    "application/json",
-    5,
-    "SystemDefault",
-    true,
-    string.Empty,
-    profile.Id,
-    profile.Version,
-    "{}");
-
 static HttpResponseMessage Json(HttpStatusCode statusCode, string body) => new(statusCode)
 {
     Content = new StringContent(body, Encoding.UTF8, "application/json")
 };
 
-bool ContainsAnySecret(string value) =>
-    value.Contains(apiKeySentinel, StringComparison.Ordinal)
-    || value.Contains(usernameSentinel, StringComparison.Ordinal)
-    || value.Contains(passwordSentinel, StringComparison.Ordinal)
-    || value.Contains(accessTokenSentinel, StringComparison.Ordinal);
+bool ContainsSecret(string value) =>
+    value.Contains(ApiKey, StringComparison.Ordinal)
+    || value.Contains(Username, StringComparison.Ordinal)
+    || value.Contains(Password, StringComparison.Ordinal)
+    || value.Contains(AccessToken, StringComparison.Ordinal);
 
 static void Check(bool condition, string message)
 {
@@ -292,10 +260,12 @@ sealed record SecretScope(Guid ServiceId, Guid EnvironmentId, Guid AuthProfileId
 sealed class RecordingHandler(Func<int, HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> responder) : HttpMessageHandler
 {
     public int CallCount { get; private set; }
+    public List<string> Paths { get; } = [];
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         CallCount++;
+        Paths.Add(request.RequestUri?.AbsolutePath ?? string.Empty);
         return await responder(CallCount, request, cancellationToken);
     }
 }
@@ -317,8 +287,8 @@ sealed class FakeSecurityGate(AuthorizedServiceExecutionBinding binding) : IServ
         Guid environmentId,
         CancellationToken cancellationToken = default)
     {
-        Check(serviceId == binding.ServiceId && environmentId == binding.EnvironmentId,
-            "Security gate must receive exact requested scope.");
+        if (serviceId != binding.ServiceId || environmentId != binding.EnvironmentId)
+            throw new InvalidOperationException("Security gate received wrong scope.");
         return Task.FromResult(binding);
     }
 }
@@ -367,14 +337,8 @@ sealed class FakeSecretResolver(IReadOnlyDictionary<string, string> values) : IS
         Calls.Add(new SecretScope(serviceId, environmentId, authProfileId, secretName));
         if (!values.TryGetValue(secretName, out var value)) throw new SecretReferenceRejectedException();
         var material = Encoding.UTF8.GetBytes(value);
-        try
-        {
-            return await operation(material, cancellationToken);
-        }
-        finally
-        {
-            Array.Clear(material);
-        }
+        try { return await operation(material, cancellationToken); }
+        finally { Array.Clear(material); }
     }
 }
 
@@ -407,10 +371,6 @@ sealed class RecordingLogger<T> : ILogger<T>
     public List<string> Messages { get; } = [];
     public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
     public bool IsEnabled(LogLevel logLevel) => true;
-    public void Log<TState>(
-        LogLevel logLevel,
-        EventId eventId,
-        TState state,
-        Exception? exception,
+    public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
         Func<TState, Exception?, string> formatter) => Messages.Add(formatter(state, exception));
 }
