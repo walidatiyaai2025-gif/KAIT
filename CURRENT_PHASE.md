@@ -2,65 +2,68 @@
 
 ## Canonical current phase
 
-**P09 — Seed and implement the five MOJ services**
+**P10 — Requests, result history and exports**
 
 Status: **OPEN / READY**
 
-P08 — MOJ authentication integration is **CLOSED** from exact integrated implementation baseline `67968a9230dae453b36f48549eda138d7b5401c7` after convergence of the P08 authentication runtime, scope isolation, independent security acceptance and protected administration Test Authentication flow through PR #47, with the earlier legitimate worker lines recovered rather than duplicated.
+P09 — Seed and implement the five MOJ services is **CLOSED** from exact integrated `main` SHA `42b3b7af073efe6bd933f473b707333df8924346` after normal convergence of PRs #58, #59 and #60 and preservation of the closed P00–P08 baselines through the later P02 Setup Wizard regression repair PR #61.
 
-On exact implementation `main` SHA `67968a9230dae453b36f48549eda138d7b5401c7`, all **17/17 exact-main push workflow runs succeeded**, with no failed, queued or in-progress run after completion. PR #47 exact-head verification was **22/22 SUCCESS** before normal merge.
+On exact `main` SHA `42b3b7af073efe6bd933f473b707333df8924346`, all **29/29 push workflow runs succeeded**, with failure=0, queued=0 and in-progress=0 after completion. P09 exact-main evidence includes official-contract snapshots, all five service gates, token-contract variants, independent contract/security acceptance and execution UI/UAT-readiness acceptance.
 
-P08 exact-main closure evidence includes:
+Detailed P09 closure evidence is recorded in `docs/evidence/P09_CLOSURE.md`.
 
-- P08 Security Acceptance run `34318032200` — **SUCCESS**.
-- Artifact `P08-Security-Acceptance-67968a9230dae453b36f48549eda138d7b5401c7`, 2,314 bytes, digest `sha256:b39ea805fec25b5a45a35c2eb445074e64622f48a44dc7c7e3ccd6a0ea8b3d98`.
-- MOJ runtime acceptance — **PASS**, including valid `/genToken` → Bearer composition and malformed/empty/failure cases supported by the evidence then available.
-- P08 Auth Scope Isolation — **PASS**, including forged/stale AuthProfile and SecretRef, cross-service, cross-environment, Production→UAT fallback and stale/wrong-scope token rejection.
-- Protected administration Test Authentication — **PASS**, server-authorized and anti-forgery protected without token plaintext disclosure.
-- Independent secret/token leakage scan — **PASS**.
+## P09 closure truth
 
-At the time P08 closed, exact operation-level `ApiKeyAuth` applicability to `/genToken` was correctly **DEFERRED_EXTERNAL — NOT PASS** because authenticated operation-level evidence had not yet been supplied. That historical closure classification is preserved and is not rewritten retroactively.
+The five canonical MOJ services are represented from repository-approved official CAIT/MOJ contract evidence:
 
-After P08 closure, owner-supplied authenticated official CAIT Swagger evidence for Marriage Cases API 129, together with an owner-executed successful UAT token call, proved the observed **UAT Marriage composite authentication contract**: `/genToken` requires transient `x-api-key` plus form-urlencoded `username`/`password`, and the Marriage target requires the same `x-api-key` plus the acquired Bearer token. The closed-baseline regression repair is tracked by PR #50 / `P08-REGRESSION::moj-composite-auth-real-contract` and extends only the canonical P06/P07/P08 runtime/Test Authentication path. Status for this observed UAT contract: **UAT_PROVEN**.
+1. Marriage Cases Service — API 129
+2. Is Single Basic Service — API 132
+3. Marriage Couple Last Case Service — API 130
+4. Family Judgment Text Service — API 196
+5. Procuration Status Service — API 134
 
-Production remains deliberately separate. Owner evidence proves only the Production gateway prefix `https://moj.api.cait.gov.kw`; no Marriage path suffix, `/genToken` operation-level security applicability, target suffix, or payload contract is inferred. Status for those unproven details: **PRODUCTION_DEFERRED_EXTERNAL — NOT PASS**. No Production→UAT fallback is permitted.
+P09 preserves exact Service + Environment + AuthProfile isolation, secret/token redaction, no Production→UAT fallback, metadata-driven request/result mapping and the closed P00–P08 security/runtime controls.
 
-This post-closure repair introduces **no unrelated P09 service payload implementation**. P09 remains the canonical current phase, but new P09 payload work must not outrun integration and exact-main verification of this closed-baseline regression repair.
+Authorized live UAT execution that requires owner-controlled credentials or personal test records remains **DEFERRED_EXTERNAL_NOT_PASS** where unavailable. It is not called PASS. Unproven Production full paths, operation details and credentials remain **PRODUCTION_DEFERRED_EXTERNAL_NOT_PASS** and fail closed.
+
+Representative exact-main P09 runs on `42b3b7af073efe6bd933f473b707333df8924346`:
+
+- P09 Official Contract Snapshots `34390738947` — SUCCESS.
+- P09 Marriage Cases Service `34390739120` — SUCCESS.
+- P09 MOJ Token Contract Variants `34390739231` — SUCCESS.
+- P09 Independent Contract Security Acceptance `34390739078` — SUCCESS.
+- P09 Execution UI and UAT Readiness `34390739312` — SUCCESS.
 
 ## Legal work now
 
-P09 only, plus any repair required to preserve closed P00–P08 baselines and repository controls. The active P08 closed-baseline regression repair has priority over new P09 payload work until normally integrated and verified on exact new `main`.
+P10 only, plus any repair required to preserve closed P00–P09 baselines and repository controls.
 
-P09 scope is exactly the canonical execution-plan unit: add MOJ as the first Entity and seed/implement only the five services — Marriage Cases Service, Is Single Basic Service, Marriage Couple Last Case Service, Family Judgment Text Service, and Procuration Status Service. Request fields, response fields, validation, endpoints, authentication applicability and mappings must come from official OpenAPI/Swagger snapshots or other repository-approved official evidence. Unknown fields remain blocked/deferred; do not invent them. Authorized UAT smoke, if available, must be limited and non-destructive.
+Canonical P10 scope from `execution/GSIP_Full_Execution.json`:
+
+- persist execution RequestId, actor/user, department, Entity/Service/version, masked input snapshot, status code, duration, CorrelationId and timestamps;
+- configurable per-service structured-result/raw-response storage; sensitive stored result data protected at rest and raw storage disableable;
+- Own history by default, Department/All only by permission and current `Services.View` scope;
+- search/filter/date range/status/entity/service;
+- permissioned export/print/PDF/CSV/Excel with an Audit Event for every export;
+- no unmasked Civil IDs or sensitive payload leakage;
+- executable user/department/service isolation and IDOR-negative acceptance;
+- retention, bounds, concurrency and migration safety required by the canonical implementation.
 
 ## Locked future work
 
-P10–P17 remain locked. Request history, audit/monitoring, broader administration, final UI convergence, security hardening, installer, full acceptance and final release convergence must not begin before their canonical phase opens.
+P11–P17 remain locked. Tamper-evident audit/monitoring, broader operations/diagnostics, final UI convergence, security hardening, installer, full automated acceptance and final release convergence must not begin before their canonical phase opens.
 
-## P08 closure and post-closure evidence
+## P08 historical closure boundary
 
-Detailed evidence is recorded in:
+P08 remains CLOSED. Its historical closure baseline is `67968a9230dae453b36f48549eda138d7b5401c7`; later authenticated owner evidence proved the observed Marriage UAT composite authentication contract and the closed-baseline repair was integrated without reopening P08. Historical evidence remains in:
 
 - `docs/evidence/P08_MOJ_AUTHENTICATION_INTEGRATION.md`
 - `docs/evidence/P08_CONTRACT_RECONCILIATION.md`
 - `docs/evidence/P08_POST_CLOSURE_COMPOSITE_AUTH_REPAIR.md`
 - `docs/moj-api-reference/P08_AUTH_CONTRACT_MATRIX.md`
 
-Historical closure facts:
+Historical deferred classifications are not rewritten retroactively.
 
-- Implementation baseline: `67968a9230dae453b36f48549eda138d7b5401c7`
-- Exact-main push workflows: **17/17 SUCCESS**
-- PR #47 exact-head workflows: **22/22 SUCCESS**
-- Exact-main P08 Security Acceptance: run `34318032200` — **SUCCESS**
-- Owner/external evidence at original closure: exact `/genToken` operation-level `ApiKeyAuth` applicability was **DEFERRED_EXTERNAL — NOT PASS**
-- P09 implementation introduced by P08 closure reconciliation: **NONE**
+## P10 exit condition
 
-Post-closure repair facts:
-
-- Observed Marriage UAT `/genToken` API-key applicability and downstream API-key + Bearer composition: **UAT_PROVEN** from later authenticated official CAIT evidence.
-- Production Marriage path/auth/payload details beyond the proven Production gateway prefix: **PRODUCTION_DEFERRED_EXTERNAL — NOT PASS**.
-- PR #50 carries the canonical regression repair and synthetic-only acceptance; normal merge plus exact-new-main green verification remain required before the repair is called integrated.
-
-## P09 exit condition
-
-P09 may be marked CLOSED only when the five canonical MOJ services are represented from official request/response contract evidence without invented fields, their independent endpoint/auth bindings and contract tests are complete, closed P00–P08 regressions remain green, any unavailable authorized UAT dependency is classified under owner-last without being called PASS, and exact-main evidence supports closure without introducing P10+ scope.
+P10 may be marked CLOSED only when the canonical request/history persistence and lifecycle, masked/protected result handling, Own/Department/All authorization, service visibility isolation, filtering, retention, migration/concurrency safety, permissioned exports with injection defense and export audit events, bilingual UI and required regression tests are integrated; exact-main evidence must be green. Any genuinely owner-only/external evidence must remain explicitly deferred rather than being called PASS.
