@@ -117,11 +117,11 @@
 <nav class="execution-actions" aria-label="@Model.Text("Pagination", "التنقل بين الصفحات")">
     @if (Model.Page.Page > 1)
     {
-        <a class="btn" href="?scope=@Model.Filter.Scope&search=@Uri.EscapeDataString(Model.Filter.Search ?? "")&status=@Model.Filter.Status&entityCode=@Uri.EscapeDataString(Model.Filter.EntityCode ?? "")&serviceCode=@Uri.EscapeDataString(Model.Filter.ServiceCode ?? "")&page=@(Model.Page.Page - 1)&pageSize=@Model.Page.PageSize">@Model.Text("Previous", "السابق")</a>
+        <a class="btn" href="?scope=@Model.Filter.Scope&search=@Uri.EscapeDataString(Model.Filter.Search ?? "")&status=@Model.Filter.Status&entityCode=@Uri.EscapeDataString(Model.Filter.EntityCode ?? "")&serviceCode=@Uri.EscapeDataString(Model.Filter.ServiceCode ?? "")&fromUtc=@Uri.EscapeDataString(Model.Filter.FromUtc?.ToString("O") ?? "")&toUtc=@Uri.EscapeDataString(Model.Filter.ToUtc?.ToString("O") ?? "")&page=@(Model.Page.Page - 1)&pageSize=@Model.Page.PageSize">@Model.Text("Previous", "السابق")</a>
     }
     <span>@Model.Text("Page", "صفحة") @Model.Page.Page / @totalPages</span>
     @if (Model.Page.Page < totalPages)
     {
-        <a class="btn" href="?scope=@Model.Filter.Scope&search=@Uri.EscapeDataString(Model.Filter.Search ?? "")&status=@Model.Filter.Status&entityCode=@Uri.EscapeDataString(Model.Filter.EntityCode ?? "")&serviceCode=@Uri.EscapeDataString(Model.Filter.ServiceCode ?? "")&page=@(Model.Page.Page + 1)&pageSize=@Model.Page.PageSize">@Model.Text("Next", "التالي")</a>
+        <a class="btn" href="?scope=@Model.Filter.Scope&search=@Uri.EscapeDataString(Model.Filter.Search ?? "")&status=@Model.Filter.Status&entityCode=@Uri.EscapeDataString(Model.Filter.EntityCode ?? "")&serviceCode=@Uri.EscapeDataString(Model.Filter.ServiceCode ?? "")&fromUtc=@Uri.EscapeDataString(Model.Filter.FromUtc?.ToString("O") ?? "")&toUtc=@Uri.EscapeDataString(Model.Filter.ToUtc?.ToString("O") ?? "")&page=@(Model.Page.Page + 1)&pageSize=@Model.Page.PageSize">@Model.Text("Next", "التالي")</a>
     }
 </nav>
