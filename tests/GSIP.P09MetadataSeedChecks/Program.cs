@@ -94,7 +94,8 @@ try
     Assert(marriage.ResultMappings.Count == 0, "API 129 invented result mappings before response evidence exists.");
     Assert(services.Sum(service => service.ResultMappings.Count) == 0, "P09 seed invented result mappings.");
 
-    Assert(marriageUat.AuthProfileId is Guid authProfileId, "API 129 UAT must have an exact disabled AuthProfile binding.");
+    Assert(marriageUat.AuthProfileId.HasValue, "API 129 UAT must have an exact disabled AuthProfile binding.");
+    var authProfileId = marriageUat.AuthProfileId.Value;
     var profile = await db.AuthProfiles.AsNoTracking()
         .Include(item => item.Bindings)
         .Include(item => item.Secrets)
