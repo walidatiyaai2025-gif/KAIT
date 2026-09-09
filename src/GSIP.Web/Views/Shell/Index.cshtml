@@ -18,7 +18,7 @@
     <article class="kpi-card"><span class="kpi-icon blue" aria-hidden="true">◇</span><div><strong>@Model.ActiveEntityCount</strong><span>@t("Active entities", "الجهات النشطة")</span></div></article>
     <article class="kpi-card"><span class="kpi-icon teal" aria-hidden="true">▦</span><div><strong>@Model.ActiveServiceCount</strong><span>@t("Active services", "الخدمات النشطة")</span></div></article>
     <article class="kpi-card"><span class="kpi-icon gold" aria-hidden="true">◎</span><div><strong>@Model.ActiveEnvironmentCount</strong><span>@t("Active environments", "البيئات النشطة")</span></div></article>
-    <article class="kpi-card"><span class="kpi-icon navy" aria-hidden="true">#</span><div><strong>v@Model.ProductVersion</strong><span>@t("Build version", "إصدار التطبيق")</span></div></article>
+    <article class="kpi-card"><span class="kpi-icon navy" aria-hidden="true">#</span><div><strong>v@(Model.ProductVersion)</strong><span>@t("Build version", "إصدار التطبيق")</span></div></article>
 </section>
 
 <form class="dashboard-filter" method="get" action="/" role="search" aria-label="@t("Service catalogue filters", "مرشحات كتالوج الخدمات")">
