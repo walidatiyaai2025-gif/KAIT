@@ -188,8 +188,8 @@ public sealed class AuditTrailWriter(
     private static string BuildDevice(HttpContext? context) =>
         context?.Request.Headers["User-Agent"].ToString() ?? string.Empty;
 
-    private static string? Truncate(string? value, int maximumLength) =>
-        value is null || value.Length <= maximumLength ? value : value[..maximumLength];
+    private static string Truncate(string? value, int maximumLength) =>
+        string.IsNullOrEmpty(value) ? string.Empty : value.Length <= maximumLength ? value : value[..maximumLength];
 }
 
 public sealed record ChainStateSnapshot(
