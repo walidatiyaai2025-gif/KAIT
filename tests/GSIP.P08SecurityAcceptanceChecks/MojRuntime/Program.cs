@@ -15,6 +15,7 @@ using GSIP.Infrastructure.Execution;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
+var apiKey = Synthetic("api");
 var username = Synthetic("user");
 var password = Synthetic("pass");
 var bearer = SyntheticJwt(DateTimeOffset.UtcNow.AddHours(2));
@@ -23,7 +24,8 @@ var principal = new ClaimsPrincipal(new ClaimsIdentity(
     "P08IndependentMojAcceptance"));
 var cases = new List<(string Name, bool Passed)>();
 
-await Run("valid-genToken-bearer", ValidTokenFlowAsync);
+await Run("valid-composite-genToken-api-key-bearer", ValidCompositeTokenFlowAsync);
+await Run("missing-invalid-api-key", MissingInvalidApiKeyAsync);
 await Run("missing-invalid-token-path", MissingInvalidTokenPathAsync);
 await Run("malformed-empty-token-response", MalformedTokenResponsesAsync);
 await Run("token-http-error-matrix", TokenHttpErrorsAsync);
@@ -36,7 +38,7 @@ await Run("token-diagnostics-no-plaintext", TokenDiagnosticsNoLeakAsync);
 if (cases.Any(item => !item.Passed))
     throw new InvalidOperationException($"Independent MOJ runtime acceptance failed {cases.Count(item => !item.Passed)} case(s).");
 
-Console.WriteLine($"P08_MOJ_RUNTIME_ACCEPTANCE=PASS;CASES={cases.Count};SYNTHETIC_ONLY=true");
+Console.WriteLine($"P08_MOJ_RUNTIME_ACCEPTANCE=PASS;CASES={cases.Count};COMPOSITE_AUTH=true;SYNTHETIC_ONLY=true");
 return;
 
 async Task Run(string name, Func<Task> action)
@@ -54,15 +56,18 @@ async Task Run(string name, Func<Task> action)
     }
 }
 
-async Task ValidTokenFlowAsync()
+async Task ValidCompositeTokenFlowAsync()
 {
     using var fixture = NewFixture(async (_, request, token) =>
     {
-        if (request.RequestUri!.AbsolutePath == "/genToken")
+        if (IsTokenRequest(request))
         {
+            Check(request.RequestUri!.AbsolutePath == "/moj/genToken", "MOJ token URI did not preserve the configured base prefix.");
             Check(request.Method == HttpMethod.Post, "MOJ token request is not POST.");
             Check(request.Content?.Headers.ContentType?.MediaType == "application/x-www-form-urlencoded",
                 "MOJ token request is not form-urlencoded.");
+            Check(request.Headers.TryGetValues("x-api-key", out var keyValues) && keyValues.Single() == apiKey,
+                "MOJ token request omitted x-api-key.");
             Check(request.Headers.Authorization is null, "Bearer was attached to /genToken.");
             var form = await request.Content!.ReadAsStringAsync(token);
             Check(FormContains(form, "username", username) && FormContains(form, "password", password),
@@ -70,7 +75,9 @@ async Task ValidTokenFlowAsync()
             return Json(HttpStatusCode.OK, $"{{\"data\":\"{bearer}\"}}");
         }
 
-        Check(request.RequestUri.AbsolutePath == "/moj/business", "Unexpected business target.");
+        Check(request.RequestUri!.AbsolutePath == "/moj/business", "Unexpected business target.");
+        Check(request.Headers.TryGetValues("x-api-key", out var targetKeys) && targetKeys.Single() == apiKey,
+            "Business target omitted x-api-key.");
         Check(request.Headers.Authorization?.Scheme == "Bearer" && request.Headers.Authorization.Parameter == bearer,
             "Acquired token was not attached as Bearer.");
         Check(!request.Headers.Contains("X-GSIP-TokenEndpointPath"), "Internal token-path metadata leaked as an outbound header.");
@@ -78,14 +85,51 @@ async Task ValidTokenFlowAsync()
     });
 
     var result = await fixture.Engine.ExecuteAsync(Command(fixture.Service));
-    Check(result.Outcome == ServiceExecutionOutcome.Success, "Valid /genToken flow failed.");
-    Check(fixture.Handler.TokenCalls == 1 && fixture.Handler.BusinessCalls == 1 && fixture.Resolver.Calls == 2,
-        "Valid flow did not perform exactly one acquisition, one business call, and two secret uses.");
+    Check(result.Outcome == ServiceExecutionOutcome.Success, "Valid composite /genToken flow failed.");
+    Check(fixture.Handler.TokenCalls == 1 && fixture.Handler.BusinessCalls == 1 && fixture.Resolver.Calls == 3,
+        "Valid composite flow did not perform exactly one acquisition, one business call, and three exact-scope secret uses.");
+}
+
+async Task MissingInvalidApiKeyAsync()
+{
+    using (var missing = NewFixture((_, request, _) => Task.FromResult(
+               IsTokenRequest(request) && !request.Headers.Contains("x-api-key")
+                   ? Json(HttpStatusCode.Unauthorized, "{}")
+                   : Json(HttpStatusCode.OK, $"{{\"data\":\"{bearer}\"}}")),
+               includeApiKey: false))
+    {
+        var result = await missing.Engine.ExecuteAsync(Command(missing.Service));
+        Check(result.Outcome == ServiceExecutionOutcome.AuthenticationUnavailable
+              && missing.Handler.TokenCalls == 1
+              && missing.Handler.BusinessCalls == 0,
+            "Official composite contract did not fail closed when x-api-key was absent.");
+    }
+
+    using (var invalid = NewFixture((_, request, _) => Task.FromResult(
+               IsTokenRequest(request)
+               && request.Headers.TryGetValues("x-api-key", out var values)
+               && values.Single() == apiKey
+                   ? Json(HttpStatusCode.OK, $"{{\"data\":\"{bearer}\"}}")
+                   : Json(HttpStatusCode.Unauthorized, "{}")),
+               apiKeyValue: "synthetic-invalid-api-key"))
+    {
+        var result = await invalid.Engine.ExecuteAsync(Command(invalid.Service));
+        Check(result.Outcome == ServiceExecutionOutcome.AuthenticationUnavailable
+              && invalid.Handler.TokenCalls == 1
+              && invalid.Handler.BusinessCalls == 0,
+            "Invalid x-api-key did not fail closed.");
+    }
 }
 
 async Task MissingInvalidTokenPathAsync()
 {
-    foreach (var metadata in new[] { "{}", "{\"X-GSIP-TokenEndpointPath\":\"\"}", "{\"X-GSIP-TokenEndpointPath\":\"https://evil.invalid/genToken\"}", "{\"X-GSIP-TokenEndpointPath\":\"//evil.invalid/genToken\"}" })
+    foreach (var metadata in new[]
+             {
+                 "{}",
+                 "{\"X-GSIP-TokenEndpointPath\":\"\"}",
+                 "{\"X-GSIP-TokenEndpointPath\":\"https://evil.invalid/genToken\"}",
+                 "{\"X-GSIP-TokenEndpointPath\":\"//evil.invalid/genToken\"}"
+             })
     {
         using var fixture = NewFixture((_, _, _) => Task.FromResult(Json(HttpStatusCode.OK, "{}")), metadata);
         var result = await fixture.Engine.ExecuteAsync(Command(fixture.Service));
@@ -100,7 +144,8 @@ async Task MalformedTokenResponsesAsync()
     {
         using var fixture = NewFixture((_, request, _) =>
         {
-            Check(request.RequestUri!.AbsolutePath == "/genToken", "Malformed token response reached business transport.");
+            Check(IsTokenRequest(request), "Malformed token response reached business transport.");
+            Check(request.Headers.Contains("x-api-key"), "Composite token request omitted x-api-key.");
             return Task.FromResult(Json(HttpStatusCode.OK, body));
         });
         var result = await fixture.Engine.ExecuteAsync(Command(fixture.Service));
@@ -112,12 +157,16 @@ async Task MalformedTokenResponsesAsync()
 
 async Task TokenHttpErrorsAsync()
 {
-    foreach (var status in new[] { HttpStatusCode.BadRequest, HttpStatusCode.Unauthorized, HttpStatusCode.Forbidden,
-                 (HttpStatusCode)429, HttpStatusCode.InternalServerError, HttpStatusCode.ServiceUnavailable })
+    foreach (var status in new[]
+             {
+                 HttpStatusCode.BadRequest, HttpStatusCode.Unauthorized, HttpStatusCode.Forbidden,
+                 (HttpStatusCode)429, HttpStatusCode.InternalServerError, HttpStatusCode.ServiceUnavailable
+             })
     {
         using var fixture = NewFixture((_, request, _) =>
         {
-            Check(request.RequestUri!.AbsolutePath == "/genToken", "Token error test reached business transport.");
+            Check(IsTokenRequest(request), "Token error test reached business transport.");
+            Check(request.Headers.Contains("x-api-key"), "Composite token error request omitted x-api-key.");
             return Task.FromResult(Json(status, "{\"error\":\"synthetic\"}"));
         });
         var result = await fixture.Engine.ExecuteAsync(Command(fixture.Service));
@@ -130,7 +179,8 @@ async Task TokenHttpErrorsAsync()
 
 async Task TokenNetworkAndTlsAsync()
 {
-    using (var network = NewFixture((_, _, _) => Task.FromException<HttpResponseMessage>(new HttpRequestException("synthetic network"))))
+    using (var network = NewFixture((_, _, _) =>
+               Task.FromException<HttpResponseMessage>(new HttpRequestException("synthetic network"))))
     {
         var result = await network.Engine.ExecuteAsync(Command(network.Service));
         Check(result.Outcome == ServiceExecutionOutcome.AuthenticationUnavailable && network.Handler.TokenCalls == 1,
@@ -172,13 +222,15 @@ async Task FailedAcquisitionAtomicityAsync()
     var acquisition = 0;
     using var fixture = NewFixture((_, request, _) =>
     {
-        if (request.RequestUri!.AbsolutePath == "/genToken")
+        if (IsTokenRequest(request))
         {
             acquisition++;
             return Task.FromResult(acquisition == 1
                 ? Json(HttpStatusCode.ServiceUnavailable, "{}")
                 : Json(HttpStatusCode.OK, $"{{\"data\":\"{bearer}\"}}"));
         }
+        Check(request.Headers.Contains("x-api-key") && request.Headers.Authorization?.Scheme == "Bearer",
+            "Recovered target omitted composite authentication.");
         return Task.FromResult(Json(HttpStatusCode.OK, "{}"));
     });
 
@@ -193,7 +245,7 @@ async Task FailedAcquisitionAtomicityAsync()
 async Task TargetUnauthorizedNoStormAsync()
 {
     using var fixture = NewFixture((_, request, _) => Task.FromResult(
-        request.RequestUri!.AbsolutePath == "/genToken"
+        IsTokenRequest(request)
             ? Json(HttpStatusCode.OK, $"{{\"data\":\"{bearer}\"}}")
             : Json(HttpStatusCode.Unauthorized, "{}")));
 
@@ -207,12 +259,13 @@ async Task TargetUnauthorizedNoStormAsync()
 async Task TokenDiagnosticsNoLeakAsync()
 {
     using var fixture = NewFixture((_, request, _) => Task.FromResult(
-        request.RequestUri!.AbsolutePath == "/genToken"
+        IsTokenRequest(request)
             ? Json(HttpStatusCode.OK, $"{{\"data\":\"{bearer}\"}}")
             : Json(HttpStatusCode.Forbidden, "{}")));
     var result = await fixture.Engine.ExecuteAsync(Command(fixture.Service));
     var diagnostics = string.Join('\n', fixture.Logger.Messages) + "\n" + result;
-    Check(!diagnostics.Contains(username, StringComparison.Ordinal)
+    Check(!diagnostics.Contains(apiKey, StringComparison.Ordinal)
+          && !diagnostics.Contains(username, StringComparison.Ordinal)
           && !diagnostics.Contains(password, StringComparison.Ordinal)
           && !diagnostics.Contains(bearer, StringComparison.Ordinal),
         "Credential/token plaintext leaked into diagnostics.");
@@ -221,29 +274,42 @@ async Task TokenDiagnosticsNoLeakAsync()
 TokenFixture NewFixture(
     Func<int, HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> responder,
     string metadataJson = "{\"X-GSIP-TokenEndpointPath\":\"/genToken\"}",
-    int timeoutSeconds = 5)
+    int timeoutSeconds = 5,
+    bool includeApiKey = true,
+    string? apiKeyValue = null)
 {
     var service = Service();
     var profileId = Guid.NewGuid();
     var usernameRef = Ref('U');
     var passwordRef = Ref('P');
+    var apiKeyRef = Ref('K');
+    var secrets = new List<AuthProfileSecretDescriptor>
+    {
+        new("username", usernameRef, 2),
+        new("password", passwordRef, 3)
+    };
+    if (includeApiKey)
+        secrets.Add(new AuthProfileSecretDescriptor("x-api-key", apiKeyRef, 7));
+
     var profile = new AuthProfileDescriptor(
         profileId, service.Id, CatalogEnvironmentCodes.UatId, "Synthetic Token Profile", AuthProfileType.TokenEndpoint,
         true, 4, "synthetic", DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch,
-        [new AuthProfileSecretDescriptor("username", usernameRef, 2), new AuthProfileSecretDescriptor("password", passwordRef, 3)],
+        secrets,
         [new AuthProfileBindingDescriptor(service.Id, CatalogEnvironmentCodes.UatId, false, "synthetic", "owner", DateTimeOffset.UnixEpoch)]);
     var binding = new AuthorizedServiceExecutionBinding(
         service.Id, service.Code, CatalogEnvironmentCodes.UatId, CatalogEnvironmentCodes.Uat,
-        "https://p08-fake.invalid/moj/", "/business", "GET", "application/json", timeoutSeconds,
+        "https://p08-fake.invalid/moj", "/business", "GET", "application/json", timeoutSeconds,
         "SystemDefault", true, string.Empty, profile.Id, profile.Version, metadataJson);
     var metadata = new FakeMetadata(new MetadataCatalogSnapshot(
         [], [service], [new CatalogEnvironment { Id = CatalogEnvironmentCodes.UatId, Code = CatalogEnvironmentCodes.Uat, Active = true }]));
-    var resolver = new MultiSecretResolver(service.Id, CatalogEnvironmentCodes.UatId, profile.Id,
-        new Dictionary<SecretRef, byte[]>
-        {
-            [usernameRef] = Encoding.UTF8.GetBytes(username),
-            [passwordRef] = Encoding.UTF8.GetBytes(password)
-        });
+    var values = new Dictionary<SecretRef, byte[]>
+    {
+        [usernameRef] = Encoding.UTF8.GetBytes(username),
+        [passwordRef] = Encoding.UTF8.GetBytes(password)
+    };
+    if (includeApiKey)
+        values[apiKeyRef] = Encoding.UTF8.GetBytes(apiKeyValue ?? apiKey);
+    var resolver = new MultiSecretResolver(service.Id, CatalogEnvironmentCodes.UatId, profile.Id, values);
     var handler = new CountingHandler(responder);
     var logger = new RecordingLogger<GenericServiceExecutionEngine>();
     var cache = new InMemoryTokenCache(new FixedClock(DateTimeOffset.UtcNow), new TokenCacheOptions(TimeSpan.FromSeconds(30)));
@@ -265,6 +331,9 @@ static CatalogService Service() => new()
     Code = "SYNTH-P08-ACCEPT", NameAr = "اختبار قبول", NameEn = "P08 acceptance",
     DescriptionAr = "اصطناعي", DescriptionEn = "synthetic", Active = true, IsCurrent = true, Fields = [], ResultMappings = []
 };
+
+static bool IsTokenRequest(HttpRequestMessage request) =>
+    request.RequestUri?.AbsolutePath.EndsWith("/genToken", StringComparison.Ordinal) == true;
 
 static SecretRef Ref(char fill) => SecretRef.Parse("sr1_" + new string(fill, 43));
 static string Synthetic(string label) => $"p08-{label}-{Convert.ToHexString(RandomNumberGenerator.GetBytes(16))}";
@@ -322,7 +391,7 @@ sealed class CountingHandler(Func<int, HttpRequestMessage, CancellationToken, Ta
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         Calls++;
-        if (request.RequestUri?.AbsolutePath == "/genToken") TokenCalls++; else BusinessCalls++;
+        if (request.RequestUri?.AbsolutePath.EndsWith("/genToken", StringComparison.Ordinal) == true) TokenCalls++; else BusinessCalls++;
         return await responder(Calls, request, cancellationToken);
     }
 }

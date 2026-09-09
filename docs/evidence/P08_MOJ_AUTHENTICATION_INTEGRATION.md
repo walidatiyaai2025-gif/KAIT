@@ -55,35 +55,33 @@ The composed acceptance verifies:
 
 PR #47 exact-head verification completed **22/22 SUCCESS** before normal merge.
 
-## Official-fact boundary and owner-last evidence
+## Official-fact boundary and owner-last evidence at original closure
 
-The repository preserves the official contract facts needed to implement the generic authentication mechanisms. One operation-level fact is not asserted: whether `ApiKeyAuth` is required specifically on `/genToken` in every target CAIT/MOJ environment.
+The repository preserved the official contract facts then available to implement the generic authentication mechanisms. One operation-level fact was not asserted at original closure: whether `ApiKeyAuth` was required specifically on `/genToken` in every target CAIT/MOJ environment.
 
-Status: **DEFERRED_EXTERNAL — NOT PASS**.
+Historical status at P08 closure: **DEFERRED_EXTERNAL — NOT PASS**.
 
-Missing dependency: authenticated operation-level CAIT/MOJ documentation or authorized UAT configuration/credentials. Repository policy explicitly allows irreducible live-UAT evidence to be deferred after all safe deterministic work is complete; it must never be relabeled PASS without real evidence.
-
-Safe substitute evidence already complete:
-
-- official fixture/summary validation;
-- synthetic/local contract tests;
-- exact-scope secret and token isolation;
-- malformed/unauthorized/failure-path acceptance;
-- bounded retry/cancellation behavior;
-- administration Test Authentication path;
-- exact-main regressions and leakage scan.
-
-Owner/operator action when authorized UAT evidence exists:
-
-1. Enter the real secret material only through the protected AuthProfile/Secret Vault administration path.
-2. Bind it to the exact MOJ Service + UAT Environment + AuthProfile; do not share or copy Production bindings.
-3. Configure the operation-level auth metadata exactly from the authenticated official specification.
-4. Run the protected **Test Authentication** action.
-5. Expected result: successful token/authentication behavior for that exact binding, no fallback and no plaintext secret/token in UI/logs/evidence.
-6. If the official operation contract differs from the configured metadata, keep the check failed/deferred and repair configuration/contract evidence; do not weaken isolation or add implicit fallback.
+That historical classification was correct for the evidence then available and is not rewritten retroactively.
 
 ## Closure decision
 
-All autonomous P08 implementation, tests, negative/security acceptance, redaction/isolation controls, administration support, documentation and exact-main regression evidence are complete. The remaining live operation-level applicability check is explicitly external and remains deferred under `docs/OWNER_LAST_EXECUTION_POLICY.md`.
+All autonomous P08 implementation, tests, negative/security acceptance, redaction/isolation controls, administration support, documentation and exact-main regression evidence were complete for the evidence available at closure. The remaining live operation-level applicability check was explicitly external under `docs/OWNER_LAST_EXECUTION_POLICY.md`.
 
-Therefore P08 can transition to **CLOSED** through the governance-only closure PR if its exact-head closure gate and repository regression matrix are green. P09 may become **OPEN / READY** only after that transition is normally merged and the exact new main is reverified. No `FINAL_COMPLETE` claim is made.
+P08 subsequently transitioned to **CLOSED** and P09 became **OPEN / READY**. No `FINAL_COMPLETE` claim is made.
+
+## Post-closure external-contract repair — 2026-09-09
+
+After closure, the owner supplied authenticated official CAIT Swagger evidence for Marriage Cases API 129 and an owner-executed successful UAT `/genToken` call. That new evidence resolves the former operation-level question for the **observed UAT Marriage contract only**:
+
+- `/genToken`: `x-api-key` + form `username`/`password` -> response `data` token;
+- Marriage target: same `x-api-key` + acquired Bearer token;
+- supplied UAT Swagger base preserves `/WSWEB/WS/v1/marriage`;
+- supplied target operation is `POST /marriageCasesAPIGEE`, form-urlencoded, with required `civilId` field.
+
+Status for that observed UAT contract: **UAT_PROVEN**.
+
+PR #50 repairs the closed P08 baseline by extending the existing canonical runtime and protected Test Authentication path. It does not create a second authentication engine and does not start unrelated P09 payload implementation. Synthetic acceptance uses `synthetic.invalid` only and validates exact Service + Environment + AuthProfile secret resolution, API-key generation in cache validity, fail-closed behavior, no Production→UAT fallback, bounded/no-storm behavior and no plaintext leakage.
+
+Production remains separate: owner evidence proves only the Production gateway prefix `https://moj.api.cait.gov.kw`. No Production Marriage suffix, `/genToken` security applicability, target operation suffix or payload contract is inferred. Status for those details: **PRODUCTION_DEFERRED_EXTERNAL — NOT PASS**.
+
+See `docs/evidence/P08_POST_CLOSURE_COMPOSITE_AUTH_REPAIR.md` for exact repair evidence and the PR-head acceptance baseline. This additive section does not alter the historical closure SHA, workflow evidence or decision.

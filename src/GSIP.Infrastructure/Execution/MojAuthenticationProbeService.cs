@@ -22,6 +22,7 @@ public sealed class MojAuthenticationProbeService(
 {
     private const string ClientName = "GSIP.Execution";
     private const string TokenPathMetadataKey = "X-GSIP-TokenEndpointPath";
+    private const string ApiKeySecretName = "x-api-key";
     private const int MaximumTokenResponseBytes = 64 * 1024;
 
     public async Task TestTokenGenerationAsync(
@@ -77,7 +78,8 @@ public sealed class MojAuthenticationProbeService(
 
             var usernameSecret = SingleSecret(profile, "username");
             var passwordSecret = SingleSecret(profile, "password");
-            if (profile.Secrets.Count != 2)
+            var apiKeySecret = OptionalSingleSecret(profile, ApiKeySecretName);
+            if (profile.Secrets.Count != (apiKeySecret is null ? 2 : 3))
                 throw new AuthenticationProbeRejectedException();
 
             var config = configMatches[0];
@@ -102,14 +104,39 @@ public sealed class MojAuthenticationProbeService(
                         async (passwordMaterial, passwordToken) =>
                         {
                             var password = DecodeSecret(passwordMaterial);
-                            await ProbeTokenEndpointAsync(
-                                client,
-                                config.BaseUrl,
-                                tokenPath,
-                                username,
-                                password,
+                            if (apiKeySecret is null)
+                            {
+                                await ProbeTokenEndpointAsync(
+                                    client,
+                                    config.BaseUrl,
+                                    tokenPath,
+                                    username,
+                                    password,
+                                    null,
+                                    passwordToken);
+                                return true;
+                            }
+
+                            return await secretResolver.UseSecretAsync(
+                                serviceId,
+                                environmentId,
+                                profile.Id,
+                                apiKeySecret.Name,
+                                apiKeySecret.Reference,
+                                async (apiKeyMaterial, apiKeyToken) =>
+                                {
+                                    var apiKey = DecodeSecret(apiKeyMaterial);
+                                    await ProbeTokenEndpointAsync(
+                                        client,
+                                        config.BaseUrl,
+                                        tokenPath,
+                                        username,
+                                        password,
+                                        apiKey,
+                                        apiKeyToken);
+                                    return true;
+                                },
                                 passwordToken);
-                            return true;
                         },
                         usernameToken);
                 },
@@ -144,6 +171,17 @@ public sealed class MojAuthenticationProbeService(
         if (matches.Length != 1 || matches[0].Generation < 1)
             throw new AuthenticationProbeRejectedException();
         return matches[0];
+    }
+
+    private static AuthProfileSecretDescriptor? OptionalSingleSecret(AuthProfileDescriptor profile, string name)
+    {
+        var matches = profile.Secrets
+            .Where(secret => string.Equals(secret.Name, name, StringComparison.OrdinalIgnoreCase))
+            .Take(2)
+            .ToArray();
+        if (matches.Length > 1 || (matches.Length == 1 && matches[0].Generation < 1))
+            throw new AuthenticationProbeRejectedException();
+        return matches.SingleOrDefault();
     }
 
     private static string ResolveTokenPath(string? metadataJson)
@@ -191,21 +229,16 @@ public sealed class MojAuthenticationProbeService(
         string tokenPath,
         string username,
         string password,
+        string? apiKey,
         CancellationToken cancellationToken)
     {
         if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var baseUri)
             || baseUri.Scheme is not ("http" or "https"))
             throw new AuthenticationProbeRejectedException();
 
-        Uri endpoint;
-        try
-        {
-            endpoint = new Uri(baseUri, tokenPath);
-        }
-        catch (UriFormatException)
-        {
+        var relativeTokenPath = tokenPath.StartsWith('/') ? tokenPath[1..] : tokenPath;
+        if (!Uri.TryCreate(baseUri.ToString().TrimEnd('/') + "/" + relativeTokenPath, UriKind.Absolute, out var endpoint))
             throw new AuthenticationProbeRejectedException();
-        }
 
         using var request = new HttpRequestMessage(HttpMethod.Post, endpoint)
         {
@@ -216,33 +249,48 @@ public sealed class MojAuthenticationProbeService(
             ])
         };
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-
-        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-        if (!response.IsSuccessStatusCode)
+        if (apiKey is not null && !request.Headers.TryAddWithoutValidation(ApiKeySecretName, apiKey))
             throw new AuthenticationProbeRejectedException();
 
-        var body = await response.Content.ReadAsByteArrayAsync(cancellationToken);
-        if (body.Length == 0 || body.Length > MaximumTokenResponseBytes)
-            throw new AuthenticationProbeRejectedException();
-
+        HttpResponseMessage response;
         try
         {
-            using var document = JsonDocument.Parse(body);
-            if (document.RootElement.ValueKind != JsonValueKind.Object
-                || !document.RootElement.TryGetProperty("data", out var tokenElement)
-                || tokenElement.ValueKind != JsonValueKind.String)
+            response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        }
+        finally
+        {
+            if (apiKey is not null)
+                request.Headers.Remove(ApiKeySecretName);
+        }
+
+        using (response)
+        {
+            if (!response.IsSuccessStatusCode)
                 throw new AuthenticationProbeRejectedException();
 
-            var token = tokenElement.GetString()?.Trim();
-            if (string.IsNullOrWhiteSpace(token)
-                || token.Length > 16 * 1024
-                || token.Any(character => character is '\r' or '\n' or '\0')
-                || IsExplicitlyExpiredJwt(token))
+            var body = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+            if (body.Length == 0 || body.Length > MaximumTokenResponseBytes)
                 throw new AuthenticationProbeRejectedException();
-        }
-        catch (JsonException)
-        {
-            throw new AuthenticationProbeRejectedException();
+
+            try
+            {
+                using var document = JsonDocument.Parse(body);
+                if (document.RootElement.ValueKind != JsonValueKind.Object
+                    || !document.RootElement.TryGetProperty("data", out var tokenElement)
+                    || tokenElement.ValueKind != JsonValueKind.String)
+                    throw new AuthenticationProbeRejectedException();
+
+                var token = tokenElement.GetString()?.Trim();
+                if (string.IsNullOrWhiteSpace(token)
+                    || token.Length > 16 * 1024
+                    || token.Any(character => character is '\r' or '\n' or '\0')
+                    || IsExplicitlyExpiredJwt(token))
+                    throw new AuthenticationProbeRejectedException();
+            }
+            catch (JsonException)
+            {
+                throw new AuthenticationProbeRejectedException();
+            }
         }
     }
 

@@ -29,6 +29,7 @@ public sealed class GenericServiceExecutionEngine(
 {
     private const string ClientName = "GSIP.Execution";
     private const string MojTokenPathMetadataKey = "X-GSIP-TokenEndpointPath";
+    private const string MojApiKeySecretName = "x-api-key";
     private const int MaximumTokenResponseBytes = 64 * 1024;
     private static readonly HashSet<string> BodylessMethods = new(StringComparer.OrdinalIgnoreCase) { "GET", "HEAD", "OPTIONS" };
     private static readonly HashSet<string> ForbiddenConfiguredHeaders = new(StringComparer.OrdinalIgnoreCase)
@@ -246,7 +247,8 @@ public sealed class GenericServiceExecutionEngine(
         var tokenPath = ResolveTokenEndpointPath(binding.ConfiguredHeadersJson);
         var usernameSecret = SingleSecret(profile, "username");
         var passwordSecret = SingleSecret(profile, "password");
-        if (profile.Secrets.Count != 2)
+        var apiKeySecret = OptionalSingleSecret(profile, MojApiKeySecretName);
+        if (profile.Secrets.Count != (apiKeySecret is null ? 2 : 3))
             throw new AuthenticationUnavailableException();
 
         return await secretResolver.UseSecretAsync(
@@ -267,32 +269,67 @@ public sealed class GenericServiceExecutionEngine(
                     async (passwordMaterial, passwordToken) =>
                     {
                         var password = DecodeFormSecret(passwordMaterial);
-                        var identity = TokenCacheIdentity.Create(
+                        if (apiKeySecret is null)
+                            return await ExecuteTokenEndpointFlowAsync(null, null, passwordToken);
+
+                        return await secretResolver.UseSecretAsync(
                             binding.ServiceId,
                             binding.EnvironmentId,
                             profile.Id,
-                            profile.Version,
-                            Math.Max(usernameSecret.Generation, passwordSecret.Generation),
-                            validityParameters: new Dictionary<string, string?>(StringComparer.Ordinal)
+                            apiKeySecret.Name,
+                            apiKeySecret.Reference,
+                            async (apiKeyMaterial, apiKeyToken) =>
+                            {
+                                var apiKey = DecodeHeaderSecret(apiKeyMaterial);
+                                return await ExecuteTokenEndpointFlowAsync(apiKeySecret, apiKey, apiKeyToken);
+                            },
+                            passwordToken);
+
+                        async ValueTask<HttpResponseMessage> ExecuteTokenEndpointFlowAsync(
+                            AuthProfileSecretDescriptor? resolvedApiKeySecret,
+                            string? apiKey,
+                            CancellationToken flowToken)
+                        {
+                            var secretGeneration = Math.Max(usernameSecret.Generation, passwordSecret.Generation);
+                            var validityParameters = new Dictionary<string, string?>(StringComparer.Ordinal)
                             {
                                 ["token-path"] = tokenPath,
                                 ["username-generation"] = usernameSecret.Generation.ToString(CultureInfo.InvariantCulture),
                                 ["password-generation"] = passwordSecret.Generation.ToString(CultureInfo.InvariantCulture)
-                            });
+                            };
+                            if (resolvedApiKeySecret is not null)
+                            {
+                                secretGeneration = Math.Max(secretGeneration, resolvedApiKeySecret.Generation);
+                                validityParameters["api-key-generation"] = resolvedApiKeySecret.Generation.ToString(CultureInfo.InvariantCulture);
+                                validityParameters["api-key-header"] = MojApiKeySecretName;
+                            }
 
-                        var cached = await tokenCache.GetOrRefreshAsync(
-                            identity,
-                            refreshToken => AcquireMojTokenAsync(client, binding, tokenPath, username, password, refreshToken),
-                            passwordToken);
-                        var bearer = ValidateBearerToken(cached.AccessToken);
-                        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearer);
-                        try
-                        {
-                            return await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, passwordToken);
-                        }
-                        finally
-                        {
-                            request.Headers.Authorization = null;
+                            var identity = TokenCacheIdentity.Create(
+                                binding.ServiceId,
+                                binding.EnvironmentId,
+                                profile.Id,
+                                profile.Version,
+                                secretGeneration,
+                                validityParameters: validityParameters);
+
+                            var cached = await tokenCache.GetOrRefreshAsync(
+                                identity,
+                                refreshToken => AcquireMojTokenAsync(client, binding, tokenPath, username, password, apiKey, refreshToken),
+                                flowToken);
+                            var bearer = ValidateBearerToken(cached.AccessToken);
+                            if (apiKey is not null)
+                                ApplySecretHeader(request, SecretHeaderKind.Header, MojApiKeySecretName, apiKey);
+                            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearer);
+                            try
+                            {
+                                return await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, flowToken);
+                            }
+                            finally
+                            {
+                                request.Headers.Authorization = null;
+                                if (apiKey is not null)
+                                    RemoveSecretHeader(request, SecretHeaderKind.Header, MojApiKeySecretName);
+                            }
                         }
                     },
                     usernameToken);
@@ -309,6 +346,17 @@ public sealed class GenericServiceExecutionEngine(
         if (matches.Length != 1 || matches[0].Generation < 1)
             throw new AuthenticationUnavailableException();
         return matches[0];
+    }
+
+    private static AuthProfileSecretDescriptor? OptionalSingleSecret(AuthProfileDescriptor profile, string name)
+    {
+        var matches = profile.Secrets
+            .Where(secret => string.Equals(secret.Name, name, StringComparison.OrdinalIgnoreCase))
+            .Take(2)
+            .ToArray();
+        if (matches.Length > 1 || (matches.Length == 1 && matches[0].Generation < 1))
+            throw new AuthenticationUnavailableException();
+        return matches.SingleOrDefault();
     }
 
     private static string ResolveTokenEndpointPath(string? configuredMetadataJson)
@@ -348,6 +396,7 @@ public sealed class GenericServiceExecutionEngine(
         string tokenPath,
         string username,
         string password,
+        string? apiKey,
         CancellationToken cancellationToken)
     {
         Uri tokenEndpoint;
@@ -356,7 +405,11 @@ public sealed class GenericServiceExecutionEngine(
             if (!Uri.TryCreate(binding.BaseUrl, UriKind.Absolute, out var baseUri)
                 || baseUri.Scheme is not ("http" or "https"))
                 throw new AuthenticationUnavailableException();
-            tokenEndpoint = new Uri(baseUri, tokenPath);
+            var relativeTokenPath = tokenPath.StartsWith('/') ? tokenPath[1..] : tokenPath;
+            if (!Uri.TryCreate(baseUri.ToString().TrimEnd('/') + "/" + relativeTokenPath, UriKind.Absolute, out var resolvedTokenEndpoint)
+                || resolvedTokenEndpoint is null)
+                throw new AuthenticationUnavailableException();
+            tokenEndpoint = resolvedTokenEndpoint;
         }
         catch (UriFormatException)
         {
@@ -372,6 +425,8 @@ public sealed class GenericServiceExecutionEngine(
             ])
         };
         tokenRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        if (apiKey is not null && !tokenRequest.Headers.TryAddWithoutValidation(MojApiKeySecretName, apiKey))
+            throw new AuthenticationUnavailableException();
 
         HttpResponseMessage tokenResponse;
         try
@@ -381,6 +436,11 @@ public sealed class GenericServiceExecutionEngine(
         catch (HttpRequestException)
         {
             throw new AuthenticationUnavailableException();
+        }
+        finally
+        {
+            if (apiKey is not null)
+                tokenRequest.Headers.Remove(MojApiKeySecretName);
         }
 
         using (tokenResponse)

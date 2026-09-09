@@ -12,8 +12,8 @@ This ledger is evidence-driven. Never mark a phase CLOSED because a prompt says 
 | P05 | CLOSED | Closed from exact-main implementation SHA `4d706fab57071236e9847670342f5a399b3527e6`; 10/10 applicable exact-main workflows SUCCESS; metadata catalog, versioning, isolation/security, JSON-schema import/export, generic sample proof and bilingual protected administration verified; artifact produced/hashed |
 | P06 | CLOSED | Corrected closure baseline exact-main implementation/security SHA `fef5882abf8a6f12990c3e7c0e9f849d08cd7947`; 13/13 exact-main workflow runs SUCCESS; scoped SecretRefs, isolated/explicitly shared AuthProfiles, atomic rotation CAS, centralized redaction, runtime token-cache identity/expiry/single-flight safety, protected bilingual administration and independent negative/no-leak evidence verified and artifacts produced/hashed; final reconciliation PR #32 integrated at `90b3068ea39a342392222ae581e568b94f7f9004` with 15/15 post-reconciliation exact-main push workflows SUCCESS |
 | P07 | CLOSED | Closed from exact integrated implementation baseline `9535fa158441160ab7c7d204863776e38e560a33`; PRs #33, #34, #36, #37 and #38 integrated; 16/16 exact-main workflows SUCCESS; runtime/UI/upgrade evidence verified and hashed; no owner/external evidence deferred |
-| P08 | CLOSED | Closed from exact integrated implementation baseline `67968a9230dae453b36f48549eda138d7b5401c7`; PR #47 converged metadata-driven x-api-key + `/genToken` + Bearer runtime, exact Service+Environment+AuthProfile isolation, protected Test Authentication, independent negative/no-leak acceptance; PR-head 22/22 SUCCESS and exact-main 17/17 SUCCESS; exact-main P08 Security Acceptance run `34318032200` SUCCESS with hashed artifact; exact `/genToken` operation-level ApiKeyAuth applicability remains `DEFERRED_EXTERNAL` and is not claimed PASS |
-| P09 | OPEN / READY | Canonical current phase: seed/implement MOJ Entity and exactly five services from official OpenAPI/Swagger evidence only; no invented request/response/auth fields; independent endpoint/auth bindings, contract tests and authorized non-destructive UAT smoke if available |
+| P08 | CLOSED | Historical closure baseline remains exact integrated implementation `67968a9230dae453b36f48549eda138d7b5401c7`; PR #47 converged metadata-driven x-api-key + `/genToken` + Bearer runtime, exact Service+Environment+AuthProfile isolation, protected Test Authentication and independent negative/no-leak acceptance; PR-head 22/22 SUCCESS and exact-main 17/17 SUCCESS. Exact `/genToken` ApiKeyAuth applicability was correctly `DEFERRED_EXTERNAL` at closure. Later owner-supplied authenticated CAIT evidence proves the observed Marriage UAT composite contract (`UAT_PROVEN`); PR #50 repairs that closed baseline without reopening P08, while unproven Production Marriage path/auth/payload details remain `PRODUCTION_DEFERRED_EXTERNAL` |
+| P09 | OPEN / READY | Canonical current phase: seed/implement MOJ Entity and exactly five services from official OpenAPI/Swagger evidence only; no invented request/response/auth fields; independent endpoint/auth bindings, contract tests and authorized non-destructive UAT smoke if available; closed-baseline regression repairs such as PR #50 take priority before new payload work |
 | P10 | LOCKED | Request/result history, masking, scoped access and permissioned exports |
 | P11 | LOCKED | Tamper-evident audit trail, monitoring, high-fidelity Audit dashboard and evidence |
 | P12 | LOCKED | Admin operations for Entity -> Service -> Environments -> UAT/Production, Edit/Test Connection/Test Authentication/Activate/Disable/Rotate Secret, health/diagnostics and operational alerts |
@@ -101,9 +101,9 @@ Exact-main P08 evidence:
 - P07 execution-security and P06 token-cache regressions: PASS within composed acceptance.
 - Secret/token leakage scan and governance validation: PASS.
 
-One irreducible operation-level fact remains `DEFERRED_EXTERNAL — NOT PASS`: whether `ApiKeyAuth` is required specifically on `/genToken` for the target authorized CAIT/MOJ environment. No assumption is embedded in closure. The integrated runtime supports governed composition from metadata and fails closed when the configured contract is invalid. Exact owner/operator action, expected result and failure handling are documented in `docs/evidence/P08_MOJ_AUTHENTICATION_INTEGRATION.md` in accordance with `docs/OWNER_LAST_EXECUTION_POLICY.md`.
+At original P08 closure, one irreducible operation-level fact remained `DEFERRED_EXTERNAL — NOT PASS`: whether `ApiKeyAuth` was required specifically on `/genToken` for the target authorized CAIT/MOJ environment. That was the correct classification for the evidence then available; no assumption was embedded in closure. The integrated runtime supported governed composition from metadata and failed closed when the configured contract was invalid.
 
-Detailed closure evidence:
+Detailed historical closure evidence:
 
 - `docs/evidence/P08_MOJ_AUTHENTICATION_INTEGRATION.md`
 - `docs/evidence/P08_CONTRACT_RECONCILIATION.md`
@@ -111,7 +111,28 @@ Detailed closure evidence:
 - executable gate `scripts/verify-p08-closure.ps1`
 - CI gate `.github/workflows/p08-closure.yml`
 
-The P08 closure reconciliation changes governance/evidence/CI only and introduces **no P09 service request/response implementation**.
+The original P08 closure reconciliation changed governance/evidence/CI only and introduced **no P09 service request/response implementation**.
+
+## P08 post-closure composite-auth regression record
+
+After P08 closed and P09 became current, the owner supplied authenticated official CAIT Developer Portal Swagger evidence for Marriage Cases API 129 and reported an owner-executed successful UAT `/genToken` call. That new evidence resolves the former operation-level question for the observed **Marriage UAT contract only**:
+
+- `/genToken`: transient `x-api-key` plus form-urlencoded `username` and `password`; successful response token from `data`;
+- Marriage target: same transient `x-api-key` plus `Authorization: Bearer <token>`;
+- supplied UAT Swagger base preserves `/WSWEB/WS/v1/marriage`;
+- supplied target operation is `POST /marriageCasesAPIGEE`, form-urlencoded, with required `civilId` field.
+
+Classification for those observed UAT facts: **UAT_PROVEN**.
+
+The new evidence is handled as `P08-REGRESSION::moj-composite-auth-real-contract` on PR #50 / branch `worker/p08-moj-composite-auth-hotfix`, not by reopening P08 and not by creating a second authentication runtime. The repair extends the canonical TokenEndpoint path and protected Test Authentication flow; exact Service + Environment + AuthProfile secret resolution, SecretRef/Vault isolation, token-cache scoping, no Production→UAT fallback, bounded/no-storm behavior and no-leak controls remain mandatory. Synthetic executable topology uses `synthetic.invalid` only.
+
+Before post-closure evidence reconciliation, code/security candidate `a26686221673a3ea3062cb6f6b00380d38e753b0` completed SUCCESS for P00 Build Baseline, P06 Token Cache Runtime, P06 Rotation Redaction Cache, P07 Generic Execution Runtime, P07 Execution Security Boundary, P08 MOJ Auth Runtime, P08 Auth Scope Isolation, P08 Authentication Convergence, P08 Security Acceptance, P08 Phase Closure Gate and Planning Integrity. P08 Security Acceptance run `34323699339` produced sanitized artifact `P08-Security-Acceptance-a26686221673a3ea3062cb6f6b00380d38e753b0`, 2,345 bytes, digest `sha256:3ca0fb7d3d31eef623c51dd3b237e4a594ac1c97ff47d96fa425b8fc58f1623b`.
+
+Production remains a separate evidence boundary. Owner evidence proves only the Production gateway prefix `https://moj.api.cait.gov.kw`; no Production Marriage path suffix, `/genToken` security applicability, target suffix or payload contract is invented. Those details remain **PRODUCTION_DEFERRED_EXTERNAL — NOT PASS**.
+
+Authoritative additive evidence: `docs/evidence/P08_POST_CLOSURE_COMPOSITE_AUTH_REPAIR.md`.
+
+P08 remains **CLOSED**, P09 remains **OPEN / READY**, and P10–P17 remain locked. The PR #50 regression repair must be normally merged and the exact new `main` must be green before the repair is considered integrated and before new P09 payload work proceeds.
 
 ## P09 opening record
 
