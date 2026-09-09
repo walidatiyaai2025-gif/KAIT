@@ -11,7 +11,8 @@
     var isAuthProfiles = Context.Request.Path.StartsWithSegments("/auth-profiles");
     var isExecution = Context.Request.Path.StartsWithSegments("/execute");
     var isRequests = Context.Request.Path.StartsWithSegments("/requests");
-    var isHome = !isPermissions && !isMetadata && !isAuthProfiles && !isExecution && !isRequests;
+    var isAudit = Context.Request.Path.StartsWithSegments("/audit");
+    var isHome = !isPermissions && !isMetadata && !isAuthProfiles && !isExecution && !isRequests && !isAudit;
 }
 <!doctype html>
 <html lang="@language" dir="@direction" data-culture-name="@CultureInfo.CurrentUICulture.Name">
@@ -57,11 +58,11 @@
                 <a class="nav-item @(isExecution ? "active" : string.Empty)" href="/execute?culture=@CultureInfo.CurrentUICulture.Name"><span class="nav-glyph">▦</span><span>@L["Services"]</span></a>
                 <a class="nav-item @(isAuthProfiles ? "active" : string.Empty)" href="/auth-profiles?culture=@CultureInfo.CurrentUICulture.Name"><span class="nav-glyph">◆</span><span>@L["AuthProfiles"]</span></a>
                 <a class="nav-item @(isRequests ? "active" : string.Empty)" href="/requests?culture=@CultureInfo.CurrentUICulture.Name"><span class="nav-glyph">≡</span><span>@L["Requests"]</span></a>
-                <span class="nav-item disabled" aria-disabled="true"><span class="nav-glyph">◴</span><span>@L["Audit"]</span></span>
+                <a class="nav-item @(isAudit ? "active" : string.Empty)" href="/audit?culture=@CultureInfo.CurrentUICulture.Name"><span class="nav-glyph">◴</span><span>@L["Audit"]</span></a>
                 <a class="nav-item @(isPermissions ? "active" : string.Empty)" href="/permissions?culture=@CultureInfo.CurrentUICulture.Name"><span class="nav-glyph">◈</span><span>@L["Permissions"]</span></a>
                 <span class="nav-item disabled" aria-disabled="true"><span class="nav-glyph">⚙</span><span>@L["Settings"]</span></span>
             </nav>
-            <div class="sidebar-foot"><span class="phase-dot"></span><div><strong>P10</strong><small>@L["Requests"]</small></div></div>
+            <div class="sidebar-foot"><span class="phase-dot"></span><div><strong>P11</strong><small>@L["Audit"]</small></div></div>
         </aside>
     }
     <main id="main-content" class="main-content @(isSetup ? "setup-main" : string.Empty)" tabindex="-1">@RenderBody()</main>

@@ -25,5 +25,30 @@ public sealed class AuthenticationAuditEvent
     public string ResultCode { get; set; } = string.Empty;
     public string CorrelationId { get; set; } = string.Empty;
     public DateTimeOffset OccurredAtUtc { get; set; }
+
+    // P11 canonical fields are nullable for pre-P11 identity audit compatibility.
+    public long? SequenceNumber { get; set; }
+    public string? TargetType { get; set; }
+    public string? TargetId { get; set; }
+    public string? RequestId { get; set; }
+    public string? EntityCode { get; set; }
+    public string? ServiceCode { get; set; }
+    public string? Source { get; set; }
+    public string? Device { get; set; }
+    public string? MetadataJson { get; set; }
+    public string? PreviousHash { get; set; }
+    public string? RecordHash { get; set; }
+    public DateTimeOffset? RetainUntilUtc { get; set; }
 }
 
+public sealed class AuditChainState
+{
+    public int Id { get; set; }
+    public long LastSequence { get; set; }
+    public string LastHash { get; set; } = string.Empty;
+    public long CheckpointSequence { get; set; }
+    public string CheckpointHash { get; set; } = string.Empty;
+    public DateTimeOffset? LastVerifiedAtUtc { get; set; }
+    public string LastIntegrityStatus { get; set; } = "Unknown";
+    public byte[] RowVersion { get; set; } = Array.Empty<byte>();
+}
