@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "apiId": 129,
+  "serviceName": "Marriage Cases Service",
+  "officialSource": "https://developer.api.cait.gov.kw/api/129",
+  "captureStatus": "PARTIAL_PROVEN",
+  "evidence": {
+    "classification": "OWNER_SUPPLIED_AUTHENTICATED_OFFICIAL_CAIT_SWAGGER",
+    "environmentScope": "UAT_ONLY",
+    "automatedPortalSpecificationRetrieval": "DEFERRED_EXTERNAL",
+    "notes": [
+      "Owner supplied authenticated official CAIT Swagger evidence for the UAT Marriage Cases service.",
+      "Owner executed the Swagger token call successfully with HTTP 200.",
+      "No Production operation suffix, request schema, authentication applicability, response schema, or error schema is inferred."
+    ]
+  },
+  "environments": {
+    "uat": {"status":"PROVEN","baseUrl":"https://moj-uat.api-non-prod.cait.gov.kw/WSWEB/WS/v1/marriage"},
+    "production": {"status":"DEFERRED_EXTERNAL","baseUrl":null,"missing":"Service-specific Production base/path contract is not proven by the available API 129 evidence."}
+  },
+  "operations": [
+    {
+      "name": "Generate Token",
+      "status": "PROVEN_UAT",
+      "method": "POST",
+      "relativePath": "/genToken",
+      "requestContentType": "application/x-www-form-urlencoded",
+      "authentication": [{"scheme":"ApiKeyHeader","headerName":"x-api-key","status":"PROVEN_UAT"}],
+      "requestFields": [
+        {"name":"username","type":"string","required":true,"documentedValidation":null,"validationStatus":"DEFERRED_EXTERNAL"},
+        {"name":"password","type":"string","required":true,"documentedValidation":null,"validationStatus":"DEFERRED_EXTERNAL"}
+      ],
+      "successResponses": [{
+        "statusCode": 200,
+        "status": "PROVEN_UAT_EXECUTION",
+        "contentType": null,
+        "contentTypeStatus": "DEFERRED_EXTERNAL",
+        "schema": {"type":"object","fields":[{"name":"data","type":"string","required":null,"requiredStatus":"DEFERRED_EXTERNAL"}]}
+      }],
+      "documentedErrorResponses": {"status":"DEFERRED_EXTERNAL","responses":[]},
+      "resultMappingCandidates": [{"sourcePath":"data","purpose":"Transient bearer token","status":"PROVEN_UAT"}],
+      "readOnlyNonDestructive": {"status":"DEFERRED_EXTERNAL","value":null}
+    },
+    {
+      "name": "Marriage Cases",
+      "status": "PARTIAL_PROVEN_UAT",
+      "method": "POST",
+      "relativePath": "/marriageCasesAPIGEE",
+      "requestContentType": "application/x-www-form-urlencoded",
+      "authentication": [
+        {"scheme":"ApiKeyHeader","headerName":"x-api-key","status":"PROVEN_UAT"},
+        {"scheme":"Bearer","headerName":"Authorization","status":"PROVEN_UAT"}
+      ],
+      "requestFields": [{"name":"civilId","type":null,"typeStatus":"DEFERRED_EXTERNAL","required":true,"documentedValidation":null,"validationStatus":"DEFERRED_EXTERNAL"}],
+      "successResponses": {"status":"DEFERRED_EXTERNAL","responses":[]},
+      "documentedErrorResponses": {"status":"DEFERRED_EXTERNAL","responses":[]},
+      "responseFields": {"status":"DEFERRED_EXTERNAL","fields":[]},
+      "resultMappingCandidates": {"status":"DEFERRED_EXTERNAL","fields":[]},
+      "readOnlyNonDestructive": {"status":"DEFERRED_EXTERNAL","value":null}
+    }
+  ]
+}

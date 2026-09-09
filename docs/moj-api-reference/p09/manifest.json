@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "phase": "P09",
+  "unit": "P09::official-contract-capture",
+  "capturedAtUtc": "2026-09-09T07:50:00Z",
+  "evidencePolicy": "Official CAIT OpenAPI/Swagger or equivalent official evidence only; unknown contract items remain DEFERRED_EXTERNAL.",
+  "services": [
+    {"apiId":129,"serviceName":"Marriage Cases Service","officialSource":"https://developer.api.cait.gov.kw/api/129","snapshot":"api-129-marriage-cases.contract.json","captureStatus":"PARTIAL_PROVEN"},
+    {"apiId":132,"serviceName":"Is Single Basic Service","officialSource":"https://developer.api.cait.gov.kw/api/132","snapshot":"api-132-is-single-basic.contract.json","captureStatus":"DEFERRED_EXTERNAL"},
+    {"apiId":130,"serviceName":"Marriage Couple Last Case Service","officialSource":"https://developer.api.cait.gov.kw/api/130","snapshot":"api-130-marriage-couple-last-case.contract.json","captureStatus":"DEFERRED_EXTERNAL"},
+    {"apiId":196,"serviceName":"Family Judgment Text Service","officialSource":"https://developer.api.cait.gov.kw/api/196","snapshot":"api-196-family-judgment-text.contract.json","captureStatus":"DEFERRED_EXTERNAL"},
+    {"apiId":134,"serviceName":"Procuration Status Service","officialSource":"https://developer.api.cait.gov.kw/api/134","snapshot":"api-134-procuration-status.contract.json","captureStatus":"DEFERRED_EXTERNAL"}
+  ]
+}

@@ -1,0 +1,56 @@
+name: P09 Official Contract Snapshots
+
+on:
+  push:
+    branches:
+      - main
+      - 'worker/p09-official-contract-capture'
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  p09-contract-snapshots:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    env:
+      CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+      EVIDENCE_DIR: artifacts/p09-contract-capture
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          fetch-depth: 0
+      - name: Assert exact candidate SHA
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Validate canonical P09 contract snapshots
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path $env:EVIDENCE_DIR | Out-Null
+          python scripts/validate_p09_contract_snapshots.py |
+            Tee-Object -FilePath "$env:EVIDENCE_DIR/validation.txt"
+      - name: Validate canonical execution plan
+        run: python scripts/validate_execution_plan.py
+      - name: Assert evidence remains partial while material contracts are unavailable
+        shell: pwsh
+        run: |
+          $validation = Get-Content "$env:EVIDENCE_DIR/validation.txt" -Raw
+          if ($validation -notmatch 'P09_CONTRACT_SNAPSHOT_VALIDATION=PASS') { throw 'P09 snapshot validation did not pass.' }
+          if ($validation -notmatch 'P09_EXTERNAL_CONTRACTS_DEFERRED=4') { throw 'P09 deferred-contract boundary drifted.' }
+      - name: Upload exact-candidate P09 contract evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: P09-Official-Contract-Capture-${{ env.CANDIDATE_SHA }}
+          path: |
+            docs/moj-api-reference/p09/
+            artifacts/p09-contract-capture/validation.txt
+          if-no-files-found: error
