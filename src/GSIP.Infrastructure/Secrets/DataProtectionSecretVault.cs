@@ -177,10 +177,16 @@ public sealed class DataProtectionSecretVault(
                  && x.ServiceId == serviceId
                  && x.EnvironmentId == environmentId,
             cancellationToken);
+        var configurationAllowed = await dbContext.ServiceEnvironmentConfigs.AsNoTracking().AnyAsync(
+            x => x.ServiceId == serviceId
+                 && x.EnvironmentId == environmentId
+                 && x.Active
+                 && x.AuthProfileId == authProfileId,
+            cancellationToken);
         var profileEnabled = await dbContext.AuthProfiles.AsNoTracking().AnyAsync(
             x => x.Id == authProfileId && x.IsEnabled,
             cancellationToken);
-        if (!bindingAllowed || !profileEnabled)
+        if (!bindingAllowed || !configurationAllowed || !profileEnabled)
             throw new SecretReferenceRejectedException();
 
         var entry = await dbContext.SecretVaultEntries.AsNoTracking().SingleOrDefaultAsync(
