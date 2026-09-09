@@ -84,7 +84,7 @@ try
             Assert(hasApiKeyRequired == contract.ApiKeyRequired, $"{service.Code} operation-level token API-key evidence drifted.");
         }
 
-        Assert(service.Fields.Select(field => field.Key).SequenceEqual(contract.RequestFields),
+        Assert(service.Fields.OrderBy(field => field.DisplayOrder).Select(field => field.Key).SequenceEqual(contract.RequestFields),
             $"{service.Code} request field names/order drifted from official contract.");
         Assert(service.Fields.All(field => field.FieldType == "text" && field.Regex.Length == 0 && field.MinLength is null && field.MaxLength is null),
             $"{service.Code} seed invented undocumented request validation.");
