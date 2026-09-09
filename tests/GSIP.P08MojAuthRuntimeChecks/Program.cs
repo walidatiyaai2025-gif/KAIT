@@ -193,7 +193,7 @@ RuntimeFixture Fixture(
     var configuredMetadata = tokenPath is null ? "{}" : $"{{\"{TokenMetadataKey}\":\"{tokenPath}\"}}";
     var binding = new AuthorizedServiceExecutionBinding(
         service.Id, service.Code, CatalogEnvironmentCodes.UatId, CatalogEnvironmentCodes.Uat,
-        "https://synthetic.invalid/api/family/", "/runtime", "GET", "application/json", 5,
+        "https://synthetic.invalid/", "/runtime", "GET", "application/json", 5,
         "SystemDefault", true, string.Empty, profile.Id, profile.Version, configuredMetadata);
     var metadata = new FakeMetadata(new MetadataCatalogSnapshot(
         [], [service], [new CatalogEnvironment { Id = CatalogEnvironmentCodes.UatId, Code = CatalogEnvironmentCodes.Uat, Active = true }]));
