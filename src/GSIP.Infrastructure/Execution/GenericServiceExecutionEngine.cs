@@ -47,7 +47,7 @@ public sealed class GenericServiceExecutionEngine(
             ?? throw new ServiceExecutionRejectedException();
 
         var validatedInputs = ValidateInputs(service.Fields, command.Inputs ?? new Dictionary<string, string?>());
-        var headerPolicy = ParseConfiguredHeaders(binding.NonSecretHeadersJson);
+        var headerPolicy = ParseConfiguredHeaders(binding.ConfiguredHeadersJson);
         var endpoint = BuildEndpoint(binding, validatedInputs);
         ValidateTransportPolicy(binding);
 
