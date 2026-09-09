@@ -406,8 +406,10 @@ public sealed class GenericServiceExecutionEngine(
                 || baseUri.Scheme is not ("http" or "https"))
                 throw new AuthenticationUnavailableException();
             var relativeTokenPath = tokenPath.StartsWith('/') ? tokenPath[1..] : tokenPath;
-            if (!Uri.TryCreate(baseUri.ToString().TrimEnd('/') + "/" + relativeTokenPath, UriKind.Absolute, out tokenEndpoint))
+            if (!Uri.TryCreate(baseUri.ToString().TrimEnd('/') + "/" + relativeTokenPath, UriKind.Absolute, out var resolvedTokenEndpoint)
+                || resolvedTokenEndpoint is null)
                 throw new AuthenticationUnavailableException();
+            tokenEndpoint = resolvedTokenEndpoint;
         }
         catch (UriFormatException)
         {
