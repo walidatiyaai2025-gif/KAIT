@@ -41,6 +41,7 @@ public static class DependencyInjection
         services.Configure<ServiceExecutionRuntimeOptions>(configuration.GetSection("ServiceExecutionRuntime"));
         services.AddHttpClient("GSIP.Execution");
         services.AddScoped<GenericServiceExecutionEngine>();
+        services.AddScoped<IAuthenticationProbeService, MojAuthenticationProbeService>();
         services.AddScoped<IServiceExecutionEngine>(serviceProvider => new SensitiveResponseMaskingExecutionEngine(
             serviceProvider.GetRequiredService<GenericServiceExecutionEngine>(),
             serviceProvider.GetRequiredService<IMetadataCatalogService>()));
