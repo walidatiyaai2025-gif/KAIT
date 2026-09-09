@@ -33,8 +33,9 @@ builder.Services.AddScoped<ShellText>();
 builder.Services.AddScoped<IdentityText>();
 builder.Services.AddScoped<MetadataText>();
 builder.Services.AddScoped<ExecutionText>();
+builder.Services.AddScoped<SecuritySensitiveAuditFilter>();
 builder.Services
-    .AddControllersWithViews()
+    .AddControllersWithViews(options => options.Filters.AddService<SecuritySensitiveAuditFilter>())
     .AddViewLocalization();
 builder.Services.Configure<PortalShellOptions>(builder.Configuration.GetSection(PortalShellOptions.SectionName));
 builder.Services.AddGsipInfrastructure(builder.Configuration, builder.Environment);
