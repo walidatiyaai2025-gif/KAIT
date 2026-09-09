@@ -32,6 +32,7 @@ Independent negative acceptance uses synthetic markers only and verifies that se
 - Integrity verification: `Diagnostics.Run`.
 - MVC controller is authenticated and treats `AuditTrailAccessDeniedException` as `Forbid`.
 - Integrity verification is POST-only and anti-forgery protected.
+- Protected runtime acceptance uses a separate authenticated synthetic Read Only account and requires HTTP 403 for Audit dashboard access and Audit export, proving that authentication alone cannot bypass server-side Audit permissions.
 
 UI visibility is not treated as an authorization boundary.
 
@@ -51,7 +52,7 @@ The bilingual `/audit` dashboard is derived from the canonical audit service and
 
 The global navigation links the canonical request-history and audit surfaces; authorization remains server-side.
 
-P11 visual/runtime acceptance is bound to `docs/ui-baseline/kuwait_government_audit_dashboard.svg`. The Windows acceptance job now starts the real GSIP web application against an isolated synthetic SQL LocalDB database in the dedicated `RegressionTesting` environment, authenticates a synthetic System Administrator, exercises the protected `/audit` route in English LTR and Arabic RTL, verifies filtering and event detail, downloads the permissioned CSV export, performs authorized integrity verification, proves CSRF rejection without an anti-forgery token, and captures desktop and narrow Chrome/Edge screenshots. Runtime evidence is scanned for bearer/API-key patterns, 12-digit personal identifiers and the synthetic login password before upload.
+P11 visual/runtime acceptance is bound to `docs/ui-baseline/kuwait_government_audit_dashboard.svg`. The Windows acceptance job now starts the real GSIP web application against an isolated synthetic SQL LocalDB database in the dedicated `RegressionTesting` environment, verifies the unauthenticated challenge, authenticates both a synthetic Read Only user and a synthetic System Administrator, proves authenticated unauthorized denial, exercises the protected `/audit` route in English LTR and Arabic RTL, verifies filtering and event detail, downloads the permissioned CSV export, performs authorized integrity verification, proves CSRF rejection without an anti-forgery token, and captures desktop and narrow Chrome/Edge screenshots. Runtime evidence is scanned for bearer/API-key patterns, 12-digit personal identifiers and the synthetic login password before upload.
 
 This runtime/browser path is a required candidate gate. Its presence in the workflow is not itself a PASS; only a terminal-success result bound to the exact final PR head is acceptance evidence.
 
@@ -87,7 +88,8 @@ The branch was then reconciled with exact P10-closed main without force-push and
    - monitoring snapshot behavior;
    - real protected GSIP web runtime using synthetic-only LocalDB state;
    - unauthenticated `/audit` challenge verification;
-   - authenticated English LTR / Arabic RTL `/audit` rendering;
+   - authenticated Read Only `/audit` and export denial;
+   - authenticated System Administrator English LTR / Arabic RTL `/audit` rendering;
    - canonical LoginSuccess audit visibility, filter and detail verification;
    - permissioned CSV export verification;
    - authorized integrity POST plus missing-CSRF negative acceptance;
