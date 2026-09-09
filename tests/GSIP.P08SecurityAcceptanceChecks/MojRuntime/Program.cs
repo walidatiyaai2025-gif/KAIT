@@ -70,7 +70,7 @@ async Task ValidTokenFlowAsync()
             return Json(HttpStatusCode.OK, $"{{\"data\":\"{bearer}\"}}");
         }
 
-        Check(request.RequestUri.AbsolutePath == "/business", "Unexpected business target.");
+        Check(request.RequestUri.AbsolutePath == "/moj/business", "Unexpected business target.");
         Check(request.Headers.Authorization?.Scheme == "Bearer" && request.Headers.Authorization.Parameter == bearer,
             "Acquired token was not attached as Bearer.");
         Check(!request.Headers.Contains("X-GSIP-TokenEndpointPath"), "Internal token-path metadata leaked as an outbound header.");
