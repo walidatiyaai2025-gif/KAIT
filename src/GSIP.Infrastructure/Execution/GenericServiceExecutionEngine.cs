@@ -396,7 +396,7 @@ public sealed class GenericServiceExecutionEngine(
         try
         {
             var payload = parts[1].Replace('-', '+').Replace('_', '/');
-            payload = payload.Length % 4 switch
+            payload = (payload.Length % 4) switch
             {
                 0 => payload,
                 2 => payload + "==",
@@ -583,8 +583,6 @@ public sealed class GenericServiceExecutionEngine(
             || !binding.ValidateServerCertificate
             || !string.Equals(binding.TlsPolicy, "SystemDefault", StringComparison.OrdinalIgnoreCase))
         {
-            // Dynamic proxy/certificate policy must never be silently ignored. A later transport-policy
-            // implementation may support these values; until then, fail closed instead of weakening TLS.
             throw new ServiceExecutionRejectedException();
         }
     }
