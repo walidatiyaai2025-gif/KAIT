@@ -1,10 +1,13 @@
 @using System.Globalization
+@using GSIP.Application.Execution
 @model ServiceExecutionViewModel
 @inject ExecutionText L
 @{
     ViewData["Title"] = L["ExecutionTitle"];
     var culture = CultureInfo.CurrentUICulture.Name;
+    var isArabic = CultureInfo.CurrentUICulture.TextInfo.IsRightToLeft;
     var details = Model.SelectedService;
+    var result = Model.ExecutionResult;
 }
 
 <section class="execution-hero" aria-labelledby="execution-title">
@@ -60,51 +63,66 @@ else
 {
     <div class="execution-main-grid">
         <section class="execution-card request-card" aria-labelledby="request-data-title">
-            <div class="execution-card-heading">
-                <div>
-                    <h2 id="request-data-title">@L["RequestData"]</h2>
-                    <p>@L["DynamicHint"]</p>
+            <form method="post" action="/execute/run" class="execution-run-form">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="culture" value="@culture" />
+                <input type="hidden" name="EntityId" value="@Model.SelectedEntityId" />
+                <input type="hidden" name="ServiceId" value="@Model.SelectedServiceId" />
+                <input type="hidden" name="EnvironmentId" value="@Model.SelectedEnvironmentId" />
+                <div class="execution-card-heading">
+                    <div>
+                        <h2 id="request-data-title">@L["RequestData"]</h2>
+                        <p>@L["DynamicHint"]</p>
+                    </div>
+                    <span class="environment-chip">@details.EnvironmentCode</span>
                 </div>
-                <span class="environment-chip">@details.EnvironmentCode</span>
-            </div>
-            <div class="dynamic-fields">
-                @foreach (var field in details.Fields)
-                {
-                    var inputId = $"field-{field.Key}";
-                    <div class="dynamic-field">
-                        <label for="@inputId">
-                            @field.Label
-                            @if (field.Required)
+                <div class="dynamic-fields">
+                    @foreach (var field in details.Fields)
+                    {
+                        var inputId = $"field-{field.Key}";
+                        var submittedValue = Model.SubmittedValues.TryGetValue(field.Key, out var savedValue) ? savedValue : null;
+                        var errorCode = Model.ValidationErrors.TryGetValue(field.Key, out var validationError) ? validationError : null;
+                        <div class="dynamic-field">
+                            <label for="@inputId">
+                                @field.Label
+                                @if (field.Required)
+                                {
+                                    <span class="required-mark" aria-label="@L["Required"]">*</span>
+                                }
+                            </label>
+                            <div class="execution-input-shell">
+                                <input id="@inputId"
+                                       name="Inputs[@field.Key]"
+                                       value="@(field.Sensitive ? null : submittedValue)"
+                                       type="@(field.FieldType.Equals("number", StringComparison.OrdinalIgnoreCase) ? "number" : "text")"
+                                       minlength="@field.MinLength"
+                                       maxlength="@field.MaxLength"
+                                       min="@field.Minimum"
+                                       max="@field.Maximum"
+                                       pattern="@(string.IsNullOrWhiteSpace(field.Regex) ? null : field.Regex)"
+                                       required="@field.Required"
+                                       autocomplete="off"
+                                       inputmode="@(field.Key.Contains("CIVIL", StringComparison.OrdinalIgnoreCase) ? "numeric" : null)"
+                                       dir="@(field.Key.Contains("CIVIL", StringComparison.OrdinalIgnoreCase) ? "ltr" : null)"
+                                       aria-invalid="@(errorCode is null ? null : "true")"
+                                       aria-describedby="@(field.Sensitive ? $"{inputId}-hint" : errorCode is not null ? $"{inputId}-error" : null)" />
+                                @if (field.Sensitive)
+                                {
+                                    <span class="sensitive-chip" id="@($"{inputId}-hint")">@L["Sensitive"]</span>
+                                }
+                            </div>
+                            @if (errorCode is not null)
                             {
-                                <span class="required-mark" aria-label="@L["Required"]">*</span>
-                            }
-                        </label>
-                        <div class="execution-input-shell">
-                            <input id="@inputId"
-                                   name="@field.Key"
-                                   type="@(field.FieldType.Equals("number", StringComparison.OrdinalIgnoreCase) ? "number" : "text")"
-                                   minlength="@field.MinLength"
-                                   maxlength="@field.MaxLength"
-                                   min="@field.Minimum"
-                                   max="@field.Maximum"
-                                   pattern="@(string.IsNullOrWhiteSpace(field.Regex) ? null : field.Regex)"
-                                   required="@field.Required"
-                                   autocomplete="off"
-                                   inputmode="@(field.Key.Contains("CIVIL", StringComparison.OrdinalIgnoreCase) ? "numeric" : null)"
-                                   dir="@(field.Key.Contains("CIVIL", StringComparison.OrdinalIgnoreCase) ? "ltr" : null)"
-                                   aria-describedby="@(field.Sensitive ? $"{inputId}-hint" : null)" />
-                            @if (field.Sensitive)
-                            {
-                                <span class="sensitive-chip" id="@($"{inputId}-hint")">@L["Sensitive"]</span>
+                                <span class="field-validation-error" id="@($"{inputId}-error")" role="alert">@L[$"Validation{errorCode}"]</span>
                             }
                         </div>
-                    </div>
-                }
-            </div>
-            <div class="execution-action-row">
-                <button class="run-request-button" type="button" disabled aria-disabled="true">@L["RunRequest"]</button>
-                <p class="execution-pending-note">@L["BackendPending"]</p>
-            </div>
+                    }
+                </div>
+                <div class="execution-action-row">
+                    <button class="run-request-button" type="submit">@L["RunRequest"]</button>
+                    <p class="execution-pending-note">@L["ExecutionReady"]</p>
+                </div>
+            </form>
         </section>
 
         <aside class="execution-card service-info-card" aria-labelledby="service-info-title">
@@ -127,20 +145,72 @@ else
 
     <section class="execution-card result-workspace" aria-labelledby="result-title">
         <div class="result-tabs" role="tablist" aria-label="@L["Result"]">
-            <button id="result-title" class="result-tab active" type="button" role="tab" aria-selected="true">@L["Result"]</button>
-            <button class="result-tab" type="button" role="tab" aria-selected="false" disabled>@L["RawResponse"]</button>
-            <button class="result-tab" type="button" role="tab" aria-selected="false" disabled>@L["History"]</button>
+            <a id="result-title" class="result-tab active" href="#structured-result" role="tab" aria-selected="true">@L["Result"]</a>
+            @if (result is null)
+            {
+                <button class="result-tab" type="button" role="tab" aria-selected="false" disabled>@L["RawResponse"]</button>
+            }
+            else
+            {
+                <a class="result-tab" href="#raw-response" role="tab" aria-selected="false">@L["RawResponse"]</a>
+            }
+            <button class="result-tab" type="button" role="tab" aria-selected="false" disabled title="@L["HistoryDeferred"]">@L["History"]</button>
         </div>
         <div class="result-content-grid">
-            <div class="result-empty-state" role="status">
-                <span class="result-status-icon" aria-hidden="true">✓</span>
-                <div><strong>@L["NoResult"]</strong><small>@L["BackendPending"]</small></div>
+            <div id="structured-result" class="execution-result-panel">
+                @if (result is null)
+                {
+                    <div class="result-empty-state" role="status">
+                        <span class="result-status-icon" aria-hidden="true">✓</span>
+                        <div><strong>@L["NoResult"]</strong><small>@L["ExecutionReady"]</small></div>
+                    </div>
+                }
+                else
+                {
+                    <div class="execution-result-summary @(result.Outcome == ServiceExecutionOutcome.Success ? "is-success" : "is-error")" role="status">
+                        <span class="result-status-icon" aria-hidden="true">@(result.Outcome == ServiceExecutionOutcome.Success ? "✓" : "!")</span>
+                        <div>
+                            <strong>@L[$"Outcome{result.MessageCode}"]</strong>
+                            <small>@L["HttpStatus"] @(result.StatusCode?.ToString(CultureInfo.InvariantCulture) ?? "—")</small>
+                        </div>
+                    </div>
+                    @if (result.StructuredResult.Count > 0)
+                    {
+                        <dl class="structured-result-list">
+                            @foreach (var item in result.StructuredResult.OrderBy(item => item.DisplayOrder))
+                            {
+                                <div>
+                                    <dt>@(isArabic ? item.LabelAr : item.LabelEn)</dt>
+                                    <dd class="@(item.Sensitive ? "masked-result" : null)">@item.Value</dd>
+                                </div>
+                            }
+                        </dl>
+                    }
+                    else
+                    {
+                        <p class="no-structured-result">@L["NoStructuredResult"]</p>
+                    }
+                    <details id="raw-response" class="raw-response-panel">
+                        <summary>@L["RawResponse"]</summary>
+                        @if (string.IsNullOrWhiteSpace(result.RawResponse))
+                        {
+                            <p>@L["NoRawResponse"]</p>
+                        }
+                        else
+                        {
+                            <pre dir="ltr">@result.RawResponse</pre>
+                        }
+                    </details>
+                }
             </div>
             <aside class="request-metadata-card" aria-labelledby="request-metadata-title">
                 <h3 id="request-metadata-title">@L["RequestMetadata"]</h3>
                 <dl>
-                    <div><dt>@L["RequestId"]</dt><dd dir="ltr">—</dd></div>
-                    <div><dt>@L["Status"]</dt><dd><span class="pending-chip">@L["NotExecuted"]</span></dd></div>
+                    <div><dt>@L["RequestId"]</dt><dd dir="ltr">@(result?.RequestId ?? "—")</dd></div>
+                    <div><dt>@L["CorrelationId"]</dt><dd dir="ltr">@(result?.CorrelationId ?? "—")</dd></div>
+                    <div><dt>@L["Status"]</dt><dd><span class="@(result is null ? "pending-chip" : result.Outcome == ServiceExecutionOutcome.Success ? "success-chip" : "error-chip")">@(result is null ? L["NotExecuted"] : L[$"Outcome{result.MessageCode}"])</span></dd></div>
+                    <div><dt>@L["Duration"]</dt><dd>@(result is null ? "—" : $"{result.DurationMilliseconds} {L["Milliseconds"]}")</dd></div>
+                    <div><dt>@L["Attempts"]</dt><dd>@(result?.Attempts.ToString(CultureInfo.InvariantCulture) ?? "—")</dd></div>
                 </dl>
             </aside>
         </div>
