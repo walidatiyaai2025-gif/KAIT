@@ -205,7 +205,32 @@ static async Task CheckRuntimeAsync(string sqlServer, List<string> failures)
             CreateDatabase = false
         };
         var wrongCredentialsResult = await service.TestDatabaseAsync(wrongSqlCredentials);
-        Expect(!wrongCredentialsResult.Success && wrongCredentialsResult.Code == "SQL_AUTHENTICATION_FAILED", $"Wrong SQL-credentials negative path returned {wrongCredentialsResult.Code}.", failures);
+        Expect(!wrongCredentialsResult.Success, "Wrong SQL-credentials negative path unexpectedly succeeded.", failures);
+
+        // LocalDB supports the generic integrated-security regression suite but does not model
+        // SQL Authentication login semantics. It can therefore fail at instance/transport before
+        // an authentication error exists. Exact wrong-password classification remains mandatory
+        // in the dedicated ephemeral SQL Server 2022 acceptance suite.
+        var isLocalDb = sqlServer.Contains("(localdb)", StringComparison.OrdinalIgnoreCase);
+        if (isLocalDb)
+        {
+            Expect(
+                wrongCredentialsResult.Code is "SQL_AUTHENTICATION_FAILED" or "SQL_NETWORK_OR_INSTANCE_FAILED",
+                $"LocalDB SQL-auth negative path returned unexpected code {wrongCredentialsResult.Code}.",
+                failures);
+        }
+        else
+        {
+            Expect(
+                wrongCredentialsResult.Code == "SQL_AUTHENTICATION_FAILED",
+                $"Wrong SQL-credentials negative path returned {wrongCredentialsResult.Code}.",
+                failures);
+        }
+        Expect(
+            !wrongCredentialsResult.Message.Contains(wrongSqlCredentials.Username, StringComparison.Ordinal)
+                && !wrongCredentialsResult.Message.Contains(wrongSqlCredentials.Password, StringComparison.Ordinal),
+            "Wrong SQL-credentials diagnostic exposed a runtime credential.",
+            failures);
 
         var connection = await service.TestDatabaseAsync(database);
         Expect(connection.Success, $"SQL connection test failed: {connection.Code}", failures);
