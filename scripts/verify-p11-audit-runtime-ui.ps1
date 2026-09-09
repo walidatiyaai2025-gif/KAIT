@@ -183,12 +183,12 @@ try {
 
     $enDecoded = [System.Net.WebUtility]::HtmlDecode($en.Content)
     $arDecoded = [System.Net.WebUtility]::HtmlDecode($ar.Content)
-    if ($en.Content -notmatch '<html lang="en" dir="ltr"' -or $enDecoded -notmatch 'Audit Log & Monitoring' -or $enDecoded -notmatch 'LoginSuccess' -or $enDecoded -notmatch 'data-testid="audit-dashboard"') {
-        throw 'English LTR Audit runtime evidence is incomplete.'
-    }
-    if ($ar.Content -notmatch '<html lang="ar" dir="rtl"' -or $arDecoded -notmatch 'سجل التدقيق والمراقبة' -or $arDecoded -notmatch 'LoginSuccess' -or $arDecoded -notmatch 'data-testid="audit-dashboard"') {
-        throw 'Arabic RTL Audit runtime evidence is incomplete.'
-    }
+    if ($en.Content -notmatch '<html lang="en" dir="ltr"') { throw 'English Audit page did not render the expected LTR shell.' }
+    if ($enDecoded -notmatch 'Audit Log & Monitoring') { throw 'English Audit page did not render the canonical heading.' }
+    if ($enDecoded -notmatch 'data-testid="audit-dashboard"') { throw 'English Audit page did not render the Audit dashboard root.' }
+    if ($ar.Content -notmatch '<html lang="ar" dir="rtl"') { throw 'Arabic Audit page did not render the expected RTL shell.' }
+    if ($arDecoded -notmatch 'سجل التدقيق والمراقبة') { throw 'Arabic Audit page did not render the canonical heading.' }
+    if ($arDecoded -notmatch 'data-testid="audit-dashboard"') { throw 'Arabic Audit page did not render the Audit dashboard root.' }
 
     $filtered = Invoke-WebRequest "$baseUrl/audit?culture=en&action=LoginSuccess&succeeded=true" -UseBasicParsing -WebSession $session
     $filteredDecoded = [System.Net.WebUtility]::HtmlDecode($filtered.Content)
