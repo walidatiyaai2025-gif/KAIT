@@ -47,3 +47,38 @@ jobs:
         run: python scripts/validate_p09_contract_snapshots.py
       - name: Preserve planning integrity
         run: python scripts/validate_execution_plan.py
+
+  localdb-scope-concurrency-export:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+      GSIP_P10_SQL: 'Server=(localdb)\MSSQLLocalDB;Database=GSIP_P10_HISTORY_${{ github.run_id }}_${{ github.run_attempt }};Integrated Security=true;TrustServerCertificate=true;MultipleActiveResultSets=true'
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          fetch-depth: 0
+      - name: Assert exact candidate SHA
+        shell: pwsh
+        run: |
+          $actual = (git rev-parse HEAD).Trim()
+          if ($actual -ne $env:CANDIDATE_SHA) { throw 'Exact candidate mismatch.' }
+      - name: Setup pinned .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Restore LocalDB acceptance
+        run: dotnet restore tests/GSIP.P10RequestHistoryIntegrationChecks/GSIP.P10RequestHistoryIntegrationChecks.csproj
+      - name: Build LocalDB acceptance
+        run: dotnet build tests/GSIP.P10RequestHistoryIntegrationChecks/GSIP.P10RequestHistoryIntegrationChecks.csproj -c Release --no-restore
+      - name: Start SQL Server LocalDB
+        shell: pwsh
+        run: |
+          sqllocaldb start MSSQLLocalDB
+          sqllocaldb info MSSQLLocalDB
+      - name: Run migration, scope, IDOR, export, concurrency and retention acceptance
+        run: dotnet run --project tests/GSIP.P10RequestHistoryIntegrationChecks/GSIP.P10RequestHistoryIntegrationChecks.csproj -c Release --no-build
+      - name: Preserve planning integrity
+        run: python scripts/validate_execution_plan.py
