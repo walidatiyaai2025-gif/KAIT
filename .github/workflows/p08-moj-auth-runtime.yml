@@ -1,0 +1,84 @@
+name: P08 MOJ Auth Runtime
+
+on:
+  push:
+    branches:
+      - 'worker/p08-moj-auth-runtime'
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  moj-auth-runtime:
+    runs-on: ubuntu-latest
+    env:
+      CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+      - name: Assert exact candidate SHA
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+      - name: Set up .NET from global.json
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Restore solution and P08 runtime checks
+        shell: bash
+        run: |
+          dotnet restore GSIP.sln
+          dotnet restore tests/GSIP.P08MojAuthRuntimeChecks/GSIP.P08MojAuthRuntimeChecks.csproj
+          dotnet restore tests/GSIP.P07ExecutionRuntimeChecks/GSIP.P07ExecutionRuntimeChecks.csproj
+          dotnet restore tests/GSIP.P07ExecutionSecurityChecks/GSIP.P07ExecutionSecurityChecks.csproj
+      - name: Build solution Release
+        run: dotnet build GSIP.sln -c Release --no-restore
+      - name: Build focused P08 runtime checks Release
+        run: dotnet build tests/GSIP.P08MojAuthRuntimeChecks/GSIP.P08MojAuthRuntimeChecks.csproj -c Release --no-restore
+      - name: Build P07 regression checks Release
+        shell: bash
+        run: |
+          dotnet build tests/GSIP.P07ExecutionRuntimeChecks/GSIP.P07ExecutionRuntimeChecks.csproj -c Release --no-restore
+          dotnet build tests/GSIP.P07ExecutionSecurityChecks/GSIP.P07ExecutionSecurityChecks.csproj -c Release --no-restore
+      - name: Run focused MOJ auth runtime checks
+        shell: bash
+        run: |
+          mkdir -p evidence
+          dotnet run --project tests/GSIP.P08MojAuthRuntimeChecks/GSIP.P08MojAuthRuntimeChecks.csproj -c Release --no-build | tee evidence/p08-moj-auth-runtime.txt
+      - name: Run P07 execution regressions
+        shell: bash
+        run: |
+          dotnet run --project tests/GSIP.P07ExecutionRuntimeChecks/GSIP.P07ExecutionRuntimeChecks.csproj -c Release --no-build
+          dotnet run --project tests/GSIP.P07ExecutionSecurityChecks/GSIP.P07ExecutionSecurityChecks.csproj -c Release --no-build
+      - name: Validate governance
+        run: python scripts/validate_execution_plan.py
+      - name: Verify non-secret evidence and build manifest
+        shell: bash
+        run: |
+          ! grep -RIE '(SYNTHETIC_P08_API_KEY_31f7|SYNTHETIC_P08_PASSWORD_9c4d|synthetic-user-p08|eyJhbGciOiJub25lIn0\.eyJleHAiOjQxMDI0NDQ4MDB9)' evidence
+          python - <<'PY'
+          import hashlib, json, os, pathlib
+          p = pathlib.Path('evidence/p08-moj-auth-runtime.txt')
+          data = p.read_bytes()
+          manifest = {
+              'CandidateSha': os.environ['CANDIDATE_SHA'],
+              'P08MojAuthRuntime': 'PASS',
+              'P07ExecutionRegression': 'PASS',
+              'Governance': 'PASS',
+              'SyntheticOnly': True,
+              'RealCredentials': False,
+              'OutputBytes': len(data),
+              'OutputSha256': hashlib.sha256(data).hexdigest(),
+          }
+          pathlib.Path('evidence/manifest.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
+          PY
+      - name: Upload P08 MOJ auth runtime evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: P08-MOJ-Auth-Runtime-${{ env.CANDIDATE_SHA }}
+          path: evidence/
+          if-no-files-found: error
