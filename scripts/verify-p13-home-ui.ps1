@@ -31,7 +31,7 @@ if (-not $controller.Contains('IMetadataCatalogService metadataCatalog', [System
 if (-not $view.Contains('data-testid="p13-home-dashboard"', [System.StringComparison]::Ordinal)) { throw 'P13 Home runtime marker is missing.' }
 if (-not $layout.Contains('<strong>P13</strong>', [System.StringComparison]::Ordinal)) { throw 'Shared shell is not marked P13.' }
 if (-not $p13Css.Contains(':focus-visible', [System.StringComparison]::Ordinal)) { throw 'P13 shared focus styling is missing.' }
-if (-not $baseline.Contains('Integrated Government Services', [System.StringComparison]::OrdinalIgnoreCase)) { throw 'Home visual baseline is unavailable.' }
+if (-not $baseline.Contains('Government Services Integration Portal', [System.StringComparison]::OrdinalIgnoreCase)) { throw 'Home visual baseline is unavailable.' }
 
 $databaseName = 'GSIP_P13_HOME_' + [Guid]::NewGuid().ToString('N').Substring(0, 12)
 $connectionString = "Server=(localdb)\MSSQLLocalDB;Database=$databaseName;Integrated Security=true;Encrypt=false;TrustServerCertificate=true"
