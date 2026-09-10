@@ -153,6 +153,15 @@ async Task OfficialAgencySeedPersistenceAsync()
                   && profile.Bindings.Single().EnvironmentId == profile.OwnerEnvironmentId,
                 "P17 AuthProfile binding escaped exact Service + Environment scope.");
         }
+
+        var certificate = services.Single(service => service.Code == "MOH_CERTIFICATE_INFORMATION");
+        var certificateUat = certificate.EnvironmentConfigs.Single(config => config.EnvironmentId == CatalogEnvironmentCodes.UatId);
+        using (var certificateMetadata = JsonDocument.Parse(certificateUat.NonSecretHeadersJson))
+        {
+            Check(!certificateMetadata.RootElement.TryGetProperty("X-GSIP-TokenApiKeyRequired", out _),
+                "MOH Certificate persisted UAT contract must not infer x-api-key without operation-level provider evidence.");
+        }
+
         Check(await db.AuthProfileSecrets.CountAsync() == 0 && await db.SecretVaultEntries.CountAsync() == 0,
             "P17 official contract seed persisted credential references or secret material.");
 
