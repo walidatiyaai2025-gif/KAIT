@@ -16,9 +16,17 @@ jobs:
   admin-ui-safety:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
     steps:
-      - name: Checkout exact commit
+      - name: Checkout exact candidate
         uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          fetch-depth: 0
+      - name: Assert exact candidate SHA
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
 
       - name: Set up .NET from global.json
         uses: actions/setup-dotnet@v4
@@ -41,9 +49,19 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 40
     needs: admin-ui-safety
+    env:
+      CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
     steps:
-      - name: Checkout exact commit
+      - name: Checkout exact candidate
         uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          fetch-depth: 0
+      - name: Assert exact candidate SHA
+        shell: pwsh
+        run: |
+          $actual = (git rev-parse HEAD).Trim()
+          if ($actual -ne $env:CANDIDATE_SHA) { throw "Exact candidate mismatch: expected=$env:CANDIDATE_SHA actual=$actual" }
 
       - name: Set up .NET from global.json
         uses: actions/setup-dotnet@v4
@@ -77,7 +95,7 @@ jobs:
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
-          name: P06-AuthProfile-Admin-Evidence-${{ github.sha }}
+          name: P06-AuthProfile-Admin-Evidence-${{ env.CANDIDATE_SHA }}
           path: artifacts/p06-authprofile-admin/
           if-no-files-found: error
           retention-days: 30
