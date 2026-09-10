@@ -55,7 +55,32 @@ static void CheckBuildProps(string root, List<string> failures)
     string? Value(string name) => props.Descendants(name).Select(element => element.Value).FirstOrDefault();
 
     Expect(Value("TargetFramework") == "net10.0", "TargetFramework must be net10.0.", failures);
-    Expect(Value("VersionPrefix") == "0.1.0", "Initial semantic version must be 0.1.0.", failures);
+
+    var versionPrefix = Value("VersionPrefix") ?? string.Empty;
+    var versionParts = versionPrefix.Split('.', StringSplitOptions.None);
+    var hasStableThreePartVersion = versionParts.Length == 3
+        && versionParts.All(part => int.TryParse(part, out _));
+    var currentVersion = hasStableThreePartVersion
+        ? versionParts.Select(int.Parse).ToArray()
+        : [0, 0, 0];
+    var isAtOrAboveInitialVersion = currentVersion[0] > 0
+        || currentVersion[1] > 1
+        || (currentVersion[1] == 1 && currentVersion[2] >= 0);
+
+    Expect(
+        hasStableThreePartVersion && isAtOrAboveInitialVersion,
+        "Current semantic version must be a stable x.y.z version at or above the initial 0.1.0 baseline.",
+        failures);
+
+    var versioningDocumentPath = Path.Combine(root, "docs", "BUILD_AND_VERSIONING.md");
+    var versioningDocument = File.Exists(versioningDocumentPath)
+        ? File.ReadAllText(versioningDocumentPath)
+        : string.Empty;
+    Expect(
+        versioningDocument.Contains("Initial executable product version: **0.1.0**.", StringComparison.Ordinal),
+        "BUILD_AND_VERSIONING.md must preserve the initial executable product version 0.1.0 record.",
+        failures);
+
     Expect(Value("Nullable") == "enable", "Nullable reference types must be enabled.", failures);
     Expect(Value("TreatWarningsAsErrors") == "true", "Compiler warnings must fail CI.", failures);
 }

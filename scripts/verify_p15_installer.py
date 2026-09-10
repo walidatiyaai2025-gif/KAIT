@@ -79,8 +79,12 @@ require("ownership manifest" in runbook.lower() and "SNI" in runbook, "installer
 require("Next/Back/Finish" in runbook and "HTTPS certificate" in runbook and "First-Run Setup" in runbook, "installer runbook does not document the professional wizard contract")
 
 require("P14" in phase and "CLOSED" in phase.upper() and "P15" in phase, "canonical phase authority does not preserve P14 closure and identify P15")
-require(re.search(r"<VersionPrefix>0\.1\.0</VersionPrefix>", props) is not None, "initial executable version drifted from 0.1.0")
+version_match = re.search(r"<VersionPrefix>(\d+)\.(\d+)\.(\d+)</VersionPrefix>", props)
+require(version_match is not None, "executable version is missing or is not semantic x.y.z")
+version = tuple(int(part) for part in version_match.groups()) if version_match else (0, 0, 0)
+require(version >= (0, 1, 0), "executable version regressed below the accepted 0.1.0 baseline")
 require("DEFERRED_EXTERNAL_NOT_PASS" in phase and "PRODUCTION_DEFERRED_EXTERNAL_NOT_PASS" in phase, "historical external NOT-PASS classifications were lost")
 require("OWNER_LAST / NOT PASS" in phase, "repository-administration NOT-PASS boundary was lost")
 
 print(f"P15_INSTALLER_STATIC_ACCEPTANCE=PASS checks={checks}")
+print(f"P15_VERSION_BASELINE_PRESERVED={'.'.join(str(part) for part in version)}")
