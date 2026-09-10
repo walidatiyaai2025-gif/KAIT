@@ -33,6 +33,7 @@ required_handler_fragments = [
     'request.Headers.Remove(UsernameHeader)',
     'request.Headers.Remove(PasswordHeader)',
     'request.Headers.Authorization = null',
+    'uri.IsDefaultPort',
 ]
 for fragment in required_handler_fragments:
     if fragment not in handler:
@@ -54,7 +55,7 @@ if di.count('.RedactLoggedHeaders(') != 1 or '.RedactLoggedHeaders(new' in di:
 if 'CreateInstance<MoeMetadataSeedService>' not in bootstrap:
     raise SystemExit("MOE metadata seed is not wired into catalog bootstrap")
 
-for fragment in ["GET /lastactive", "GET /last", "GET /lastsuccess", "HTTP Basic"]:
+for fragment in ["GET /lastactive", "GET /last", "GET /lastsuccess", "HTTP Basic", "default HTTPS port"]:
     if fragment not in doc:
         raise SystemExit(f"MOE contract documentation drift: missing {fragment!r}")
 
