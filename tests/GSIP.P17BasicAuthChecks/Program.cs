@@ -9,6 +9,7 @@ const string Password = "SYNTHETIC_MOE_PASSWORD";
 await ConvertsProtectedPairToBasicAsync();
 await MarkerRequiresProtectedPairAsync();
 await KnownMoeEndpointRequiresProtectedPairAsync();
+await UnscopedProtectedPairFailsClosedAsync();
 await MissingCredentialFailsClosedAsync();
 await ExistingAuthorizationFailsClosedAsync();
 await InvalidUsernameFailsClosedAsync();
@@ -69,11 +70,31 @@ async Task KnownMoeEndpointRequiresProtectedPairAsync()
     Check(inner.Calls == 0, "Known MOE Student UAT endpoint without credentials reached network transport.");
 }
 
+async Task UnscopedProtectedPairFailsClosedAsync()
+{
+    var inner = new RecordingHandler();
+    using var client = Client(inner);
+    using var request = new HttpRequestMessage(HttpMethod.Get, "https://synthetic.invalid/unrelated");
+    request.Headers.TryAddWithoutValidation(BasicAuthenticationTransformHandler.UsernameHeader, Username);
+    request.Headers.TryAddWithoutValidation(BasicAuthenticationTransformHandler.PasswordHeader, Password);
+
+    using var response = await client.SendAsync(request);
+
+    Check(response.StatusCode == HttpStatusCode.Unauthorized,
+        "Unscoped protected Basic credential pair did not fail closed.");
+    Check(inner.Calls == 0, "Unscoped protected Basic credential pair reached outbound transport.");
+    Check(!request.Headers.Contains(BasicAuthenticationTransformHandler.UsernameHeader)
+          && !request.Headers.Contains(BasicAuthenticationTransformHandler.PasswordHeader)
+          && request.Headers.Authorization is null,
+        "Unscoped protected Basic credential material remained on the rejected request.");
+}
+
 async Task MissingCredentialFailsClosedAsync()
 {
     var inner = new RecordingHandler();
     using var client = Client(inner);
     using var request = new HttpRequestMessage(HttpMethod.Get, "https://synthetic.invalid/last");
+    request.Headers.TryAddWithoutValidation(BasicAuthenticationTransformHandler.RequiredMarkerHeader, "1");
     request.Headers.TryAddWithoutValidation(BasicAuthenticationTransformHandler.UsernameHeader, Username);
 
     using var response = await client.SendAsync(request);
@@ -91,6 +112,7 @@ async Task ExistingAuthorizationFailsClosedAsync()
     using var client = Client(inner);
     using var request = new HttpRequestMessage(HttpMethod.Get, "https://synthetic.invalid/lastsuccess");
     request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", "SYNTHETIC_EXISTING_TOKEN");
+    request.Headers.TryAddWithoutValidation(BasicAuthenticationTransformHandler.RequiredMarkerHeader, "1");
     request.Headers.TryAddWithoutValidation(BasicAuthenticationTransformHandler.UsernameHeader, Username);
     request.Headers.TryAddWithoutValidation(BasicAuthenticationTransformHandler.PasswordHeader, Password);
 
@@ -105,6 +127,7 @@ async Task InvalidUsernameFailsClosedAsync()
     var inner = new RecordingHandler();
     using var client = Client(inner);
     using var request = new HttpRequestMessage(HttpMethod.Get, "https://synthetic.invalid/lastactive");
+    request.Headers.TryAddWithoutValidation(BasicAuthenticationTransformHandler.RequiredMarkerHeader, "1");
     request.Headers.TryAddWithoutValidation(BasicAuthenticationTransformHandler.UsernameHeader, "bad:user");
     request.Headers.TryAddWithoutValidation(BasicAuthenticationTransformHandler.PasswordHeader, Password);
 
