@@ -48,7 +48,9 @@ public static class DependencyInjection
         services.Configure<RequestHistoryOptions>(configuration.GetSection(RequestHistoryOptions.SectionName));
         services.Configure<AuditTrailOptions>(configuration.GetSection(AuditTrailOptions.SectionName));
         services.Configure<AdminOperationsOptions>(configuration.GetSection(AdminOperationsOptions.SectionName));
+        services.AddTransient<BasicAuthenticationTransformHandler>();
         services.AddHttpClient("GSIP.Execution")
+            .AddHttpMessageHandler<BasicAuthenticationTransformHandler>()
             .ConfigurePrimaryHttpMessageHandler(() => new System.Net.Http.HttpClientHandler
             {
                 AllowAutoRedirect = false,
