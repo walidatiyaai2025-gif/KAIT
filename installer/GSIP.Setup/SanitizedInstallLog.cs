@@ -12,6 +12,10 @@ internal sealed class SanitizedInstallLog : IDisposable
         @"(?i)\bbearer\s+[A-Za-z0-9\-._~+/]+=*",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
+    private static readonly Regex BasicValue = new(
+        @"(?i)\bbasic\s+[A-Za-z0-9+/]+=*",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
     private readonly string _path;
     private readonly object _sync = new();
 
@@ -42,8 +46,12 @@ internal sealed class SanitizedInstallLog : IDisposable
 
     internal static string Redact(string value)
     {
-        var redacted = SensitiveAssignment.Replace(value ?? string.Empty, "$1=[REDACTED]");
-        return BearerValue.Replace(redacted, "Bearer [REDACTED]");
+        // Redact complete credential schemes before generic assignment masking.
+        // Otherwise `Authorization: Basic <credential>` would first become
+        // `Authorization=[REDACTED] <credential>` and leave the credential tail exposed.
+        var redacted = BearerValue.Replace(value ?? string.Empty, "Bearer [REDACTED]");
+        redacted = BasicValue.Replace(redacted, "Basic [REDACTED]");
+        return SensitiveAssignment.Replace(redacted, "$1=[REDACTED]");
     }
 
     private static string DefaultPath()

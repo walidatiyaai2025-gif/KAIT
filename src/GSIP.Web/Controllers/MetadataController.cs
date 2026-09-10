@@ -204,7 +204,7 @@ public sealed class MetadataController(IMetadataCatalogService catalog) : Contro
         "SERVICE-CODE", "اسم الخدمة", "Service Name", "وصف الخدمة", "Service description", true,
         [
             new ServiceEnvironmentInput("UAT", "https://uat.example.gov.kw", "/api/service", "POST", "application/json", "{}", 30, "SystemDefault", true, "", "/health", "HEAD", true, null),
-            new ServiceEnvironmentInput("Production", "https://api.example.gov.kw", "/api/service", "POST", "application/json", "{}", 45, "SystemDefault", true, "", "/health", "HEAD", true, null)
+            new ServiceEnvironmentInput("Production", "https://api.example.gov.kw", "/api/service", "POST", "application/json", "{}", 45, "SystemDefault", true, "", "/health", "HEAD", false, null)
         ],
         [new ServiceFieldInput("civil-id", "الرقم المدني", "Civil ID", "text", true, "^[0-9]{12}$", null, null, 12, 12, "[]", 10, true, "Last4")],
         [new ResultMappingInput("$.data.status", "الحالة", "Status", "text", "", false, 10)]), JsonOptions);

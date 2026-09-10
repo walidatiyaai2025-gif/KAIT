@@ -73,10 +73,52 @@ try
     var imported = await catalog.ImportJsonAsync(exported);
     Assert(imported.EntitiesProcessed == 1 && imported.ServicesProcessed == 1, "Schema-governed export/import round trip failed.");
 
+    var invalidRollbackService = BuildService("ROLLBACK-BAD", "Rollback Invalid Service", productionUrl: "http://prod.example.invalid");
+    var rollbackPackage = new MetadataPackage
+    {
+        SchemaVersion = 1,
+        Entities =
+        [
+            new MetadataEntityPackage
+            {
+                Code = "ROLLBACK-FIRST", NameAr = "جهة أولى", NameEn = "Rollback First", Logo = "", Active = true, DisplayOrder = 100, Services = []
+            },
+            new MetadataEntityPackage
+            {
+                Code = "ROLLBACK-SECOND", NameAr = "جهة ثانية", NameEn = "Rollback Second", Logo = "", Active = true, DisplayOrder = 110,
+                Services =
+                [
+                    new MetadataServicePackage
+                    {
+                        Code = invalidRollbackService.Code,
+                        NameAr = invalidRollbackService.NameAr,
+                        NameEn = invalidRollbackService.NameEn,
+                        DescriptionAr = invalidRollbackService.DescriptionAr,
+                        DescriptionEn = invalidRollbackService.DescriptionEn,
+                        Active = invalidRollbackService.Active,
+                        EnvironmentConfigs = invalidRollbackService.EnvironmentConfigs,
+                        Fields = invalidRollbackService.Fields,
+                        ResultMappings = invalidRollbackService.ResultMappings
+                    }
+                ]
+            }
+        ]
+    };
+    var rollbackJson = JsonSerializer.Serialize(rollbackPackage, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+    await ExpectInvalidAsync(() => catalog.ImportJsonAsync(rollbackJson), "Invalid multi-entity import unexpectedly succeeded.");
+    db.ChangeTracker.Clear();
+    Assert(!await db.CatalogEntities.AsNoTracking().AnyAsync(x => x.Code == "ROLLBACK-FIRST" || x.Code == "ROLLBACK-SECOND"),
+        "Failed metadata import persisted partial entity state instead of rolling back atomically.");
+    Assert(!await db.CatalogServices.AsNoTracking().AnyAsync(x => x.Code == "ROLLBACK-BAD"),
+        "Failed metadata import persisted partial service state instead of rolling back atomically.");
+
     var controllerFiles = Directory.GetFiles(Path.Combine("src", "GSIP.Web", "Controllers"), "*.cs", SearchOption.AllDirectories);
     var viewFiles = Directory.GetFiles(Path.Combine("src", "GSIP.Web", "Views"), "*.cshtml", SearchOption.AllDirectories);
     Assert(!controllerFiles.Concat(viewFiles).Any(path => File.ReadAllText(path).Contains("SAMPLE-CHECK", StringComparison.OrdinalIgnoreCase)),
         "Synthetic service unexpectedly required custom controller/view code.");
+    var metadataControllerSource = File.ReadAllText(Path.Combine("src", "GSIP.Web", "Controllers", "MetadataController.cs"));
+    Assert(metadataControllerSource.Contains("new ServiceEnvironmentInput(\"Production\", \"https://api.example.gov.kw\", \"/api/service\", \"POST\", \"application/json\", \"{}\", 45, \"SystemDefault\", true, \"\", \"/health\", \"HEAD\", false, null)", StringComparison.Ordinal),
+        "Generic metadata template does not keep Production disabled by default.");
 
     var evidenceDirectory = Path.Combine("artifacts", "p05-evidence");
     Directory.CreateDirectory(evidenceDirectory);
@@ -89,9 +131,11 @@ try
         environments = new[] { CatalogEnvironmentCodes.Uat, CatalogEnvironmentCodes.Production },
         independentBindings = true,
         productionHttpsEnforced = true,
+        productionTemplateFailClosed = true,
         certificateValidationEnforced = true,
         secretHeaderRejection = true,
         rejectedDefinitionAtomicity = true,
+        importTransactionRollback = true,
         jsonSchemaRoundTrip = true,
         customServiceControllerOrViewRequired = false
     };

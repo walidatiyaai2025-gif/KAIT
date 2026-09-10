@@ -49,6 +49,12 @@ jobs:
         run: python scripts/verify_p14_outbound_http_security.py
       - name: Preserve P15 installer source contract
         run: python scripts/verify_p15_installer.py
+      - name: Require complete installer auth-scheme redaction source
+        shell: bash
+        run: |
+          grep -F 'BasicValue.Replace' installer/GSIP.Setup/SanitizedInstallLog.cs
+          grep -F 'BearerValue.Replace' installer/GSIP.Setup/SanitizedInstallLog.cs
+          grep -F 'SensitiveAssignment.Replace' installer/GSIP.Setup/SanitizedInstallLog.cs
 
   runtime-ui-recovery:
     runs-on: windows-latest
@@ -145,6 +151,42 @@ jobs:
       - name: Verify and build exact release-candidate artifacts
         shell: pwsh
         run: ./scripts/build-p16-release-candidate.ps1
+      - name: Verify installer auth-scheme log redaction at runtime
+        shell: pwsh
+        run: |
+          [xml]$props = Get-Content ./Directory.Build.props
+          $version = [string]$props.Project.PropertyGroup.VersionPrefix
+          $setup = Join-Path $PWD "artifacts/p16-release-candidate/GSIP-$version-Setup-x64.exe"
+          $log = Join-Path $env:RUNNER_TEMP 'GSIP-P16-redaction.log'
+          Remove-Item $log -Force -ErrorAction SilentlyContinue
+          $cases = @(
+            @{ Scheme='Basic'; Sentinel='QmFzaWMtU2VjcmV0LVBMQUNFSE9MREVS' },
+            @{ Scheme='Bearer'; Sentinel='BearerSecret-P17-PLACEHOLDER' }
+          )
+          foreach ($case in $cases) {
+            $start = [System.Diagnostics.ProcessStartInfo]::new()
+            $start.FileName = $setup
+            $start.UseShellExecute = $false
+            [void]$start.ArgumentList.Add("Authorization: $($case.Scheme) $($case.Sentinel)")
+            [void]$start.ArgumentList.Add('--log-path')
+            [void]$start.ArgumentList.Add($log)
+            $process = [System.Diagnostics.Process]::Start($start)
+            if ($null -eq $process) { throw "Could not start redaction probe for $($case.Scheme)." }
+            try {
+              $process.WaitForExit()
+              if ($process.ExitCode -eq 0) { throw "Redaction probe unexpectedly accepted synthetic action for $($case.Scheme)." }
+            }
+            finally { $process.Dispose() }
+          }
+          if (-not (Test-Path $log)) { throw 'Installer redaction probe did not create a sanitized log.' }
+          $logText = Get-Content $log -Raw
+          foreach ($case in $cases) {
+            if ($logText.Contains($case.Sentinel, [System.StringComparison]::Ordinal)) {
+              throw "Installer log leaked $($case.Scheme) credential material."
+            }
+          }
+          if ($logText -notmatch '\[REDACTED\]') { throw 'Installer redaction probe produced no redaction marker.' }
+          'P16_INSTALLER_AUTH_SCHEME_REDACTION=PASS' | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
       - name: Upload P16 release-candidate artifacts
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
