@@ -83,7 +83,17 @@ jobs:
           sqllocaldb info MSSQLLocalDB
       - name: Run Permissions exact-candidate browser acceptance
         shell: pwsh
-        run: ./scripts/verify-p04-permissions-ui.ps1
+        run: |
+          $sourcePath = 'scripts/verify-p04-permissions-ui.ps1'
+          $candidatePath = 'scripts/verify-p04-permissions-ui.p16.ci.ps1'
+          $script = Get-Content $sourcePath -Raw
+          $staleAssertion = "Assert-Contains `$layout '<strong>P04</strong>' 'Shell phase marker was not advanced to P04.'"
+          $phaseMonotonicAssertion = "if (`$layout -notmatch '<strong>P(?:0[4-9]|1[0-7])</strong>') { throw 'Shell phase marker is missing or predates P04.' }"
+          if (-not $script.Contains($staleAssertion, [System.StringComparison]::Ordinal)) {
+            throw 'Expected legacy P04 shell phase assertion was not found; reconcile the regression script explicitly.'
+          }
+          $script.Replace($staleAssertion, $phaseMonotonicAssertion) | Set-Content $candidatePath -Encoding utf8
+          & ./$candidatePath
       - name: Run Service Execution exact-candidate browser acceptance
         shell: pwsh
         run: ./scripts/verify-p07-execution-ui.ps1
