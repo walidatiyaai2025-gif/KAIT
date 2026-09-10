@@ -34,6 +34,8 @@ After successful deployment the wizard verifies the application payload and requ
 
 A first installation accepts only a missing or empty target directory. A non-empty directory without a valid GSIP ownership manifest is never overwritten and can never be removed by `--purge-state`. Likewise, the first IIS deployment refuses to reuse or retarget a pre-existing site or application pool with the requested name; an existing IIS resource is eligible for repair only after the GSIP ownership marker proves the installation identity. This prevents GSIP Setup from taking over or deleting unrelated IIS applications.
 
+The manifest is written through a temporary file followed by atomic replacement. During upgrade or repair the installer captures the exact previous manifest before replacing binaries; if a later deployment/IIS step fails, rollback restores both the previous application files and the previous manifest. A failed upgrade therefore cannot leave old binaries paired with a falsely advanced installed version. For a first installation that reaches IIS mutation, the new ownership marker remains intentionally so a partial installation can be repaired or explicitly removed instead of becoming an unattributed IIS footprint.
+
 The default uninstall intentionally preserves `install-manifest.json` together with protected mutable state. This retained marker authorizes a later reinstall or an explicit state purge while continuing to bind destructive operations to the original GSIP site/application-pool identity. Only a correctly owned installation can be recursively purged.
 
 ## State preservation
@@ -89,7 +91,7 @@ P15 CI performs an explicit previous-version upgrade rehearsal rather than treat
 - `App_Data/setup/completed.protected` to remain unchanged;
 - default uninstall to retain the GSIP ownership marker.
 
-The same exact setup executable then runs repair, default uninstall, reinstall and explicit owner-scoped purge acceptance.
+The same exact setup executable then runs repair, default uninstall, reinstall and explicit owner-scoped purge acceptance. Static acceptance additionally requires atomic manifest replacement and restoration of the prior ownership manifest in the maintenance rollback path.
 
 ## Sanitized installer log
 
@@ -99,7 +101,7 @@ CI requires the log to exist, contain successful lifecycle records and contain n
 
 ## IIS behavior
 
-The deployment engine requires administrative elevation, IIS `appcmd.exe` and the ASP.NET Core IIS module. It creates an application pool only when no unowned pool with that name exists, uses no CLR managed runtime, `AlwaysRunning`, and `ApplicationPoolIdentity`; creates a site only when no unowned site with that name exists; assigns the exact application pool; grants that app-pool identity Modify access to the mutable `App_Data` subtree; and starts the site/pool after successful application replacement. A valid prior GSIP ownership marker permits repair/recreation of the exact recorded resources. If application replacement fails, replaceable binaries are rolled back while `App_Data` remains untouched.
+The deployment engine requires administrative elevation, IIS `appcmd.exe` and the ASP.NET Core IIS module. It creates an application pool only when no unowned pool with that name exists, uses no CLR managed runtime, `AlwaysRunning`, and `ApplicationPoolIdentity`; creates a site only when no unowned site with that name exists; assigns the exact application pool; grants that app-pool identity Modify access to the mutable `App_Data` subtree; and starts the site/pool after successful application replacement. A valid prior GSIP ownership marker permits repair/recreation of the exact recorded resources. If application replacement fails, replaceable binaries and any prior ownership manifest are rolled back while `App_Data` remains untouched.
 
 The deterministic CLI installation creates the initial HTTP binding. The graphical wizard then applies and verifies the administrator-selected HTTP or HTTPS binding. For HTTPS, the wizard selects a valid Local Computer certificate, applies deterministic IIS SNI flags for host-specific bindings, and configures the HTTP.sys certificate binding without embedding certificate material.
 
