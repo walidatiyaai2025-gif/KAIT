@@ -14,8 +14,13 @@ internal sealed class GreenGovernmentCatalogBootstrapService(IServiceScopeFactor
         if (!status.IsCompleted)
             return;
 
-        var seed = ActivatorUtilities.CreateInstance<GreenGovernmentCatalogSeedService>(scope.ServiceProvider);
-        await seed.SeedAsync(cancellationToken);
+        var greenSeed = ActivatorUtilities.CreateInstance<GreenGovernmentCatalogSeedService>(scope.ServiceProvider);
+        await greenSeed.SeedAsync(cancellationToken);
+
+        // Official contract overlays are intentionally applied only after the additive green
+        // catalog exists so untouched catalog placeholders can be upgraded without guessing.
+        var officialSeed = ActivatorUtilities.CreateInstance<OfficialAgencyMetadataSeedService>(scope.ServiceProvider);
+        await officialSeed.SeedAsync(cancellationToken);
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
