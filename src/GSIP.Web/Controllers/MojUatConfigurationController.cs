@@ -1,3 +1,4 @@
+using System.Data;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -31,11 +32,10 @@ public sealed class MojUatConfigurationController(
     private const string ApiKeySecretName = "x-api-key";
     private const string UsernameSecretName = "username";
     private const string PasswordSecretName = "password";
-    private const string EmptyCredentialSentinel = "__GSIP_UAT_EMPTY_CREDENTIAL__";
-    private const int MinimumSecretCharacters = 8;
+    private const int MinimumApiKeyCharacters = 8;
     private const int MaximumSecretCharacters = 4096;
 
-    private static readonly HashSet<string> AllowedTokenSecrets = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> RequiredTokenSecrets = new(StringComparer.OrdinalIgnoreCase)
     {
         UsernameSecretName,
         PasswordSecretName,
@@ -62,12 +62,29 @@ public sealed class MojUatConfigurationController(
     [HttpPost("api129/configure")]
     [ValidateAntiForgeryToken]
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
-    public async Task<IActionResult> ConfigureApi129(string apiKey, CancellationToken cancellationToken)
+    public async Task<IActionResult> ConfigureApi129(
+        string apiKey,
+        string username,
+        string password,
+        CancellationToken cancellationToken)
     {
         ModelState.Remove(nameof(apiKey));
-        if (!IsAcceptableSecretValue(apiKey))
+        ModelState.Remove(nameof(username));
+        ModelState.Remove(nameof(password));
+
+        if (!IsAcceptableApiKey(apiKey))
         {
             TempData["MojUatError"] = "INVALID_API_KEY";
+            return RedirectToAction(nameof(Index));
+        }
+        if (!IsAcceptableCredential(username))
+        {
+            TempData["MojUatError"] = "INVALID_USERNAME";
+            return RedirectToAction(nameof(Index));
+        }
+        if (!IsAcceptableCredential(password))
+        {
+            TempData["MojUatError"] = "INVALID_PASSWORD";
             return RedirectToAction(nameof(Index));
         }
 
@@ -109,88 +126,106 @@ public sealed class MojUatConfigurationController(
             return Conflict("The UAT authentication binding is not an exclusive exact owner binding.");
 
         var unsupported = profile.Secrets
-            .Where(secret => !AllowedTokenSecrets.Contains(secret.Name) && !RetirableLegacySecrets.Contains(secret.Name))
+            .Where(secret => !RequiredTokenSecrets.Contains(secret.Name) && !RetirableLegacySecrets.Contains(secret.Name))
             .ToArray();
-        if (unsupported.Length != 0)
+        if (unsupported.Length != 0
+            || profile.AuthType is not (AuthProfileType.TokenEndpoint or AuthProfileType.ApiKeyHeader))
         {
             TempData["MojUatError"] = "INCOMPATIBLE_SECRET_SLOTS";
             return RedirectToAction(nameof(Index));
         }
 
+        // Fail closed before changing auth shape, endpoint metadata or secret references.
         profile = await authProfiles.SetEnabledAsync(profile.Id, false, cancellationToken);
 
         try
         {
-            foreach (var legacy in profile.Secrets.Where(secret => RetirableLegacySecrets.Contains(secret.Name)).ToArray())
+            // The 0.1.1 API-key-only helper may have left an ApiKeyHeader profile. Reconcile only
+            // this exact API129/UAT owner binding and retire only known obsolete bearer/token slots.
+            await using (var transitionTransaction =
+                await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken))
             {
-                await secretVault.RevokeAsync(
-                    service.Id,
-                    CatalogEnvironmentCodes.UatId,
-                    profile.Id,
-                    legacy.Name,
-                    legacy.Reference,
-                    cancellationToken);
+                try
+                {
+                    foreach (var legacy in profile.Secrets.Where(secret => RetirableLegacySecrets.Contains(secret.Name)).ToArray())
+                    {
+                        await secretVault.RevokeAsync(
+                            service.Id,
+                            CatalogEnvironmentCodes.UatId,
+                            profile.Id,
+                            legacy.Name,
+                            legacy.Reference,
+                            cancellationToken);
 
-                var deleted = await db.AuthProfileSecrets
-                    .Where(slot => slot.AuthProfileId == profile.Id
-                        && slot.SecretName == legacy.Name
-                        && slot.SecretReference == legacy.Reference.Value
-                        && slot.Generation == legacy.Generation)
-                    .ExecuteDeleteAsync(cancellationToken);
-                if (deleted != 1)
-                    throw new InvalidOperationException("The legacy token slot changed during UAT conversion.");
+                        var deleted = await db.AuthProfileSecrets
+                            .Where(slot => slot.AuthProfileId == profile.Id
+                                && slot.SecretName == legacy.Name
+                                && slot.SecretReference == legacy.Reference.Value
+                                && slot.Generation == legacy.Generation)
+                            .ExecuteDeleteAsync(cancellationToken);
+                        if (deleted != 1)
+                            throw new InvalidOperationException("The legacy token slot changed during UAT conversion.");
+                    }
+
+                    profile = await authProfiles.UpdateAsync(
+                        new UpdateAuthProfileCommand(
+                            profile.Id,
+                            "MOJ API 129 UAT token authentication",
+                            AuthProfileType.TokenEndpoint),
+                        cancellationToken);
+
+                    await db.CatalogServices
+                        .Where(item => item.Id == service.Id && item.IsCurrent)
+                        .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.Active, true), cancellationToken);
+                    await db.CatalogEnvironments
+                        .Where(item => item.Id == CatalogEnvironmentCodes.UatId && item.Code == CatalogEnvironmentCodes.Uat)
+                        .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.Active, true), cancellationToken);
+
+                    var configUpdated = await db.ServiceEnvironmentConfigs
+                        .Where(item => item.ServiceId == service.Id && item.EnvironmentId == CatalogEnvironmentCodes.UatId)
+                        .ExecuteUpdateAsync(setters => setters
+                            .SetProperty(item => item.BaseUrl, UatBaseUrl)
+                            .SetProperty(item => item.RelativePath, RelativePath)
+                            .SetProperty(item => item.HttpMethod, "POST")
+                            .SetProperty(item => item.ContentType, "application/x-www-form-urlencoded")
+                            .SetProperty(item => item.NonSecretHeadersJson, BuildApi129TokenMetadata())
+                            .SetProperty(item => item.TimeoutSeconds, 30)
+                            .SetProperty(item => item.TlsPolicy, "SystemDefault")
+                            .SetProperty(item => item.ValidateServerCertificate, true)
+                            .SetProperty(item => item.ProxyUrl, string.Empty)
+                            .SetProperty(item => item.Active, true)
+                            .SetProperty(item => item.AuthProfileId, profile.Id)
+                            .SetProperty(item => item.LastTestedAtUtc, (DateTimeOffset?)null)
+                            .SetProperty(item => item.LastTestStatus, "TOKEN_CONFIGURATION_IN_PROGRESS"),
+                            cancellationToken);
+                    if (configUpdated != 1)
+                        throw new InvalidOperationException("The exact UAT configuration changed during update.");
+
+                    await transitionTransaction.CommitAsync(cancellationToken);
+                }
+                catch
+                {
+                    await transitionTransaction.RollbackAsync(CancellationToken.None);
+                    db.ChangeTracker.Clear();
+                    throw;
+                }
             }
-
-            profile = await authProfiles.UpdateAsync(
-                new UpdateAuthProfileCommand(
-                    profile.Id,
-                    "MOJ API 129 UAT token authentication",
-                    AuthProfileType.TokenEndpoint),
-                cancellationToken);
-
-            await db.CatalogServices
-                .Where(item => item.Id == service.Id && item.IsCurrent)
-                .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.Active, true), cancellationToken);
-            await db.CatalogEnvironments
-                .Where(item => item.Id == CatalogEnvironmentCodes.UatId && item.Code == CatalogEnvironmentCodes.Uat)
-                .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.Active, true), cancellationToken);
-
-            var tokenMetadata = BuildApi129TokenMetadata();
-            var configUpdated = await db.ServiceEnvironmentConfigs
-                .Where(item => item.ServiceId == service.Id && item.EnvironmentId == CatalogEnvironmentCodes.UatId)
-                .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(item => item.BaseUrl, UatBaseUrl)
-                    .SetProperty(item => item.RelativePath, RelativePath)
-                    .SetProperty(item => item.HttpMethod, "POST")
-                    .SetProperty(item => item.ContentType, "application/x-www-form-urlencoded")
-                    .SetProperty(item => item.NonSecretHeadersJson, tokenMetadata)
-                    .SetProperty(item => item.TimeoutSeconds, 30)
-                    .SetProperty(item => item.TlsPolicy, "SystemDefault")
-                    .SetProperty(item => item.ValidateServerCertificate, true)
-                    .SetProperty(item => item.ProxyUrl, string.Empty)
-                    .SetProperty(item => item.Active, true)
-                    .SetProperty(item => item.AuthProfileId, profile.Id)
-                    .SetProperty(item => item.LastTestedAtUtc, (DateTimeOffset?)null)
-                    .SetProperty(item => item.LastTestStatus, "TOKEN_CONFIGURATION_IN_PROGRESS"),
-                    cancellationToken);
-            if (configUpdated != 1)
-                throw new InvalidOperationException("The exact UAT configuration changed during update.");
 
             db.ChangeTracker.Clear();
             profile = await authProfiles.GetAsync(profile.Id, cancellationToken);
 
-            profile = await EnsureEmptyCredentialSlotAsync(service.Id, profile, UsernameSecretName, cancellationToken);
-            profile = await EnsureEmptyCredentialSlotAsync(service.Id, profile, PasswordSecretName, cancellationToken);
-            profile = await StoreOrRotateApiKeyAsync(service.Id, profile, apiKey, cancellationToken);
+            profile = await StoreOrRotateSecretAsync(service.Id, profile, UsernameSecretName, username, cancellationToken);
+            profile = await StoreOrRotateSecretAsync(service.Id, profile, PasswordSecretName, password, cancellationToken);
+            profile = await StoreOrRotateSecretAsync(service.Id, profile, ApiKeySecretName, apiKey, cancellationToken);
 
             profile = await authProfiles.GetAsync(profile.Id, cancellationToken);
             var exactSecretNames = profile.Secrets.Select(secret => secret.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
             if (!HasExclusiveOwnerBinding(profile, service.Id)
                 || profile.AuthType != AuthProfileType.TokenEndpoint
                 || profile.Secrets.Count != 3
-                || !AllowedTokenSecrets.SetEquals(exactSecretNames))
+                || !RequiredTokenSecrets.SetEquals(exactSecretNames))
             {
-                throw new InvalidOperationException("The API 129 UAT token profile did not converge to the expected scope.");
+                throw new InvalidOperationException("The API 129 UAT token profile did not converge to the required exact scope.");
             }
 
             await authProfiles.SetEnabledAsync(profile.Id, true, cancellationToken);
@@ -204,7 +239,7 @@ public sealed class MojUatConfigurationController(
         catch
         {
             await SetStatusAsync(service.Id, "TOKEN_CONFIGURATION_FAILED", CancellationToken.None);
-            TempData["MojUatError"] = "API_KEY_CONFIGURATION_FAILED";
+            TempData["MojUatError"] = "TOKEN_CONFIGURATION_FAILED";
         }
 
         return RedirectToAction(nameof(Index));
@@ -242,65 +277,18 @@ public sealed class MojUatConfigurationController(
         return RedirectToAction(nameof(Index));
     }
 
-    private async Task<AuthProfileDescriptor> EnsureEmptyCredentialSlotAsync(
+    private async Task<AuthProfileDescriptor> StoreOrRotateSecretAsync(
         Guid serviceId,
         AuthProfileDescriptor profile,
         string secretName,
+        string value,
         CancellationToken cancellationToken)
     {
-        if (profile.Secrets.Any(secret => string.Equals(secret.Name, secretName, StringComparison.OrdinalIgnoreCase)))
-            return profile;
-
-        var bytes = Encoding.UTF8.GetBytes(EmptyCredentialSentinel);
-        SecretRef? createdReference = null;
-        try
-        {
-            var created = await secretVault.CreateActiveAsync(
-                serviceId,
-                CatalogEnvironmentCodes.UatId,
-                profile.Id,
-                secretName,
-                bytes,
-                cancellationToken);
-            createdReference = created.Reference;
-            profile = await authProfiles.SetSecretReferenceAsync(profile.Id, secretName, created.Reference, cancellationToken);
-            createdReference = null;
-            return profile;
-        }
-        finally
-        {
-            CryptographicOperations.ZeroMemory(bytes);
-            if (createdReference is SecretRef orphanedReference)
-            {
-                try
-                {
-                    await secretVault.RevokeAsync(
-                        serviceId,
-                        CatalogEnvironmentCodes.UatId,
-                        profile.Id,
-                        secretName,
-                        orphanedReference,
-                        CancellationToken.None);
-                }
-                catch
-                {
-                    // Best-effort orphan cleanup; profile remains disabled on failure.
-                }
-            }
-        }
-    }
-
-    private async Task<AuthProfileDescriptor> StoreOrRotateApiKeyAsync(
-        Guid serviceId,
-        AuthProfileDescriptor profile,
-        string apiKey,
-        CancellationToken cancellationToken)
-    {
-        var clearBytes = Encoding.UTF8.GetBytes(apiKey);
+        var clearBytes = Encoding.UTF8.GetBytes(value);
         try
         {
             var existing = profile.Secrets.SingleOrDefault(secret =>
-                string.Equals(secret.Name, ApiKeySecretName, StringComparison.OrdinalIgnoreCase));
+                string.Equals(secret.Name, secretName, StringComparison.OrdinalIgnoreCase));
 
             if (existing is null)
             {
@@ -311,11 +299,11 @@ public sealed class MojUatConfigurationController(
                         serviceId,
                         CatalogEnvironmentCodes.UatId,
                         profile.Id,
-                        ApiKeySecretName,
+                        secretName,
                         clearBytes,
                         cancellationToken);
                     createdReference = created.Reference;
-                    profile = await authProfiles.SetSecretReferenceAsync(profile.Id, ApiKeySecretName, created.Reference, cancellationToken);
+                    profile = await authProfiles.SetSecretReferenceAsync(profile.Id, secretName, created.Reference, cancellationToken);
                     createdReference = null;
                     return profile;
                 }
@@ -329,13 +317,13 @@ public sealed class MojUatConfigurationController(
                                 serviceId,
                                 CatalogEnvironmentCodes.UatId,
                                 profile.Id,
-                                ApiKeySecretName,
+                                secretName,
                                 orphanedReference,
                                 CancellationToken.None);
                         }
                         catch
                         {
-                            // Best-effort orphan cleanup; profile remains disabled on failure.
+                            // Best-effort orphan cleanup. The profile stays disabled on failure.
                         }
                     }
                 }
@@ -349,8 +337,8 @@ public sealed class MojUatConfigurationController(
             await SecretRotationSafety.RotateAsync(
                 scope,
                 _ => ValueTask.CompletedTask,
-                token => rotationPersistence.StageAsync(scope, ApiKeySecretName, clearBytes, token),
-                (candidate, token) => rotationPersistence.ActivateAsync(existing.Reference, ApiKeySecretName, candidate, token),
+                token => rotationPersistence.StageAsync(scope, secretName, clearBytes, token),
+                (candidate, token) => rotationPersistence.ActivateAsync(existing.Reference, secretName, candidate, token),
                 (candidate, token) => rotationPersistence.DiscardAsync(candidate, token),
                 cancellationToken);
             return await authProfiles.GetAsync(profile.Id, cancellationToken);
@@ -368,8 +356,6 @@ public sealed class MojUatConfigurationController(
         ["X-GSIP-TokenResponsePath"] = "data",
         ["X-GSIP-TokenUsernameField"] = UsernameSecretName,
         ["X-GSIP-TokenPasswordField"] = PasswordSecretName,
-        ["X-GSIP-TokenUsernameRequired"] = false,
-        ["X-GSIP-TokenPasswordRequired"] = false,
         ["X-GSIP-TokenApiKeyRequired"] = true
     });
 
@@ -448,9 +434,9 @@ public sealed class MojUatConfigurationController(
 
         var status = ready
             ? "READY_FOR_UAT_TOKEN_EXECUTION"
-            : apiKeyConfigured
-                ? "TOKEN_CONFIGURATION_REVIEW_REQUIRED"
-                : "X_API_KEY_REQUIRED";
+            : apiKeyConfigured || credentialsReady
+                ? "TOKEN_CREDENTIALS_REVIEW_REQUIRED"
+                : "TOKEN_CREDENTIALS_REQUIRED";
 
         return new MojUatConfigurationViewModel(
             service.EntityId,
@@ -485,14 +471,16 @@ public sealed class MojUatConfigurationController(
             return root.ValueKind == JsonValueKind.Object
                 && root.TryGetProperty("X-GSIP-TokenEndpointPath", out var path)
                 && path.GetString() == TokenPath
+                && root.TryGetProperty("X-GSIP-TokenRequestContentType", out var contentType)
+                && contentType.GetString() == "application/x-www-form-urlencoded"
                 && root.TryGetProperty("X-GSIP-TokenResponsePath", out var response)
                 && response.GetString() == "data"
+                && root.TryGetProperty("X-GSIP-TokenUsernameField", out var usernameField)
+                && usernameField.GetString() == UsernameSecretName
+                && root.TryGetProperty("X-GSIP-TokenPasswordField", out var passwordField)
+                && passwordField.GetString() == PasswordSecretName
                 && root.TryGetProperty("X-GSIP-TokenApiKeyRequired", out var apiKeyRequired)
-                && apiKeyRequired.ValueKind == JsonValueKind.True
-                && root.TryGetProperty("X-GSIP-TokenUsernameRequired", out var usernameRequired)
-                && usernameRequired.ValueKind == JsonValueKind.False
-                && root.TryGetProperty("X-GSIP-TokenPasswordRequired", out var passwordRequired)
-                && passwordRequired.ValueKind == JsonValueKind.False;
+                && apiKeyRequired.ValueKind == JsonValueKind.True;
         }
         catch (JsonException)
         {
@@ -513,8 +501,13 @@ public sealed class MojUatConfigurationController(
             && !binding.IsShared;
     }
 
-    private static bool IsAcceptableSecretValue(string value) =>
+    private static bool IsAcceptableApiKey(string value) =>
         !string.IsNullOrWhiteSpace(value)
-        && value.Length is >= MinimumSecretCharacters and <= MaximumSecretCharacters
+        && value.Length is >= MinimumApiKeyCharacters and <= MaximumSecretCharacters
+        && !value.Any(character => character is '\r' or '\n' or '\0');
+
+    private static bool IsAcceptableCredential(string value) =>
+        !string.IsNullOrWhiteSpace(value)
+        && value.Length <= MaximumSecretCharacters
         && !value.Any(character => character is '\r' or '\n' or '\0');
 }

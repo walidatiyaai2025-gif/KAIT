@@ -3,17 +3,18 @@
 Version: **0.1.2**
 
 - [ ] Exact deployed version is 0.1.2.
-- [ ] `/moj-uat` opens for an authorized administrator.
-- [ ] Only the UAT `x-api-key` is required from the administrator for API 129 setup.
-- [ ] The stored API key is never redisplayed.
+- [ ] `/moj-uat` opens only for an authorized administrator.
+- [ ] API 129 UAT setup requires write-only `x-api-key`, `username`, and `password` inputs.
+- [ ] None of the three stored credentials is redisplayed in UI, logs, errors, or evidence.
 - [ ] Authentication type is `TokenEndpoint`.
-- [ ] Token endpoint is `/genToken`.
-- [ ] UAT username/password may be empty and are not exposed in the UI.
-- [ ] `/genToken` receives `x-api-key` and the environment credential fields.
+- [ ] Token endpoint is `/genToken` using `application/x-www-form-urlencoded`.
+- [ ] `/genToken` receives the exact required username/password fields and `x-api-key`.
+- [ ] Missing username, password, or API key fails closed before outbound token transport.
 - [ ] Bearer token is obtained from response field `data` and is not shown in the UI/logs.
 - [ ] `/marriageCasesAPIGEE` receives the same `x-api-key` and `Authorization: Bearer`.
-- [ ] System Administrator can see Marriage Cases in `/execute` without SQL repair.
-- [ ] Canonical MOJ UAT services use TokenEndpoint metadata with `x-api-key` required.
-- [ ] Production stays disabled and no Production URL/credential is inferred.
-- [ ] Production, when officially configured, uses real username + password + API key to obtain a token before service execution.
-- [ ] No real Civil ID, API key, password, or Bearer token appears in committed evidence.
+- [ ] API 129 remains bound to exact UAT Service + Environment + AuthProfile scope with no implicit sharing.
+- [ ] Other canonical MOJ services retain their documented service-specific token metadata and are not forced to require x-api-key unless their evidence says so.
+- [ ] Production stays disabled and no Production URL, credentials, or auth semantics are inferred from UAT.
+- [ ] No real Civil ID, API key, username, password, or Bearer token appears in committed evidence.
+- [ ] All workflows on the exact PR head are terminal SUCCESS before merge.
+- [ ] After merge, every workflow on the exact new `main` SHA is terminal SUCCESS before P16 closure reconciliation resumes.
