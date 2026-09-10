@@ -10,9 +10,9 @@
 <section class="auth-admin" aria-labelledby="moj-uat-title">
     <header class="auth-hero">
         <div>
-            <span class="auth-kicker">MOJ · UAT · API 129</span>
+            <span class="auth-kicker">MOJ · UAT · API 129 · TOKEN FLOW</span>
             <h1 id="moj-uat-title">@(isRtl ? "إعداد اختبار خدمة حالات الزواج" : "Marriage Cases UAT setup")</h1>
-            <p>@(isRtl ? "إعداد آمن لبيئة الاختبار باستخدام x-api-key فقط. لا يتم عرض أو تخزين المفتاح كنص صريح." : "Secure UAT setup using x-api-key only. The key is never redisplayed or stored as plaintext.")</p>
+            <p>@(isRtl ? "أدخل x-api-key فقط. النظام يستدعي /genToken أولًا، يستخرج Bearer Token داخليًا ثم يستخدمه تلقائيًا مع نفس API Key لتنفيذ الخدمة." : "Enter only the x-api-key. GSIP calls /genToken first, obtains the Bearer token internally, then uses that token with the same API key to execute the service.")</p>
         </div>
         <div class="auth-security-note" role="note">
             <span aria-hidden="true">●</span>
@@ -29,10 +29,10 @@
                     <span>@(isRtl ? "أدخل API Key صالحًا (8 أحرف على الأقل) بدون أسطر جديدة." : "Enter a valid API key (minimum 8 characters) without line breaks.")</span>
                     break;
                 case "INCOMPATIBLE_SECRET_SLOTS":
-                    <span>@(isRtl ? "الـ AuthProfile يحتوي بيانات اعتماد أخرى. تم إيقاف التحويل لحماية البيانات؛ راجع Authentication Profiles أولاً." : "The AuthProfile contains other credential slots. Conversion was stopped safely; review Authentication Profiles first.")</span>
+                    <span>@(isRtl ? "الـ AuthProfile يحتوي بيانات اعتماد غير متوافقة. تم إيقاف التحويل لحماية البيانات؛ راجع Authentication Profiles أولًا." : "The AuthProfile contains incompatible credential slots. Conversion stopped safely; review Authentication Profiles first.")</span>
                     break;
                 default:
-                    <span>@(isRtl ? "فشل إعداد API Key بصورة آمنة. ظل الـ AuthProfile غير مفعّل." : "API-key configuration failed safely. The AuthProfile remains disabled.")</span>
+                    <span>@(isRtl ? "فشل إعداد Token Flow بصورة آمنة. ظل الـ AuthProfile غير مفعّل." : "Token-flow configuration failed safely. The AuthProfile remains disabled.")</span>
                     break;
             }
         </div>
@@ -43,7 +43,7 @@
         <div class="auth-alert success" role="status">
             @(Model.SuccessMessage == "UAT_DISABLED"
                 ? (isRtl ? "تم إيقاف UAT." : "UAT was disabled.")
-                : (isRtl ? "تم حفظ المفتاح وتفعيل UAT بنجاح." : "The API key was stored securely and UAT was enabled."))
+                : (isRtl ? "تم حفظ المفتاح وتفعيل Token Flow لـ UAT بنجاح." : "The API key was stored and the UAT token flow was enabled successfully."))
         </div>
     }
 
@@ -66,9 +66,9 @@
 
             <div class="binding-ledger">
                 <div class="binding-chip"><strong>Base URL</strong><code>@Model.BaseUrl</code></div>
-                <div class="binding-chip"><strong>Path</strong><code>@Model.RelativePath</code></div>
+                <div class="binding-chip"><strong>Token</strong><code>/genToken</code></div>
+                <div class="binding-chip"><strong>Service Path</strong><code>@Model.RelativePath</code></div>
                 <div class="binding-chip"><strong>Method</strong><code>@Model.HttpMethod</code></div>
-                <div class="binding-chip"><strong>Content-Type</strong><code>@Model.ContentType</code></div>
             </div>
 
             <form method="post" action="/moj-uat/api129/configure" class="auth-form" autocomplete="off">
@@ -77,8 +77,8 @@
                     x-api-key
                     <input name="apiKey" type="password" required minlength="8" maxlength="4096" autocomplete="new-password" spellcheck="false" />
                 </label>
-                <small>@(isRtl ? "القيمة Write-only: إذا كان هناك مفتاح موجود، إدخال قيمة جديدة يعمل Rotation آمن ولا يعرض القيمة القديمة." : "Write-only value: if a key already exists, a new value performs a safe rotation and never reveals the previous value.")</small>
-                <button class="auth-button" type="submit">@(isRtl ? "حفظ المفتاح وتفعيل UAT" : "Save key and enable UAT")</button>
+                <small>@(isRtl ? "القيمة Write-only. Username/Password في UAT يمكن أن تكون فارغة؛ النظام يحتفظ بتمثيل داخلي آمن لها ويرسل قيمًا فارغة إلى /genToken. في Production يجب إدخال Username + Password + API Key الحقيقيين عند استلام بيانات Production الرسمية." : "Write-only value. UAT username/password may be empty; GSIP keeps an internal protected placeholder and sends empty values to /genToken. Production requires the real username, password and API key when the official Production configuration is supplied.")</small>
+                <button class="auth-button" type="submit">@(isRtl ? "حفظ المفتاح وتفعيل Token Flow" : "Save key and enable token flow")</button>
             </form>
 
             @if (Model.ReadyToExecute)
@@ -94,18 +94,26 @@
         <section class="auth-panel hierarchy-panel" aria-labelledby="uat-safety-title">
             <div class="panel-heading">
                 <div>
-                    <h2 id="uat-safety-title">@(isRtl ? "حدود الأمان" : "Safety boundaries")</h2>
-                    <p>@(isRtl ? "إعدادات Production مستقلة ولا يتم نسخ UAT إليها." : "Production stays independent; UAT settings are never copied into it.")</p>
+                    <h2 id="uat-safety-title">@(isRtl ? "تسلسل المصادقة" : "Authentication sequence")</h2>
+                    <p>@(isRtl ? "الـ Bearer Token لا يُدخل يدويًا ولا يُعرض للمستخدم." : "The Bearer token is never entered manually or redisplayed to the user.")</p>
                 </div>
             </div>
             <div class="entity-stack">
                 <article class="hierarchy-entity">
-                    <header><span class="entity-code">UAT</span><h3>@(isRtl ? "المسموح الآن" : "Current allowed scope")</h3></header>
-                    <p>@(isRtl ? "POST إلى Marriage Cases مع civilId و x-api-key فقط حسب إعداد الاختبار الحالي." : "POST Marriage Cases with civilId and x-api-key only for the current test configuration.")</p>
+                    <header><span class="entity-code">1</span><h3>POST /genToken</h3></header>
+                    <p>@(isRtl ? "يرسل x-api-key مع username/password الخاصة بالبيئة. في UAT الحالي يمكن أن تكون username/password فارغة." : "Sends x-api-key with the environment username/password. For the current UAT flow, username/password may be empty.")</p>
                 </article>
                 <article class="hierarchy-entity">
-                    <header><span class="entity-code">PROD</span><h3>@(isRtl ? "مؤجل" : "Deferred")</h3></header>
-                    <p>@(isRtl ? "لا يتم تفعيل Production أو تخمين الرابط أو بيانات المصادقة. تُدخل بيانات Production الرسمية لاحقًا بصورة مستقلة." : "Production is not enabled and its URL/authentication are not inferred. Official Production details can be configured independently later.")</p>
+                    <header><span class="entity-code">2</span><h3>Bearer Token</h3></header>
+                    <p>@(isRtl ? "يقرأ النظام التوكن من حقل data ويحتفظ به داخل runtime/token cache فقط." : "GSIP reads the token from the data field and keeps it only inside the runtime/token cache.")</p>
+                </article>
+                <article class="hierarchy-entity">
+                    <header><span class="entity-code">3</span><h3>POST @Model.RelativePath</h3></header>
+                    <p>@(isRtl ? "ينفذ الطلب باستخدام Authorization: Bearer مع نفس x-api-key وبيانات الخدمة مثل civilId." : "Executes the service using Authorization: Bearer, the same x-api-key, and the service input such as civilId.")</p>
+                </article>
+                <article class="hierarchy-entity">
+                    <header><span class="entity-code">PROD</span><h3>@(isRtl ? "معزول" : "Isolated")</h3></header>
+                    <p>@(isRtl ? "Production لا يتم تخمين رابطه أو بياناته. عند وصول الإعداد الرسمي يستخدم Username + Password + API Key للحصول على التوكن ثم Bearer لتنفيذ الخدمة." : "Production URL and credentials are never inferred. Once official Production details arrive, username + password + API key obtain the token and the Bearer token executes the service.")</p>
                 </article>
             </div>
 
