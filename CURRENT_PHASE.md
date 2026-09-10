@@ -12,6 +12,12 @@ P00-P16 are formally **CLOSED** from preserved exact integrated evidence. P17 is
 
 P13 remains **CLOSED** from its exact accepted implementation provenance: final P13 implementation head `1576764a16ea6ddfed735cb0824cb38de26c83d8` integrated as exact implementation main `203cc28db714fae5c2c70e85adc9cc2306bb2107`, followed by closure-transition main `9f76f6593123a86c1ef999ba5ec5b7b9338a53de`. This provenance remains explicit so the closed P13 bilingual UI/accessibility baseline stays independently verifiable during P17.
 
+## Preserved P14 and P15 closed baseline provenance
+
+P14 remains **CLOSED** from its accepted implementation and closure provenance: final P14 implementation head `3eca150b67663ec3e5c2d5ea918d4b75cfd9b2de` integrated as implementation main `1f1def164d639c75d9cc26710a905cc491355a2b`, followed by closure-transition main `f5dd87de7aa3f8e709d04cf8804f53c10c938633`. The resulting closure main completed **33/33 governed push workflows SUCCESS**.
+
+P15 remains **CLOSED** from its accepted Windows/IIS installer and packaging provenance: final P15 implementation head `1c1af59fac0489d645e5323a9c6c97f8a76bc5a7` integrated as implementation main `d60318da5b19d06df20864083f5a4a78b9792e88`, followed by closure-transition main `48267786e9f0d21934dee339eed32688b6e2d488`. The resulting closure main completed **34/34 governed push workflows SUCCESS**. This explicit provenance is retained so the closed P15 installer/package acceptance remains independently verifiable during P17.
+
 ## P16 formal closure evidence
 
 Canonical P16 implementation unit: `P16::full-acceptance-release-candidate`.  
