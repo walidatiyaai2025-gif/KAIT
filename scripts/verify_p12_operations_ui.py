@@ -60,11 +60,21 @@ p12_closure_evidence_preserved = (
     and "DEFERRED_EXTERNAL_NOT_PASS" in text["closure_evidence"]
     and "PRODUCTION_DEFERRED_EXTERNAL_NOT_PASS" in text["closure_evidence"]
 )
-phase_post_p12 = (
+phase_post_p12_open = (
     current_phase_number >= 13
     and "Status: **OPEN / READY**" in text["phase"]
     and p12_closure_evidence_preserved
 )
+phase_post_p12_staged_transition = (
+    current_phase_number >= 13
+    and "Status: **OPEN / READY only after" in text["phase"]
+    and "closure transition is normally integrated" in text["phase"]
+    and "does **not** authorize P14 implementation from its own head" in text["phase"]
+    and p12_closure_evidence_preserved
+    and integrated_p12_sha in text["project_control"]
+    and "| P12 | CLOSED |" in text["ledger"]
+)
+phase_post_p12 = phase_post_p12_open or phase_post_p12_staged_transition
 phase_state_valid = phase_open or phase_closure_transition or phase_post_p12
 layout_phase = re.search(r"<strong>P(\d{2})</strong>", text["layout"])
 layout_phase_number = int(layout_phase.group(1)) if layout_phase else -1

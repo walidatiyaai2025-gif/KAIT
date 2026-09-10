@@ -2,60 +2,57 @@
 
 ## Canonical current phase
 
-**P13 — Arabic/English UX and accessibility convergence**
+**P14 — Security hardening and resilience**
 
-Status: **OPEN / READY**
+Status: **OPEN / READY only after this P13 closure transition is normally integrated and the resulting exact-new-main CI is terminal green**
 
-P12 — Admin operations, health and diagnostics is **CLOSED**. Its implementation was normally integrated at `main` SHA `1ed40707552f62058980b44d6cb1e7251dbeb2d4`, and its closure transition was normally integrated by PR #70 at exact `main` SHA `42136cf59202c90f20f204e520c644acc69a88ca`.
+P13 — Arabic/English UX and accessibility convergence is **CLOSED from implementation evidence** on exact integrated `main` SHA `203cc28db714fae5c2c70e85adc9cc2306bb2107` after normal integration of PR #71 from exact implementation head `1576764a16ea6ddfed735cb0824cb38de26c83d8`.
 
-PR #69 implementation head `f367ca78fca217e9d5c7da0a1328dca047940390` passed **35/35 exact-head workflows SUCCESS** before merge. The resulting implementation main `1ed40707552f62058980b44d6cb1e7251dbeb2d4` completed **31/31 push workflows SUCCESS**. PR #70 transition head `db33113943e8637827fe9d45bfcd1219617f2db6` then completed **34/34 governed PR workflows SUCCESS**, including P12 static acceptance `PASS checks=39` and protected runtime/browser acceptance. The resulting transition main `42136cf59202c90f20f204e520c644acc69a88ca` completed **31/31 push workflows SUCCESS**, failure=0, queued=0 and in-progress=0. P13 implementation is therefore legally authorized from that exact green main.
+PR #71 completed **35/35 exact-head pull-request workflows SUCCESS** before merge. Its P08 Authentication Convergence run had one transient LocalDB create timeout on the same exact head; the failed job was rerun without source, test, or acceptance changes and the rerun completed SUCCESS. The resulting exact integrated main `203cc28db714fae5c2c70e85adc9cc2306bb2107` completed **32/32 push workflows SUCCESS**, with failure=0, queued=0 and in-progress=0.
 
-## P12 closure truth
+## P13 closure truth
 
-The integrated P12 baseline provides:
+The integrated P13 baseline provides:
 
-- protected operational health for database, runtime, Data Protection, disk and configured integration readiness;
-- exact Entity -> Service -> Environment inventory and independent UAT/Production operational state;
-- protected Test Connection and exact-scope Test Authentication through the canonical P08 authentication boundary;
-- Activate/Disable through the dedicated `IAdminOperationalStateService`, without metadata definition revisioning;
-- preservation of exact ServiceId, metadata version, AuthProfile/SecretRef scope and sibling-environment configuration when operational state changes;
-- safe secret administration/rotation through the canonical P06 write-only, atomic rotation boundary rather than a duplicate secret engine;
-- bounded endpoint/timeout/TLS/proxy diagnostics, sanitized result classification and operational alerts;
-- server-side `Diagnostics.Run` / `Services.Manage` enforcement, exact-target rejection and anti-forgery protection;
-- bilingual Arabic RTL / English LTR responsive Operations UI and protected browser acceptance;
-- executable SQL LocalDB identity/isolation acceptance for an already-used service, including unauthorized, forged-environment and inactive-parent negative paths;
-- leakage scanning that keeps credentials, bearer/API-key material and personal identifiers out of committed/runtime evidence.
-
-The final P12 exact-head repair was required because an earlier green candidate routed Activate/Disable through metadata definition versioning. That candidate is superseded. The final integrated boundary mutates only the exact existing `ServiceEnvironmentConfig.Active` state and proves that ServiceId/version and the sibling environment remain unchanged.
+- high-fidelity Home convergence to the repository-native entity-summary-card and service-card hierarchy instead of a generic administration table;
+- least-privilege Home metrics using only authenticated non-secret catalogue facts, without widening Request/Audit visibility merely to mimic decorative reference values;
+- exact-candidate and exact-main bilingual Arabic RTL / English LTR Home browser evidence across desktop and narrow/mobile viewports;
+- reachable mobile primary navigation, skip-to-content, keyboard focus treatment and preserved LTR presentation for technical identifiers;
+- preserved Permissions, Service Execution and Audit reference hierarchies through their independent exact-candidate browser gates;
+- Service Execution History connected to the protected P10 `/requests` history surface rather than leaving the stale P07 deferred control in place;
+- phase-monotonic P12/P13 acceptance so closed security/UI baselines remain executable after legal phase progression;
+- preservation of all closed P00-P12 functional, authorization, secret-isolation, audit, diagnostics and evidence controls.
 
 Exact integrated evidence:
 
-- PR #69 implementation head: `f367ca78fca217e9d5c7da0a1328dca047940390` — **35/35 SUCCESS**;
-- implementation merge main: `1ed40707552f62058980b44d6cb1e7251dbeb2d4` — **31/31 push workflows SUCCESS**;
-- exact-main P12 workflow: `34413925793` — SUCCESS;
-- runtime artifact: `P12-Admin-Operations-Runtime-1ed40707552f62058980b44d6cb1e7251dbeb2d4`, artifact id `10128361921`, digest `sha256:8161d7c95e2ee64cf3c0fdac6b3d252bc0ee0052fe662c1a2973e1b9cc4f194b`;
-- static artifact: `P12-Admin-Operations-Static-1ed40707552f62058980b44d6cb1e7251dbeb2d4`, artifact id `10128310606`, digest `sha256:3029f8ddf62255952478fb0197a4399a5724b028a83919eb7de332a9552654d9`;
-- PR #70 closure transition head: `db33113943e8637827fe9d45bfcd1219617f2db6` — **34/34 governed workflows SUCCESS**;
-- closure transition main: `42136cf59202c90f20f204e520c644acc69a88ca` — **31/31 push workflows SUCCESS**.
+- PR #71 implementation head: `1576764a16ea6ddfed735cb0824cb38de26c83d8` — **35/35 governed PR workflows SUCCESS** after same-SHA transient LocalDB retry;
+- implementation merge main: `203cc28db714fae5c2c70e85adc9cc2306bb2107` — **32/32 push workflows SUCCESS**;
+- exact-main P13 workflow: `34421612012` — SUCCESS;
+- exact-main Home artifact: `P13-Home-UI-203cc28db714fae5c2c70e85adc9cc2306bb2107`, artifact `10131131126`, digest `sha256:19b8a382a59cc049374578d1fc8f865439bc16a523268f74ef98175aeb68fe2e`;
+- exact-main static artifact: `P13-UI-Accessibility-Static-203cc28db714fae5c2c70e85adc9cc2306bb2107`, artifact `10131148598`, digest `sha256:062421c5545952d26d42b1a91b8865ffbd4626ef7f3f9d8041504362a3d4e329`.
 
-Detailed P12 implementation evidence is recorded in `docs/evidence/P12_ADMIN_OPERATIONS_HEALTH_DIAGNOSTICS.md`.
+Detailed P13 closure evidence is recorded in `docs/evidence/P13_UI_ACCESSIBILITY_CONVERGENCE.md`.
 
 ## Legal work now
 
-P13 is the only canonical implementation phase, plus any repair required to preserve closed P00-P12 baselines and repository controls.
+This reconciliation branch is **governance/evidence-only**. It does **not** authorize P14 implementation from its own head.
 
-Canonical P13 scope is full Arabic/English UX and accessibility convergence against `docs/UI_DESIGN_PARITY_GATE.md` and the four repository-native references under `docs/ui-baseline/`. It must preserve all closed security, authorization, data-isolation and operational contracts while converging shared chrome, typography, spacing, responsive behavior, keyboard/focus/accessibility, RTL/LTR behavior and high-fidelity visual parity across the required reference surfaces.
+After this P13 closure transition is normally merged and every governed workflow on the resulting exact new `main` SHA is terminal SUCCESS, P14 becomes the only canonical implementation phase, plus any repair required to preserve closed P00-P13 baselines and repository controls.
+
+Canonical P14 scope is security hardening and resilience: authorization-bypass/IDOR, CSRF/XSS/output encoding, rate limiting/session fixation/brute force, secure headers, secret/log leakage, migration safety, retry-storm prevention, timeout/cancellation and external-outage behavior, token-refresh concurrency, dynamic-input fuzzing, applicable upload/logo restrictions, dependency/license/vulnerability review, threat model and security checklist. P14 cannot close with a known Critical/High vulnerability.
 
 ## Locked future work
 
-P14–P17 remain **LOCKED**. Security-hardening convergence, installer/package, full release-candidate automated acceptance and final release convergence must not begin before their canonical phase opens.
+P15–P17 remain **LOCKED**. Installer/package, full release-candidate automated acceptance and final release convergence must not begin before their canonical phase opens.
 
-Legitimate already-started future-phase recovery branches may be repaired only under the documented owner non-stop exception when necessary to remove a known real failure; they remain **DO NOT MERGE** and do not change canonical phase authority until preceding phases close normally.
+Legitimate already-started future-phase recovery work may repair a known real defect only under the documented owner non-stop exception; it remains **DO NOT MERGE** and does not change canonical phase authority until preceding phases close normally.
 
 ## Deferred boundaries
 
-Historical owner/external classifications from earlier phases remain unchanged. `DEFERRED_EXTERNAL` is never PASS. The P09 authorized live-UAT evidence that remains unavailable is still `DEFERRED_EXTERNAL_NOT_PASS`; unproven Production operation proof remains `PRODUCTION_DEFERRED_EXTERNAL_NOT_PASS`. Production details are never inferred from UAT, and no Production→UAT fallback is allowed.
+Historical owner/external classifications remain unchanged. The P09 authorized live-UAT evidence that remains unavailable is still `DEFERRED_EXTERNAL_NOT_PASS`; unproven Production operation proof remains `PRODUCTION_DEFERRED_EXTERNAL_NOT_PASS`. Production details are never inferred from UAT, and no Production→UAT fallback is allowed.
 
-## P13 exit condition
+Main branch protection remains `OWNER_LAST / NOT PASS` while `main` is unprotected and no repository ruleset is configured. This repository-administration gap is not converted to PASS by P13 cloud evidence.
 
-P13 may be marked CLOSED only when the required Arabic/English RTL/LTR UX, responsive/accessibility behavior and high-fidelity UI DESIGN PARITY GATE evidence are integrated, all closed P00-P12 functional/security contracts remain green, and the exact-new-main evidence is terminal green. Any genuinely owner-only/external evidence must remain explicitly deferred rather than being called PASS.
+## P14 opening condition
+
+P14 implementation may begin only after this P13 closure reconciliation is normally integrated and the resulting exact-new-main regression matrix is terminal green. Until then, P14 is staged by this transition but not implementation-authorized.

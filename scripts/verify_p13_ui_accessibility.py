@@ -3,6 +3,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 checks = 0
 
+FINAL_P13_HEAD = "1576764a16ea6ddfed735cb0824cb38de26c83d8"
+INTEGRATED_P13_MAIN = "203cc28db714fae5c2c70e85adc9cc2306bb2107"
+
 
 def read(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
@@ -37,13 +40,29 @@ p11_script = read("scripts/verify-p11-audit-runtime-ui.ps1")
 evidence = read("docs/evidence/P13_UI_ACCESSIBILITY_CONVERGENCE.md")
 decisions = read("docs/DESIGN_DECISIONS.md")
 
-require("P13" in phase_upper and "OPEN" in phase_upper and "READY" in phase_upper, "P13 is not the canonical OPEN / READY phase.")
-require("P14" in phase_upper and "LOCKED" in phase_upper, "P14 must remain locked during P13 implementation.")
+p13_open = (
+    "**P13 — ARABIC/ENGLISH UX AND ACCESSIBILITY CONVERGENCE**" in phase_upper
+    and "STATUS: **OPEN / READY**" in phase_upper
+)
+p13_closed = (
+    "P13" in phase_upper
+    and "CLOSED" in phase_upper
+    and FINAL_P13_HEAD in phase
+    and INTEGRATED_P13_MAIN in phase
+    and "P13 CLOSED" in evidence.upper()
+    and FINAL_P13_HEAD in evidence
+    and INTEGRATED_P13_MAIN in evidence
+)
+require(p13_open or p13_closed, "P13 is neither implementation-open nor preserved as an exact-evidence closed baseline.")
+if p13_open:
+    require("P14" in phase_upper and "LOCKED" in phase_upper, "P14 must remain locked during P13 implementation.")
+else:
+    require(any(f"**P{number}" in phase_upper for number in range(14, 18)), "A post-P13 canonical phase is not identified.")
 require('<html lang="@language" dir="@direction"' in layout, "Shared shell lost first-class lang/dir rendering.")
 require('class="skip-link" href="#main-content"' in layout, "Skip-to-content link is missing.")
 require('id="main-content"' in layout and 'tabindex="-1"' in layout, "Main landmark is not keyboard focusable after skip navigation.")
 require('data-culture="@(isRtl ? "en" : "ar-KW")"' in layout, "Language switch no longer preserves bilingual culture switching.")
-require('<strong>P13</strong>' in layout, "Shared phase marker is stale or missing for P13.")
+require(any(f'<strong>P{number}</strong>' in layout for number in range(13, 18)), "Shared phase marker regressed below the P13 baseline.")
 require('href="~/css/p13.css"' in layout, "P13 convergence stylesheet is not loaded by the shared shell.")
 require(":focus-visible" in p13_css, "Shared P13 keyboard focus treatment is missing.")
 require(".nav-item:nth-child(n+5){display:flex}" in p13_css, "Mobile navigation does not restore all primary routes.")
@@ -58,7 +77,7 @@ require('dir="ltr">@service.EntityCode' in home and 'dir="ltr">@service.ServiceC
 require("Future phase" not in home and "Available after setup" not in home and "disabled" not in home, "Stale P01 disabled preview remains on Home.")
 require("IMetadataCatalogService metadataCatalog" in controller, "Home is not wired to the canonical metadata catalogue.")
 require("GetSnapshotAsync(cancellationToken)" in controller, "Home does not obtain live non-secret catalogue data.")
-require('"P13"' in controller, "Home model does not report P13.")
+require('"P13"' in controller, "Home model does not report the P13-established dashboard baseline.")
 require("service.Active && service.IsCurrent" in controller, "Home does not fail closed to active current service definitions.")
 require("Take(50)" in controller, "Home catalogue rendering is not bounded.")
 require("ShellServiceCardViewModel" in model and "ActiveEnvironmentCount" in model, "Home view model lacks catalogue-backed service state.")
@@ -87,7 +106,10 @@ require("CANDIDATE_SHA" in p11_workflow and "P11-Audit-LocalDB-Runtime-${{ env.C
 require("screenshot" in p04_script.lower(), "Permissions browser acceptance no longer captures screenshots.")
 require("screenshot" in p07_script.lower(), "Service Execution browser acceptance no longer captures screenshots.")
 require("screenshot" in p11_script.lower(), "Audit browser acceptance no longer captures screenshots.")
-require("OPEN-PHASE CANDIDATE" in evidence and "NOT P13 CLOSURE" in evidence, "P13 evidence must remain explicitly non-closure before exact-main acceptance.")
+require(
+    ("OPEN-PHASE CANDIDATE" in evidence and "NOT P13 CLOSURE" in evidence) or p13_closed,
+    "P13 evidence is neither a guarded open candidate nor exact integrated closure evidence.",
+)
 require("DEFERRED_EXTERNAL_NOT_PASS" in evidence and "PRODUCTION_DEFERRED_EXTERNAL_NOT_PASS" in evidence, "P13 evidence incorrectly loses external NOT-PASS classifications.")
 require("least-privilege" in decisions.lower() and "P13" in decisions, "P13 least-privilege design deviation is not documented.")
 require("entity summary cards" in decisions.lower() and "service cards" in decisions.lower(), "P13 Home reference card hierarchy is not documented as retained.")
