@@ -51,6 +51,11 @@ public static class DependencyInjection
         services.AddTransient<BasicAuthenticationTransformHandler>();
         services.AddHttpClient("GSIP.Execution")
             .AddHttpMessageHandler<BasicAuthenticationTransformHandler>()
+            .RedactLoggedHeaders(new[]
+            {
+                BasicAuthenticationTransformHandler.UsernameHeader,
+                BasicAuthenticationTransformHandler.PasswordHeader
+            })
             .ConfigurePrimaryHttpMessageHandler(() => new System.Net.Http.HttpClientHandler
             {
                 AllowAutoRedirect = false,
