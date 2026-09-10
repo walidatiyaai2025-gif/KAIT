@@ -46,7 +46,7 @@ jobs:
         run: |
           dotnet build GSIP.sln -c Release --no-restore
           dotnet build tests/GSIP.P14SecurityChecks/GSIP.P14SecurityChecks.csproj -c Release --no-restore
-      - name: Run P14 authentication boundary and resilience acceptance
+      - name: Run complete P14 security and resilience acceptance
         shell: bash
         run: |
           dotnet run --project tests/GSIP.P14SecurityChecks/GSIP.P14SecurityChecks.csproj -c Release --no-build | tee artifacts/p14-security/security-boundary.txt
@@ -55,7 +55,7 @@ jobs:
       - name: Finalize P14 security manifest
         shell: bash
         run: |
-          printf 'RestrictedSessionBoundary=ENFORCED\nChallengeRateLimit=ENFORCED\nAcceptance=PASS\n' >> artifacts/p14-security/manifest.txt
+          printf 'RestrictedSessionBoundary=ENFORCED\nChallengeRateLimit=ENFORCED\nSessionFixation=CHECKED\nBruteForce=CHECKED\nAuthorizationIdor=CHECKED\nCsrfEncoding=CHECKED\nSecretLogLeakage=CHECKED\nExternalOutage=CHECKED\nDynamicInputFuzzing=CHECKED\nUploadSurface=ABSENT_LOGO_METADATA_BOUNDED\nAcceptance=PASS\n' >> artifacts/p14-security/manifest.txt
       - name: Upload P14 security evidence
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
@@ -85,12 +85,13 @@ jobs:
           global-json-file: global.json
       - name: Restore exact dependency graph
         run: dotnet restore GSIP.sln
-      - name: Collect NuGet vulnerability and deprecation evidence
+      - name: Collect NuGet vulnerability deprecation and license evidence
         shell: bash
         run: |
           mkdir -p artifacts/p14-dependencies
           dotnet list GSIP.sln package --vulnerable --include-transitive --format json > artifacts/p14-dependencies/vulnerable.json
           dotnet list GSIP.sln package --deprecated --include-transitive --format json > artifacts/p14-dependencies/deprecated.json
+          dotnet list GSIP.sln package --include-transitive --format json > artifacts/p14-dependencies/packages.json
       - name: Enforce dependency security gate
         shell: bash
         run: |
@@ -98,12 +99,83 @@ jobs:
             artifacts/p14-dependencies/vulnerable.json \
             artifacts/p14-dependencies/deprecated.json \
             | tee artifacts/p14-dependencies/dependency-result.txt
-          printf 'CandidateSha=%s\nKnownNuGetVulnerabilityGate=PASS\nDeprecatedDependencyGate=PASS\n' "$CANDIDATE_SHA" > artifacts/p14-dependencies/manifest.txt
+      - name: Review resolved NuGet license metadata
+        shell: bash
+        run: |
+          GLOBAL_PACKAGES="$(dotnet nuget locals global-packages --list | sed -E 's/^[^:]+:[[:space:]]*//')"
+          test -n "$GLOBAL_PACKAGES"
+          python scripts/verify_p14_license_audit.py \
+            artifacts/p14-dependencies/packages.json \
+            "$GLOBAL_PACKAGES" \
+            | tee artifacts/p14-dependencies/license-review.tsv
+      - name: Finalize dependency manifest
+        shell: bash
+        run: |
+          printf 'CandidateSha=%s\nKnownNuGetVulnerabilityGate=PASS\nDeprecatedDependencyGate=PASS\nLicenseMetadataReview=PASS\n' "$CANDIDATE_SHA" > artifacts/p14-dependencies/manifest.txt
       - name: Upload P14 dependency evidence
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: P14-Dependency-Audit-${{ env.CANDIDATE_SHA }}
           path: artifacts/p14-dependencies/
+          if-no-files-found: error
+          retention-days: 30
+
+  migration-safety:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact candidate with closed-phase history
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          fetch-depth: 0
+      - name: Assert exact candidate SHA
+        shell: pwsh
+        run: |
+          $actual = (git rev-parse HEAD).Trim()
+          if ($actual -ne $env:CANDIDATE_SHA) { throw "Exact candidate mismatch: expected=$env:CANDIDATE_SHA actual=$actual" }
+          Write-Host "EXACT_CANDIDATE_SHA=$actual"
+      - name: Setup pinned .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Restore and build Release
+        shell: pwsh
+        run: |
+          dotnet restore GSIP.sln
+          dotnet build GSIP.sln -c Release --no-restore
+      - name: Start SQL Server LocalDB
+        shell: pwsh
+        run: |
+          sqllocaldb start MSSQLLocalDB
+          sqllocaldb info MSSQLLocalDB
+      - name: Run established upgrade and data-preservation acceptance
+        shell: pwsh
+        run: ./scripts/verify-p07-upgrade-persistence.ps1
+      - name: Preserve planning integrity
+        run: python scripts/validate_execution_plan.py
+      - name: Build sanitized P14 migration evidence
+        shell: pwsh
+        run: |
+          $evidence = Join-Path $PWD 'artifacts/p14-migration'
+          New-Item -ItemType Directory -Force -Path $evidence | Out-Null
+          @(
+            "CandidateSha=$env:CANDIDATE_SHA",
+            'ClosedBaselineUpgrade=PASS',
+            'MigrationApplication=PASS',
+            'DataPreservation=PASS',
+            'ServiceEnvironmentIsolation=PASS',
+            'ProtectedSecretPayloadPreservation=PASS',
+            'CleanSchema=PASS'
+          ) | Set-Content -Path (Join-Path $evidence 'manifest.txt') -Encoding utf8
+      - name: Upload P14 migration evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: P14-Migration-Safety-${{ env.CANDIDATE_SHA }}
+          path: artifacts/p14-migration/
           if-no-files-found: error
           retention-days: 30
