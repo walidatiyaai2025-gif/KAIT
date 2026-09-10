@@ -21,6 +21,9 @@ internal sealed class GreenGovernmentCatalogBootstrapService(IServiceScopeFactor
         // catalog exists so untouched catalog placeholders can be upgraded without guessing.
         var officialSeed = ActivatorUtilities.CreateInstance<OfficialAgencyMetadataSeedService>(scope.ServiceProvider);
         await officialSeed.SeedAsync(cancellationToken);
+
+        var moeSeed = ActivatorUtilities.CreateInstance<MoeMetadataSeedService>(scope.ServiceProvider);
+        await moeSeed.SeedAsync(cancellationToken);
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
