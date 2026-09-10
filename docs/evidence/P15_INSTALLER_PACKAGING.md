@@ -15,19 +15,22 @@ P15 adds a deterministic Windows Server/IIS deployment layer over the existing G
 - `installer/GSIP.Setup/GSIP.Setup.csproj` builds a .NET 10 Windows x64 self-contained single-file GUI setup executable;
 - `installer/GSIP.Setup/WizardEntryPoint.cs` and `InstallerWizard.cs` provide the production wizard flow with Welcome, Prerequisites, Installation, Binding, Review and Finish pages plus Next/Back/Finish navigation;
 - `installer/GSIP.Setup/IisBindingConfigurator.cs` provides explicit HTTP/HTTPS binding configuration, eligible Local Computer certificate discovery/selection, and deterministic SNI (`sslFlags=1`) for host-specific HTTPS without packaging private keys;
-- `installer/GSIP.Setup/Program.cs` is the shared maintenance engine for install, explicit previous-version upgrade, repair, uninstall and explicit `--purge-state`, now with a fail-closed GSIP ownership manifest boundary around filesystem/IIS takeover and destructive removal;
+- `installer/GSIP.Setup/Program.cs` is the shared maintenance engine for install, explicit previous-version upgrade, repair, uninstall and explicit `--purge-state`, with a fail-closed GSIP ownership manifest boundary around filesystem/IIS takeover and destructive removal;
+- ownership-manifest writes use temporary-file replacement, and failed upgrade/repair restores the exact previous manifest together with rolled-back binaries so installed-version evidence cannot advance when deployment fails;
 - `installer/GSIP.Setup/SanitizedInstallLog.cs` provides a sanitized installer log without exposing credential/token/API-key assignments;
 - successful wizard deployment can launch the protected First-Run Setup endpoint at `/setup`;
 - `scripts/build-p15-package.ps1` builds the application, publishes the IIS payload, excludes mutable state and dangerous deployment material, and emits versioned ZIP/EXE artifacts with SHA-256 sidecars;
-- `scripts/verify_p15_installer.py` provides executable static contract acceptance including ownership/destructive isolation, wizard, HTTPS/SNI, logging and lifecycle contracts;
+- `scripts/verify_p15_installer.py` provides executable static contract acceptance including ownership/destructive isolation, atomic manifest rollback, wizard, HTTPS/SNI, logging and lifecycle contracts;
 - `.github/workflows/p15-installer-packaging.yml` binds CI to the exact candidate SHA and executes package/lifecycle acceptance on `windows-latest`, including negative unowned-root and forged-ownership tests;
-- `docs/P15_INSTALLER_RUNBOOK.md` documents prerequisites, lifecycle, ownership, state preservation, HTTPS/SNI selection and owner/external boundaries.
+- `docs/P15_INSTALLER_RUNBOOK.md` documents prerequisites, lifecycle, ownership, rollback, state preservation, HTTPS/SNI selection and owner/external boundaries.
 
 ## Ownership/destructive safety repair discovered during convergence
 
 A post-reconciliation code audit found a real P15 blocker before merge: the earlier candidate could retarget a pre-existing IIS site/application pool that was not proven to belong to GSIP, uninstall could delete named IIS resources without installation ownership proof, and `--purge-state` could recursively delete an arbitrary non-drive-root supplied by the caller. This was not accepted as an external limitation and was repaired in the canonical PR #75 line.
 
 The repaired boundary requires a valid `install-manifest.json` product/architecture/site/application-pool ownership marker for repair, uninstall and purge; rejects a non-empty unowned installation directory; rejects first-install collision with an existing IIS site or application pool; rejects forged site/application-pool identities against an owned installation; preserves the ownership marker on default uninstall; and allows recursive purge only after marker and identity validation. CI now carries executable negative cases proving foreign sentinel content survives rejected install/purge attempts.
+
+A subsequent rollback audit found that updating the manifest before IIS mutation was necessary to attribute a partially created first installation, but could leave an existing upgrade with a new manifest version if a later IIS step failed after binaries had been rolled back. The maintenance path now snapshots the exact previous manifest, writes replacement manifests through temporary-file atomic replacement, and restores the prior manifest whenever an existing install/repair rolls back. A brand-new install that has already reached IIS mutation intentionally retains its GSIP marker so the partial footprint remains attributable and recoverable. This repair is gated statically and requires fresh exact-head CI; it is not asserted as PASS from documentation alone.
 
 The same audit identified host-specific HTTPS SNI drift: the earlier code created a hostname HTTPS binding but did not explicitly set the IIS SNI flag. The canonical line now sets `sslFlags=1` for hostname HTTPS and `sslFlags=0` for hostname-free HTTPS before binding the certificate through HTTP.sys. These repairs require fresh exact-head CI and are **not** promoted to PASS merely by this document.
 
@@ -71,7 +74,7 @@ Validated implementation candidate before the ownership/SNI convergence repair: 
 - `GSIP-0.1.0-Setup-x64.exe` SHA-256: `c9465545ade663a31fe7d83002e8a88001eb60dedcdc376f81bb60ac1db94d03`.
 - Exact-candidate Actions artifact ID `10136339172`; artifact archive digest `sha256:e7ddce03120177943bbfe4949fedac13462949c14858125068f38a1d6ff47867`; size 62,160,131 bytes.
 
-This historical evidence demonstrates the pre-repair packaging/lifecycle baseline only. It cannot close the newer ownership/SNI candidate.
+This historical evidence demonstrates the pre-repair packaging/lifecycle baseline only. It cannot close the newer ownership/SNI/rollback candidate.
 
 ## Superseded CI failures and reconciliation history
 
@@ -91,4 +94,4 @@ The following remain outside this candidate’s cloud proof and must not be call
 
 ## Remaining P15 gate
 
-This document is not P15 closure. The ownership/SNI repair commit supersedes all prior candidates as the PR merge candidate. P15 remains OPEN / ACTIVE until that exact final PR head passes every governed workflow, PR #75 is normally integrated from current exact `main`, every governed workflow on the resulting exact-new-main SHA is terminal SUCCESS, package/installer/hash identity is reconciled to exact post-merge evidence, and canonical closure governance is recorded. P16 remains locked until that gate is satisfied.
+This document is not P15 closure. The ownership/SNI/rollback repair head supersedes all prior candidates as the PR merge candidate. P15 remains OPEN / ACTIVE until that exact final PR head passes every governed workflow, PR #75 is normally integrated from current exact `main`, every governed workflow on the resulting exact-new-main SHA is terminal SUCCESS, package/installer/hash identity is reconciled to exact post-merge evidence, and canonical closure governance is recorded. P16 remains locked until that gate is satisfied.
