@@ -1,0 +1,31 @@
+name: Hotfix 0.1.1 UAT Configuration
+
+on:
+  push:
+    branches:
+      - main
+      - 'hotfix/0.1.1-auth-uat-demo'
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  verify-hotfix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+      - name: Setup pinned .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Restore
+        run: dotnet restore GSIP.sln
+      - name: Build
+        run: dotnet build GSIP.sln -c Release --no-restore
+      - name: Verify hotfix security and routing contracts
+        run: python scripts/verify_hotfix_0_1_1.py
