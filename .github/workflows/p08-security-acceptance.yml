@@ -46,9 +46,7 @@ jobs:
           dotnet restore tests/GSIP.P08SecurityAcceptanceChecks/MojRuntime/GSIP.P08MojRuntimeAcceptance.csproj
           dotnet restore tests/GSIP.P07ExecutionSecurityChecks/GSIP.P07ExecutionSecurityChecks.csproj
           dotnet restore tests/GSIP.P06TokenCacheChecks/GSIP.P06TokenCacheChecks.csproj
-          if [ -f tests/GSIP.P08AuthIsolationChecks/GSIP.P08AuthIsolationChecks.csproj ]; then
-            dotnet restore tests/GSIP.P08AuthIsolationChecks/GSIP.P08AuthIsolationChecks.csproj
-          fi
+          dotnet restore tests/GSIP.P08AuthIsolationChecks/GSIP.P08AuthIsolationChecks.csproj
       - name: Build solution Release
         run: dotnet build GSIP.sln -c Release --no-restore
       - name: Build acceptance projects Release
@@ -58,9 +56,7 @@ jobs:
           dotnet build tests/GSIP.P08SecurityAcceptanceChecks/MojRuntime/GSIP.P08MojRuntimeAcceptance.csproj -c Release --no-restore
           dotnet build tests/GSIP.P07ExecutionSecurityChecks/GSIP.P07ExecutionSecurityChecks.csproj -c Release --no-restore
           dotnet build tests/GSIP.P06TokenCacheChecks/GSIP.P06TokenCacheChecks.csproj -c Release --no-restore
-          if [ -f tests/GSIP.P08AuthIsolationChecks/GSIP.P08AuthIsolationChecks.csproj ]; then
-            dotnet build tests/GSIP.P08AuthIsolationChecks/GSIP.P08AuthIsolationChecks.csproj -c Release --no-restore
-          fi
+          dotnet build tests/GSIP.P08AuthIsolationChecks/GSIP.P08AuthIsolationChecks.csproj -c Release --no-restore
       - name: Run independent P08 security acceptance and leakage scan
         shell: pwsh
         run: ./scripts/verify-p08-security-acceptance.ps1 -Configuration Release -EvidenceDirectory $env:GSIP_P08_EVIDENCE_DIR
