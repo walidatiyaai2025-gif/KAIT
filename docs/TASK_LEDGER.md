@@ -1,226 +1,94 @@
 # TASK_LEDGER.md — GSIP Canonical Phase Ledger
 
-This ledger is evidence-driven. Never mark a phase CLOSED because a prompt says it should be closed. Update status only from live implementation/tests/CI/evidence on the exact integrated commit. `DEFERRED_EXTERNAL` is never equivalent to PASS.
+This ledger is evidence-driven. `DEFERRED_EXTERNAL` and `OWNER_LAST` are never equivalent to PASS. A phase may be marked CLOSED only from implementation/tests/CI/evidence, and later project-wide regressions must still be repaired even if the originating phase is closed.
 
-| Phase | Status | Scope / closure focus |
+| Phase | Status | Canonical closure / current evidence |
 |---|---|---|
-| P00 | CLOSED | Closed from exact-main SHA `8156c46ce8ce366424d955a6194d677c2da5055f`; Planning Integrity `34210899288` SUCCESS; P00 Build Baseline `34210899267` SUCCESS; exact-main baseline artifact produced and hashed |
-| P01 | CLOSED | Closed from exact-main SHA `34c665b12e910b6dfcb735f4978be6649e03d5c3`; Planning `34213985141`, P00 regression `34213985591`, P01 runtime/browser `34213985167` SUCCESS; exact-main bilingual UI evidence produced and hashed |
-| P02 | CLOSED | Closed from exact-main SHA `efa56808db13fa45f803131f7bcf2d65c485a66d`; later SQL Authentication closed-baseline regression repair PR #61 integrated at exact main `42b3b7af073efe6bd933f473b707333df8924346`; protected first-run Setup and SQL auth diagnostics/acceptance remain green |
-| P03 | CLOSED | Closed from exact-main SHA `20d2542427a388ac81e5249cc59f60dcbfa2ea91`; Planning/P00–P03 identity and web-security evidence verified |
-| P04 | CLOSED | Closed from exact-main SHA `c3aa76a8d456c9b951b602001bcbe1023ae26dd9`; RBAC, Default Deny, server-side/service authorization, admin/IDOR and bilingual Permissions UI evidence verified |
-| P05 | CLOSED | Closed from exact-main implementation SHA `4d706fab57071236e9847670342f5a399b3527e6`; metadata catalog, versioning, isolation/security, import/export and protected administration verified |
-| P06 | CLOSED | Corrected closure implementation/security baseline `fef5882abf8a6f12990c3e7c0e9f849d08cd7947`; final reconciliation PR #32 at `90b3068ea39a342392222ae581e568b94f7f9004`; SecretRefs/AuthProfiles/rotation/redaction/token-cache/admin acceptance verified |
-| P07 | CLOSED | Closed from exact integrated implementation baseline `9535fa158441160ab7c7d204863776e38e560a33`; runtime/UI/upgrade/security evidence verified and hashed |
-| P08 | CLOSED | Historical closure baseline `67968a9230dae453b36f48549eda138d7b5401c7`; canonical x-api-key + `/genToken` + Bearer runtime, exact scope isolation, protected Test Authentication and independent security acceptance; later authenticated Marriage UAT evidence integrated through closed-baseline repair without reopening P08 |
-| P09 | CLOSED | Closed from exact integrated main `42b3b7af073efe6bd933f473b707333df8924346`; PRs #58/#59/#60 integrated official contracts for APIs 129/132/130/196/134, five canonical services, token variants, independent security acceptance and execution UI/UAT readiness; exact-main **29/29 SUCCESS**; unavailable owner live UAT remains `DEFERRED_EXTERNAL_NOT_PASS` |
-| P10 | CLOSED | Closed from exact integrated and repaired main `b7e81cece985b566c9c3222a2c495b83e800e080`; PR #62 integrated request/result history and exports; closed-baseline repair PR #65 preserved `fromUtc`/`toUtc` and all active filters across pagination and added executable regression coverage; PR #65 exact-head **32/32 SUCCESS** and resulting exact-main **29/29 SUCCESS** |
-| P11 | CLOSED | Closed from exact integrated main `3d0a77f3f76fac37691cdd19a030932c876bd1e5`; PR #67 exact head `ae61ff7cedaf119bc6948a5b18eda811ab249b82` passed **36/36** workflows; exact integrated main passed **31/31** push workflows after P01 run `34408109285` same-SHA attempt 2 succeeded with no source/acceptance change; append-only/tamper/retention/concurrency/monitoring/security/browser evidence verified |
-| P12 | CLOSED | Closed from exact integrated main `1ed40707552f62058980b44d6cb1e7251dbeb2d4`; PR #69 exact head `f367ca78fca217e9d5c7da0a1328dca047940390` passed **35/35** workflows; exact integrated main passed **31/31** push workflows; P12 exact-main run `34413925793` SUCCESS with static/runtime artifacts; protected admin operations, health/diagnostics, no-revision ServiceId/version preservation, UAT/Production isolation, authorization/CSRF/IDOR and bilingual runtime/browser evidence verified |
-| P13 | CLOSED | Implementation PR #71 and closure transition PR #72 normally integrated; final closure-transition main `9f76f6593123a86c1ef999ba5ec5b7b9338a53de` completed **32/32** push workflows SUCCESS |
-| P14 | CLOSED | PR #73 exact implementation head `3eca150b67663ec3e5c2d5ea918d4b75cfd9b2de` passed **37/37** governed workflows; implementation main `1f1def164d639c75d9cc26710a905cc491355a2b` passed **34/34** push workflows; closure PR #74 exact head `58022cc53c75a986cca3cb119671c213ca1fdf4d` integrated as exact main `f5dd87de7aa3f8e709d04cf8804f53c10c938633`, which passed **33/33** push workflows; no known cloud-actionable Critical/High vulnerability remains |
-| P15 | CLOSED | PR #75 final exact head `1c1af59fac0489d645e5323a9c6c97f8a76bc5a7` passed **37/37** governed PR workflows and normally integrated as exact implementation main `d60318da5b19d06df20864083f5a4a78b9792e88`, which passed **34/34** governed push workflows; closure PR #77 exact head `7ad7f07b760f3102bd2776cdfe4e35d2fb427765` passed **37/37** governed PR workflows and normally integrated as exact closure main `48267786e9f0d21934dee339eed32688b6e2d488`, which passed **34/34** governed push workflows; P15 run `34440072557` passed 45 static checks and full package/lifecycle acceptance |
-| P16 | CLOSED | PR #85 exact corrected head `0e767d4f355e403b70602a7645cd7ffba25b3b43` passed **40/40** governed PR workflows and integrated as exact accepted main `8863b4b8151ebb08e98fdb225ea5418c5297eb5c`; that main passed **36/36** governed push workflows; exact-main P16 run `34456867989` passed all four acceptance legs; closure PR #86 exact head `eeb03879d4b31b04bf333c8b5d021983ace8afe9` passed **39/39** governed PR workflows, normally integrated as exact main `18efd6c71a35505105d44df673d1d75fde293a2e`, whose exact-new-main matrix passed **36/36** governed push workflows |
-| P17 | OPEN / READY | Final convergence and release closure. P17 is the sole canonical phase and may make a final-completion claim only when same-commit/same-artifact exact final evidence satisfies `docs/FINAL_ACCEPTANCE_CRITERIA.md`; owner/external NOT PASS items must remain accurately deferred |
-
-## P00 closure record
-
-P00 implementation was integrated by PR #2. Exact integrated `main` SHA `8156c46ce8ce366424d955a6194d677c2da5055f` passed the required workflows and produced the hashed P00 baseline artifact. No owner-only evidence was deferred.
-
-## P01 closure record
-
-P01 was integrated through PR #4 at exact `main` SHA `34c665b12e910b6dfcb735f4978be6649e03d5c3`. Planning, P00 regression and P01 runtime/browser workflows all succeeded and exact-main bilingual UI evidence was produced and hashed. No owner-only evidence was deferred.
-
-## P02 closure and regression record
-
-P02 was originally integrated through PRs #6, #7, #8 and #9 at exact `main` SHA `efa56808db13fa45f803131f7bcf2d65c485a66d`. Planning/P00/P01/P02 workflows succeeded and protected first-run Setup, SQL negative/retry, critical Review/Health gating and bilingual browser evidence were verified.
-
-A later owner-reproduced SQL Authentication Setup Wizard regression was repaired through PR #61. The repair preserves explicit SQL-vs-Windows auth binding, transient SQL credentials, safe `master` connection testing, sanitized SQL diagnostics and caller-selected TLS semantics. PR #61 normally merged at exact main `42b3b7af073efe6bd933f473b707333df8924346`; the exact-main set completed 29/29 SUCCESS. Owner same-host operational smoke remains owner-last and is not fabricated as PASS.
-
-## P03 closure record
-
-P03 was integrated through PRs #12 and #13 at exact `main` SHA `20d2542427a388ac81e5249cc59f60dcbfa2ea91`. Identity persistence, MFA, privileged-account policy, lockout/rate limiting, CSRF/security headers/cookie posture, sanitized audit and bilingual browser evidence were verified. Detailed evidence: `docs/evidence/P03_IDENTITY_ACCOUNT_SECURITY.md`.
-
-## P04 closure record
-
-P04 culminated through PR #20 at exact `main` SHA `c3aa76a8d456c9b951b602001bcbe1023ae26dd9`. Editable roles/permissions, per-service Default Deny, server-side authorization, last-System-Administrator protection, forged-identifier denial and bilingual responsive Permissions UI evidence were verified. Detailed evidence: `docs/evidence/P04_RBAC_PERMISSIONS_UI.md`.
-
-## P05 closure record
-
-P05 was normally integrated through PR #22 at exact implementation `main` SHA `4d706fab57071236e9847670342f5a399b3527e6`. Metadata Entity/Environment/Service/ServiceField/ResultMapping persistence, independent UAT/Production bindings, secure validation/versioning, JSON import/export, protected bilingual administration and generic service proof were verified. Detailed evidence: `docs/evidence/P05_METADATA_CATALOG.md`.
-
-## P06 closure record
-
-P06 converged through PRs #24, #25, #26, #27, #28 and #29. A higher-authority plan audit recovered the legitimate runtime token-cache requirement and PR #31 integrated it. Corrected implementation/security baseline is `fef5882abf8a6f12990c3e7c0e9f849d08cd7947`; final reconciliation PR #32 integrated at `90b3068ea39a342392222ae581e568b94f7f9004`. Scoped SecretRefs, isolated/explicitly shared AuthProfiles, atomic rotation, centralized redaction, token-cache safety, protected administration and independent no-leak acceptance are verified. Detailed evidence: `docs/evidence/P06_SECRET_VAULT_AUTH_PROFILES.md`.
-
-## P07 closure record
-
-P07 is **CLOSED** from exact integrated implementation baseline `9535fa158441160ab7c7d204863776e38e560a33` after normal integration of PRs #33, #34, #36, #37 and #38 and convergence/reconciliation work. All **16/16 exact-main workflows** completed successfully.
-
-Acceptance covers server-side `Services.Execute` authorization; exact Service + Environment + AuthProfile resolution; forged/cross-scope rejection and no fallback; metadata-generated fields and validation; RequestId/CorrelationId; `IHttpClientFactory`; bounded timeout/retry; HTTP/TLS/network classification; bounded response reads; ResultMappings; secret-safe diagnostics; sensitive raw-response masking; bilingual RTL/LTR responsive Service Execution UI; fake-endpoint acceptance; and upgrade/data-preservation safety. Detailed evidence: `docs/evidence/P07_GENERIC_EXECUTION_ENGINE.md`.
-
-## P08 closure record
-
-P08 is **CLOSED** from exact integrated implementation baseline `67968a9230dae453b36f48549eda138d7b5401c7`.
-
-PR #47 normally merged the authoritative P08 convergence: metadata-driven token endpoint control, documented token acquisition and Bearer attachment, exact-scope secret/token behavior, protected administration Test Authentication, independent security acceptance and CI wiring. PR #47 exact head passed 22/22 workflows and exact main completed 17/17 SUCCESS.
-
-Original P08 closure correctly left exact `/genToken` `ApiKeyAuth` applicability as `DEFERRED_EXTERNAL — NOT PASS` because it was not yet proven. Later owner-supplied authenticated official CAIT evidence proved the observed Marriage UAT composite contract and the closed-baseline repair extended only the canonical runtime. Production remains a separate evidence boundary; unproven Production full paths/auth/payload details remain **PRODUCTION_DEFERRED_EXTERNAL — NOT PASS**.
-
-Detailed evidence:
-
-- `docs/evidence/P08_MOJ_AUTHENTICATION_INTEGRATION.md`
-- `docs/evidence/P08_CONTRACT_RECONCILIATION.md`
-- `docs/evidence/P08_POST_CLOSURE_COMPOSITE_AUTH_REPAIR.md`
-- `docs/moj-api-reference/P08_AUTH_CONTRACT_MATRIX.md`
-
-Historical deferred classifications are preserved and are not rewritten as PASS.
-
-## P09 closure record
-
-P09 is **CLOSED** from exact integrated `main` SHA `42b3b7af073efe6bd933f473b707333df8924346`.
-
-Normal convergence chain:
-
-- PR #58 — official MOJ contract convergence for APIs 129, 132, 130, 196 and 134, metadata/runtime reconciliation and token-contract variants.
-- PR #59 — independent P09 contract/security acceptance.
-- PR #60 — P09 execution UI and UAT-readiness convergence.
-- PR #61 — unrelated closed-baseline P02 SQL Authentication repair; post-repair exact-main verification preserved all P09 gates green.
-
-The five canonical P09 services are Marriage Cases, Is Single Basic, Marriage Couple Last Case, Family Judgment Text and Procuration Status. Their request/response/auth metadata is grounded in repository-approved official evidence. Unproven Production details are not inferred.
-
-Exact-main `42b3b7af073efe6bd933f473b707333df8924346` completed **29/29 push workflows SUCCESS**, failure=0, queued=0 and in-progress=0. Representative P09 runs:
-
-- Official Contract Snapshots `34390738947` — SUCCESS.
-- Marriage Cases Service `34390739120` — SUCCESS.
-- MOJ Token Contract Variants `34390739231` — SUCCESS.
-- P09 Independent Contract Security Acceptance `34390739078` — SUCCESS.
-- P09 Execution UI and UAT Readiness `34390739312` — SUCCESS.
-
-Authorized live UAT requiring owner-controlled credentials or personal test records remains **DEFERRED_EXTERNAL_NOT_PASS** where unavailable; this is not called PASS. Detailed closure evidence: `docs/evidence/P09_CLOSURE.md`.
-
-## P10 closure record
-
-P10 is **CLOSED** from exact integrated and repaired `main` SHA `b7e81cece985b566c9c3222a2c495b83e800e080` after normal integration of PR #62 and closed-baseline regression repair PR #65.
-
-The canonical baseline persists the required request lifecycle and masked input facts; protects bounded configurable structured/raw result storage; enforces Own/Department/All scope plus current service visibility and IDOR rejection; supports filters/search; preserves `fromUtc`, `toUtc`, scope, search, status, entity, service and page-size filters across pagination; enforces retention/migration/concurrency safety; and provides permissioned Print/PDF/CSV/XLSX exports with injection defense and export audit events. Arabic/English history list/detail surfaces are integrated and Requests is reachable from canonical navigation.
-
-PR #65 repaired the post-PR-#62 pagination defect and added executable UI/static regression coverage for filter preservation. PR #65 completed **32/32 exact-head workflows SUCCESS** before normal merge. Resulting exact-main `b7e81cece985b566c9c3222a2c495b83e800e080` completed **29/29 push workflows SUCCESS**, with failure=0, queued=0 and in-progress=0 after completion. The exact-main P10 workflow included successful build/security checks and Windows LocalDB migration, scope/IDOR, export/audit/injection-defense, concurrency and retention acceptance. No P10 owner-only requirement was fabricated as PASS. Detailed evidence: `docs/evidence/P10_CLOSURE.md`.
-
-## P11 closure record
-
-P11 is **CLOSED** from exact integrated `main` SHA `3d0a77f3f76fac37691cdd19a030932c876bd1e5` after normal integration of PR #67.
-
-The exact P11 implementation head `ae61ff7cedaf119bc6948a5b18eda811ab249b82` completed **36/36 exact-head workflows SUCCESS** before merge. Acceptance includes canonical append-only audit persistence, SHA-256 hash-chain integrity, mutation/gap/reordering/tail-deletion detection, bounded checkpointed retention, concurrent append serialization, monitoring, sanitized projections, protected permissions/export/integrity actions, bilingual Arabic RTL / English LTR Audit UI, LocalDB integration, CSRF-negative behavior and browser evidence using synthetic-only data.
-
-The resulting exact integrated main `3d0a77f3f76fac37691cdd19a030932c876bd1e5` completed **31/31 push workflows SUCCESS**, failure=0, queued=0 and in-progress=0 after completion. P01 Architecture and UI Shell run `34408109285` attempt 1 failed only because the web runtime did not become healthy while its uploaded stdout/stderr logs were both empty. The same job was rerun against the exact same SHA with no source or acceptance modification; attempt 2 completed SUCCESS including runtime and bilingual browser evidence. No check was waived or weakened.
-
-P11 automated closure requires no owner credential or personal MOJ data. Historical P09 live-UAT and unproven Production evidence remain `DEFERRED_EXTERNAL_NOT_PASS` / `PRODUCTION_DEFERRED_EXTERNAL_NOT_PASS`. Detailed evidence: `docs/evidence/P11_AUDIT_TRAIL_MONITORING.md`.
-
-## P12 closure record
-
-P12 is **CLOSED** from exact integrated `main` SHA `1ed40707552f62058980b44d6cb1e7251dbeb2d4` after normal integration of PR #69.
-
-The pre-existing `worker/p12-admin-health-diagnostics` branch was recovered non-force and reused rather than replaced. The final implementation head `f367ca78fca217e9d5c7da0a1328dca047940390` completed **35/35 exact-head workflows SUCCESS** before merge.
-
-A prior green candidate was deliberately superseded after semantic review found that Activate/Disable could pass through metadata definition revisioning for an already-used service. The final repair introduced the dedicated operational-state boundary and executable LocalDB acceptance proving ServiceId, metadata version, AuthProfile/SecretRef scope and the sibling environment remain stable. This was a strengthened gate, not a waiver.
-
-Final P12 acceptance covers protected database/runtime/Data Protection/disk/integration health; bounded endpoint/timeout/TLS/proxy diagnostics; exact Service + Environment Test Connection/Test Authentication; activation/disable with service-level authorization; canonical P06 secret rotation reuse; operational alerts; authorization/IDOR/CSRF negatives; sanitized audit/evidence; Arabic RTL / English LTR responsive Operations runtime; and executable already-used-service UAT/Production isolation.
-
-The resulting exact integrated main `1ed40707552f62058980b44d6cb1e7251dbeb2d4` completed **31/31 push workflows SUCCESS**, failure=0, queued=0 and in-progress=0. Exact-main P12 workflow run `34413925793` completed SUCCESS.
-
-Exact-main P12 artifacts:
-
-- `P12-Admin-Operations-Runtime-1ed40707552f62058980b44d6cb1e7251dbeb2d4` — artifact `10128361921`, digest `sha256:8161d7c95e2ee64cf3c0fdac6b3d252bc0ee0052fe662c1a2973e1b9cc4f194b`.
-- `P12-Admin-Operations-Static-1ed40707552f62058980b44d6cb1e7251dbeb2d4` — artifact `10128310606`, digest `sha256:3029f8ddf62255952478fb0197a4399a5724b028a83919eb7de332a9552654d9`.
-
-P12 cloud acceptance requires no live MOJ credential or personal MOJ data. Historical P09 authorized live-UAT and unproven Production evidence remain `DEFERRED_EXTERNAL_NOT_PASS` / `PRODUCTION_DEFERRED_EXTERNAL_NOT_PASS` and are not rewritten as PASS. Detailed evidence: `docs/evidence/P12_ADMIN_OPERATIONS_HEALTH_DIAGNOSTICS.md`.
-
-## P13 closure record
-
-P13 implementation was normally integrated through PR #71 from exact head `1576764a16ea6ddfed735cb0824cb38de26c83d8` into exact implementation `main` SHA `203cc28db714fae5c2c70e85adc9cc2306bb2107`.
-
-The final implementation candidate completed **35/35 governed PR workflows SUCCESS**. P08 Authentication Convergence had one first-attempt LocalDB creation timeout; the same exact SHA was rerun without any source, test or acceptance change and then completed SUCCESS. No gate was waived or weakened.
-
-The implementation main completed **32/32 push workflows SUCCESS**, failure=0, queued=0 and in-progress=0. Exact-main P13 workflow run `34421612012` completed SUCCESS and produced:
-
-- `P13-Home-UI-203cc28db714fae5c2c70e85adc9cc2306bb2107` — artifact `10131131126`, digest `sha256:19b8a382a59cc049374578d1fc8f865439bc16a523268f74ef98175aeb68fe2e`.
-- `P13-UI-Accessibility-Static-203cc28db714fae5c2c70e85adc9cc2306bb2107` — artifact `10131148598`, digest `sha256:062421c5545952d26d42b1a91b8865ffbd4626ef7f3f9d8041504362a3d4e329`.
-
-P13 converged the Home/dashboard to the repository-native card hierarchy, preserved least-privilege data exposure, connected Service Execution History to protected P10 request history, restored all primary routes on narrow screens, added skip/focus/accessibility semantics, preserved Arabic RTL / English LTR and explicit LTR technical identifiers, and retained independent candidate-bound Permissions, Service Execution and Audit browser acceptance. P00-P12 functional/security contracts remain authoritative.
-
-P13 closure reconciliation PR #72 was normally integrated at exact `main` `9f76f6593123a86c1ef999ba5ec5b7b9338a53de`; its resulting exact-main matrix completed **32/32 push workflows SUCCESS**. P13 is therefore fully CLOSED.
-
-Historical owner/external evidence remains `DEFERRED_EXTERNAL_NOT_PASS` / `PRODUCTION_DEFERRED_EXTERNAL_NOT_PASS`. Main branch protection remains `OWNER_LAST / NOT PASS`.
-
-## P14 closure record
-
-P14 implementation was normally integrated through PR #73 from exact final implementation head `3eca150b67663ec3e5c2d5ea918d4b75cfd9b2de` into exact implementation `main` SHA `1f1def164d639c75d9cc26710a905cc491355a2b`.
-
-The final P14 implementation candidate completed **37/37 governed pull-request workflows SUCCESS**. The resulting exact implementation main completed **34/34 push workflows SUCCESS**, failure=0, queued=0 and in-progress=0 at implementation closure review.
-
-P14 closes the cloud-actionable hardening scope covering restricted-session authorization bypass prevention, independent RBAC fail-closed enforcement, challenge rate limiting, anti-forgery/XSS/output-encoding checks, secure-header preservation, bounded retry/timeout/cancellation/response behavior, token-refresh concurrency safety, dependency vulnerability/deprecation review and threat-model/security-checklist evidence. The P14 register contains no known cloud-actionable Critical or High vulnerability.
-
-Governance/evidence closure PR #74 then normally integrated exact closure head `58022cc53c75a986cca3cb119671c213ca1fdf4d` into exact main `f5dd87de7aa3f8e709d04cf8804f53c10c938633`. The resulting exact-new-main gate completed **33/33 push workflows SUCCESS**, failure=0, queued=0 and in-progress=0. P14 is therefore formally CLOSED. Detailed evidence: `docs/evidence/P14_SECURITY_HARDENING.md`.
-
-Historical authorized live-UAT and unproven Production evidence remain `DEFERRED_EXTERNAL_NOT_PASS` / `PRODUCTION_DEFERRED_EXTERNAL_NOT_PASS`; repository protection remains `OWNER_LAST / NOT PASS`.
-
-## P15 closure record
-
-P15 became the sole canonical implementation phase only after the P14 closure transition was integrated and exact main `f5dd87de7aa3f8e709d04cf8804f53c10c938633` completed **33/33 push workflows SUCCESS**.
-
-Canonical implementation unit `P15::installer-packaging-convergence` used `worker/p15-installer-packaging`, PR #75. During convergence PR #75 recovered legitimate post-P14 security repair main `78cfe0433bdb02367ddd1365df57d118fea9257a` instead of duplicating or reverting it. Real blockers in ownership/destructive-operation isolation, atomic maintenance rollback and host-specific HTTPS SNI were repaired on the same canonical line rather than waived.
-
-Final implementation head `1c1af59fac0489d645e5323a9c6c97f8a76bc5a7` completed **37/37 governed pull-request workflows SUCCESS**. PR #75 was then normally integrated as exact implementation main `d60318da5b19d06df20864083f5a4a78b9792e88`. The resulting exact integrated main completed **34/34 governed push workflows SUCCESS**, failure=0, queued=0 and in-progress=0.
-
-Exact-main P15 Installer and Packaging run `34440072557` completed SUCCESS on Windows Server 2025 with `P15_INSTALLER_STATIC_ACCEPTANCE=PASS checks=45`, solution/package build 0 warnings / 0 errors, unowned-root install/purge rejection, forged site/app-pool rejection, clean install, synthetic `0.0.9` upgrade, repair, default uninstall, reinstall, explicit owner-scoped purge, Data Protection/setup-state/ownership-marker preservation, sanitized logging, execution-plan integrity and SHA-256 verification.
-
-Exact integrated artifacts for source `d60318da5b19d06df20864083f5a4a78b9792e88`:
-
-- `GSIP-0.1.0-win-x64.zip` — SHA-256 `5c25b2df2970d2a52ce570ae1419630b8b22c244b092cea38516975e2ec86e4b`.
-- `GSIP-0.1.0-Setup-x64.exe` — SHA-256 `971dfe4a50ce7c8a834bc20ec18c5ed490881808a4a5b9e037cf38fb1e044c03`.
-- Actions artifact `10137632143` — `P15-Installer-d60318da5b19d06df20864083f5a4a78b9792e88`, digest `sha256:20aea809e37f4ca716ebe6b6b0c587cbbf80f5224e93d890ec18835c1d6a6846`, size 62,159,500 bytes.
-
-Formal closure unit `P15::closure-reconciliation` used `worker/p15-closure-reconciliation`, PR #77. Exact closure head `7ad7f07b760f3102bd2776cdfe4e35d2fb427765` completed **37/37 governed pull-request workflows SUCCESS**. PR #77 was normally integrated as exact closure main `48267786e9f0d21934dee339eed32688b6e2d488`. The resulting exact-new-main completed **34/34 governed push workflows SUCCESS**, failure=0, queued=0 and in-progress=0. P15 is therefore formally **CLOSED**.
-
-Target-server Windows/IIS/TLS proof, owner-approved Production certificate selection, Production DNS/network/proxy/firewall behavior, owner-controlled signing and earlier live MOJ external evidence remain NOT PASS where unavailable. They are not promoted to PASS by cloud packaging or closure evidence. Detailed evidence: `docs/evidence/P15_INSTALLER_PACKAGING.md`.
-
-## P16 acceptance and formal closure record
-
-P16 is formally **CLOSED** from exact integrated 0.1.2 evidence.
-
-Canonical implementation unit `P16::full-acceptance-release-candidate` used `worker/p16-full-acceptance-continuation`, PR #80. Final implementation head `e655dc4d0effb4f962d3e97e4a0230471238ba55` completed **38/38 governed pull-request workflows SUCCESS**. PR #80 normally integrated as exact implementation main `75ef2f322a53f1e2ed0bfdf8fa3e4ccece5edd85`, whose resulting exact-main matrix completed **35/35 governed push workflows SUCCESS**.
-
-The 0.1.1 line through PR #83 remains historical provenance. A later live repository audit found that the 0.1.1 API129 helper contradicted the repository-authoritative token-exchange contract. Existing PR #85 was recovered instead of replaced. Its final corrected head `0e767d4f355e403b70602a7645cd7ffba25b3b43` restored exact-scope `x-api-key + username + password` token acquisition, removed optional empty-credential assumptions and broad MOJ convergence, preserved P04 Default Deny and Production isolation, and completed **40/40 governed pull-request workflows SUCCESS**.
-
-PR #85 normally integrated with an expected-head guard as exact accepted main `8863b4b8151ebb08e98fdb225ea5418c5297eb5c`. That exact main completed **36/36 governed push workflows SUCCESS**, with no terminal non-success result.
-
-Exact-main P16 run `34456867989` completed `static-contract`, `release-candidate-package`, `runtime-ui-recovery`, and aggregate `p16-gate` SUCCESS. Runtime acceptance passed Permissions, Service Execution, Audit and Dashboard browser checks, Arabic RTL/English LTR four-screen parity, SQL/protected-state backup/restore rehearsal, bounded performance baseline and execution-plan integrity.
-
-Accepted same-SHA release-candidate identity bound to source `8863b4b8151ebb08e98fdb225ea5418c5297eb5c`:
-
-- version `0.1.2`, target `win-x64`, framework `net10.0`, pinned SDK `10.0.400`;
-- `GSIP-0.1.2-win-x64.zip` — SHA-256 `b4971d31b11f3c1c6a6afba9026afd6865b7c006063eb59ffbdc9e2182efd426`;
-- `GSIP-0.1.2-Setup-x64.exe` — SHA-256 `7a5de1c18bf9b84bd052d855d089f51ffdae175d40c872b574a68892fba99ff0`;
-- Actions artifact `10143946003` — `P16-Release-Candidate-8863b4b8151ebb08e98fdb225ea5418c5297eb5c`, size 62,185,768 bytes, digest `sha256:b7c8f175b1669323917bbfa6b557076ce8b2d2c611af7009b13f83e4282429d6`;
-- Actions artifact `10144204144` — `P16-Runtime-UI-Recovery-8863b4b8151ebb08e98fdb225ea5418c5297eb5c`, size 3,482,259 bytes, digest `sha256:4b5564603f8c00c5d07357dd206647f0f4dabfa5b04cd8fcc931bc1ab5a4965d`.
-
-Canonical closure unit `P16::closure-reconciliation` used existing branch `worker/p16-closure-reconciliation`, PR #86. Final exact closure head `eeb03879d4b31b04bf333c8b5d021983ace8afe9` completed **39/39 governed pull-request workflows SUCCESS**. PR #86 normally integrated as exact main `18efd6c71a35505105d44df673d1d75fde293a2e`. The resulting exact-new-main matrix completed **36/36 governed push workflows SUCCESS**, failure=0, queued=0 and in-progress=0. Issue #1 records the exact closure transition and preserved deferred boundaries. These facts satisfy the encoded P16 exit gate; P17 is therefore the sole canonical OPEN / READY phase.
-
-Authorized live UAT requiring owner-controlled credentials or approved data remains `DEFERRED_EXTERNAL_NOT_PASS` where unavailable. Unproven Production details remain `PRODUCTION_DEFERRED_EXTERNAL_NOT_PASS`; Production→UAT fallback is forbidden. Target-server Windows/IIS/certificate/network/performance/signing evidence and main branch protection remain owner/external NOT PASS where unavailable.
-
-## P17 entry record
-
-P17 is **OPEN / READY** for final convergence and release closure. It must start from live `main`, recover legitimate existing work before creating new work, repair exact-main regressions before finality, and prove all applicable `docs/FINAL_ACCEPTANCE_CRITERIA.md` requirements against one exact final integrated commit and its exact release artifacts. The four canonical UI baselines under `docs/ui-baseline/` remain mandatory high-fidelity evidence. P17 is the only phase allowed to issue a `VERIFIED_FINAL_COMPLETE` claim, and only after the exact final gate is actually satisfied.
-
-## Cross-phase gates
-
-The following apply to every phase:
-
-- **LIVE STATE FIRST:** inspect main/PRs/branches/CI/claims before new work.
-- **NO DUPLICATION:** recover legitimate existing work before creating overlapping work.
-- **NO FUTURE PHASE WORK:** current-phase closure controls progression.
-- **TEST/REPAIR/RETEST:** failed required tests or exact-main regressions have priority.
-- **NO SECRET LEAKAGE:** secrets and personal data must not enter Git/logs/evidence.
-- **SERVICE ISOLATION:** endpoint/auth/secret/token configuration defaults to independent Service + Environment bindings; sharing requires an explicit Shared AuthProfile.
-- **NO FALSE FINALITY:** `VERIFIED_FINAL_COMPLETE` is forbidden until P17 exact final source, required CI, artifacts/hashes, evidence and final closure all agree.
+| P00 | CLOSED | Baseline/build/package and Planning Integrity established and preserved by later full matrices. |
+| P01 | CLOSED | Architecture, bilingual shell and runtime/browser acceptance established and preserved. |
+| P02 | CLOSED | First-run Setup plus later SQL Authentication regression repair integrated and preserved. |
+| P03 | CLOSED | Identity, MFA, session/account security, lockout/rate-limit and security-header acceptance preserved. |
+| P04 | CLOSED | RBAC, service-level Default Deny, admin/IDOR protection and last-effective `Roles.Manage` protection preserved. |
+| P05 | CLOSED | Metadata catalog/versioning/import-export and independent UAT/Production configuration preserved. |
+| P06 | CLOSED | Secret Vault/AuthProfiles/rotation/redaction/token-cache/admin acceptance preserved; cross-environment sharing is now additionally fail-closed by P17 recovery. |
+| P07 | CLOSED | Generic metadata-driven execution, auth binding, response bounds, UI and upgrade persistence acceptance preserved. |
+| P08 | CLOSED | MOJ x-api-key/token/Bearer runtime and exact scope isolation preserved; evidence is operation/environment specific. |
+| P09 | CLOSED | Five canonical MOJ services and official contract/security/UI readiness integrated; credential-bearing live UAT remains external NOT PASS where unavailable. |
+| P10 | CLOSED | Request/result history, masking, Own/Department/All scope, pagination filters and export/audit behavior preserved; print is CSP-safe. |
+| P11 | CLOSED | Append-only tamper-evident audit, retention/concurrency/monitoring/security/browser evidence preserved. |
+| P12 | CLOSED | Protected admin operations, health/diagnostics, independent environment controls and no-revision operational toggles preserved. |
+| P13 | CLOSED | Arabic RTL/English LTR, accessibility and responsive browser parity preserved; Home verifier is phase-monotonic for later candidates. |
+| P14 | CLOSED | Security/resilience hardening, IDOR/CSRF/XSS/rate-limit/timeout/retry/concurrency/dependency review preserved. |
+| P15 | CLOSED | Windows/IIS installer/package lifecycle, upgrade/repair/uninstall, state preservation, redaction and package hashing preserved. |
+| P16 | CLOSED | Full automated acceptance, backup/restore rehearsal, multi-screen bilingual UI, security/runtime and same-candidate release packaging preserved. |
+| P17 | CLOSED — CLOSURE CANDIDATE | PR #92 exact head `18bedd6891bfa7812c1da7715f504e7cc233e752` passed **43/43** governed PR workflows; normal merge produced exact implementation main `2723e85e9d63182b1384615400a20ecc8babfe83`, which passed **38/38** governed push workflows. This closure transition must itself pass exact-head CI, merge normally with expected-head protection, and produce terminal-green exact-new-main CI before P17 closure is canonical. Project-wide zero-gap sweeps continue after P17 CLOSED. |
+
+## P17 implementation/convergence record
+
+Canonical implementation/convergence PR #92 integrated owner-supplied official MOH/CSC/MOE UAT contracts and recovered project-wide cloud-actionable regressions found during final convergence. The exact accepted implementation head is `18bedd6891bfa7812c1da7715f504e7cc233e752`; its complete governed pull-request matrix finished **43/43 SUCCESS**. It was merged normally using expected-head protection, producing exact main `2723e85e9d63182b1384615400a20ecc8babfe83`; that main completed **38/38 governed push workflows SUCCESS** with no failure/queued/in-progress/null-conclusion run at terminal verification.
+
+Recovered and integrated work includes:
+
+- MOH Certificate contract no longer invents unsupported operation-level API-key transport;
+- MOE Basic authentication is constrained to exact proven HTTPS UAT operations and protected carriers fail closed outside authorized scope;
+- AuthProfile sharing rejects UAT→Production cross-environment targets while same-environment explicit sharing remains supported;
+- legacy governed workflows bind exact candidate SHA/artifact identity rather than synthetic PR merge SHAs;
+- P04/P05/P13 closed-phase verifiers are phase-monotonic instead of requiring obsolete phase labels or runtime monkey-patching;
+- P10 print export uses CSP-compatible same-origin script behavior;
+- P04 prevents removal of the final effective `Roles.Manage` grant/assignment;
+- P15 package provenance binds to actual Git HEAD and candidate identity;
+- P16 release evidence is neutral/final-candidate compatible and full acceptance runs on later P17 candidates;
+- P17 OfficialAgency/MOE persistence acceptance uses deterministic in-memory Guid ordering while preserving exact row-count/ID equality;
+- P17 acceptance is unfiltered for PR and main-push candidates so a governance-only closure cannot bypass the contract gate.
+
+## P17 exact implementation-candidate artifacts
+
+Version `0.1.2`, source `18bedd6891bfa7812c1da7715f504e7cc233e752`:
+
+- `GSIP-0.1.2-win-x64.zip` SHA-256 `8245aa3e64c22b15b1f230f556c15366b3a9dfc5b4040f590fa20ad29b9a0200`;
+- `GSIP-0.1.2-Setup-x64.exe` SHA-256 `a8101b5c8ce02e8992979727977ff704a326aaead1adff37eac7216a475c1bc8`;
+- P15 artifact id `10165281409`, archive digest `sha256:0757f55a4d9db46fca1750a4f0bacef0be45a7c06f82a716b891626361b0e40c`, 62,248,347 bytes;
+- P16 artifact id `10165407817`, archive digest `sha256:404c7101d464a0dcb5b0229b557f1e7bafa13e282c432031299a7bbb785695f3`, 62,249,003 bytes;
+- P17 artifact id `10165274081`, archive digest `sha256:c29085f6d1310b6dd4350a1fbc3c7a4457b987b17bcb52e829ee6b4577ae8e58`, 343 bytes.
+
+These hashes are accepted implementation provenance. The closure candidate and resulting closure main must generate/read back fresh same-SHA evidence; old candidate artifacts cannot substitute for the exact final integrated commit required by `docs/FINAL_ACCEPTANCE_CRITERIA.md`.
+
+## First post-implementation project-wide sweep
+
+The sweep performed from exact implementation main `2723e85e9d63182b1384615400a20ecc8babfe83` found:
+
+- exact-main governed push CI: **38/38 SUCCESS**;
+- open PRs: none after #92 merge;
+- open issues: issue #1 tracker only;
+- repository/default-main code search: no actionable `TODO`, `FIXME`, `NotImplementedException`, `Assert.Inconclusive`, explicit `Skip =`, or `Assert.Ignore` finding in the inspected scope;
+- branch review: current P17 implementation line merged; P17 ordering staging is older than canonical implementation; prior P17 placeholder-removal branch is intentionally superseded because applying it would delete legitimate owner-supplied MOH evidence; earlier worker/hotfix branches are historical integrated/superseded closed-phase lines with no current open PR/claim requiring replay;
+- releases: none; Git tag refs: none. Neither is required by final criteria when exact Actions artifact location/size/hash evidence is provided;
+- canonical governance gap identified: P17 closure documents were still OPEN and therefore this closure transition was required.
+
+This is **not** one of the two final zero-gap sweeps because the closure-governance gap existed and was repaired by this transition.
+
+## Required post-closure convergence
+
+After this closure transition is merged and exact-new-main CI is terminal green, repeat a complete LIVE project sweep. If any cloud-actionable gap exists anywhere in P00-P17 or cross-phase infrastructure, immediately repair the highest-priority gap, merge lawfully, verify exact-main CI, and restart the sweep count.
+
+Final cloud convergence requires **two consecutive full LIVE-state sweeps with zero cloud-actionable gaps** while exact-main governed CI remains terminal green. Required census includes open PRs/issues, active/stale claims, branches with unique legitimate commits, recent merges, workflow outcomes, required-test skips, production TODO/FIXME/stubs, canonical evidence, release/version/artifact SHA-256 identity, and `UNPUSHED_WORK`.
+
+## OWNER_LAST / deferred external — NOT PASS
+
+The following remain NOT PASS and are never converted to PASS by repository closure:
+
+- `DEFERRED_EXTERNAL_NOT_PASS` — authorized credential-bearing UAT smoke requiring owner-controlled credentials/approved test data.
+- `PRODUCTION_DEFERRED_EXTERNAL_NOT_PASS` — authoritative Production operation/auth/reachability/authorized test evidence unavailable; Production stays independently fail-closed.
+- `OWNER_LAST_TARGET_IIS_TLS_NOT_PASS` — actual target Windows Server/IIS/TLS/DNS/network verification needs the owner-controlled target/certificate.
+- `OWNER_LAST_SIGNING_NOT_PASS` — code signing requires owner-controlled key/certificate material outside Git.
+- `OWNER_LAST_BRANCH_PROTECTION_NOT_PASS` — latest live main read-back remains `protected=false` with required-check enforcement off; authorized admin configuration and independent read-back remain required.
+
+## Non-negotiable ledger rules
+
+- **LIVE STATE FIRST** before any execution or claim.
+- **RECOVER BEFORE CREATE** to prevent duplicate work.
+- **TEST / REPAIR / RETEST**: exact-main regressions and failed required tests outrank new work.
+- **NO SECRET LEAKAGE**: no credentials, tokens, private keys, Civil IDs, or real personal government data in Git/logs/evidence.
+- **SERVICE / ENVIRONMENT ISOLATION**: no implicit cross-service or cross-environment credential/configuration sharing and no Production→UAT fallback.
+- **NO FALSE FINALITY**: P17 CLOSED does not end project-wide convergence; `VERIFIED_FINAL_COMPLETE` is forbidden until exact final source/CI/artifacts/hashes/governance agree and two consecutive zero-gap LIVE sweeps succeed.
+- **UNPUSHED_WORK=NONE** before any stop.

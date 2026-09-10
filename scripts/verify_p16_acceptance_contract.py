@@ -50,6 +50,18 @@ p17_open_authority = (
     and "P00-P16 are formally CLOSED" in control
     and "P17" in control
 )
+p17_closure_candidate_authority = (
+    "P17 — Final convergence and release closure" in phase
+    and "Status: **CLOSURE TRANSITION CANDIDATE**" in phase
+    and "P16 is formally **CLOSED**" in phase
+    and "IMPLEMENTATION LOCKED" in phase
+    and "normally integrated" in phase
+    and "exact-new-main" in phase
+    and "| P16 | CLOSED |" in ledger
+    and "| P17 | CLOSED — CLOSURE CANDIDATE |" in ledger
+    and "P00 through P16 are **CLOSED**" in control
+    and "P17 is a **CLOSURE TRANSITION CANDIDATE**" in control
+)
 p17_closed_authority = (
     "P17 — Final convergence and release closure" in phase
     and "Status: **CLOSED**" in phase
@@ -62,8 +74,8 @@ p17_closed_authority = (
         or "P00-P17 are formally CLOSED" in control
     )
 )
-if not (p16_current_authority or p17_open_authority or p17_closed_authority):
-    raise SystemExit("Missing canonical P16 authority or governed P17 OPEN/CLOSED post-P16 authority")
+if not (p16_current_authority or p17_open_authority or p17_closure_candidate_authority or p17_closed_authority):
+    raise SystemExit("Missing canonical P16 authority or governed P17 OPEN/CLOSURE-CANDIDATE/CLOSED post-P16 authority")
 
 for text, needle, description in [
     (control, "P16", "P16 project-control boundary"),
@@ -115,5 +127,5 @@ for path in release_docs:
 print("P16_ACCEPTANCE_CONTRACT=PASS")
 print(f"P16_VERSION={current_version}")
 print("P16_SAME_CANDIDATE_RULE=ENFORCED")
-print("P16_P17_OPEN_CLOSED_AUTHORITY=SUPPORTED")
+print("P16_P17_OPEN_CLOSURE_CANDIDATE_CLOSED_AUTHORITY=SUPPORTED")
 print("P16_RELEASE_MANIFEST_FINALITY=NEUTRAL")
