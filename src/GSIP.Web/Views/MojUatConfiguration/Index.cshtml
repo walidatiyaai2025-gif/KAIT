@@ -1,0 +1,118 @@
+@using System.Globalization
+@model GSIP.Web.Models.MojUatConfigurationViewModel
+@{
+    var isRtl = CultureInfo.CurrentUICulture.TextInfo.IsRightToLeft;
+    ViewData["Title"] = isRtl ? "إعداد اختبار وزارة العدل" : "MOJ UAT Configuration";
+    var serviceName = isRtl ? Model.ServiceNameAr : Model.ServiceNameEn;
+}
+<link rel="stylesheet" href="~/css/auth-profiles.css" asp-append-version="true" />
+
+<section class="auth-admin" aria-labelledby="moj-uat-title">
+    <header class="auth-hero">
+        <div>
+            <span class="auth-kicker">MOJ · UAT · API 129</span>
+            <h1 id="moj-uat-title">@(isRtl ? "إعداد اختبار خدمة حالات الزواج" : "Marriage Cases UAT setup")</h1>
+            <p>@(isRtl ? "إعداد آمن لبيئة الاختبار باستخدام x-api-key فقط. لا يتم عرض أو تخزين المفتاح كنص صريح." : "Secure UAT setup using x-api-key only. The key is never redisplayed or stored as plaintext.")</p>
+        </div>
+        <div class="auth-security-note" role="note">
+            <span aria-hidden="true">●</span>
+            <strong>@(Model.ReadyToExecute ? (isRtl ? "جاهز للتجربة" : "Ready to test") : (isRtl ? "يحتاج إعداد" : "Setup required"))</strong>
+        </div>
+    </header>
+
+    @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+    {
+        <div class="auth-alert error" role="alert">
+            @switch (Model.ErrorMessage)
+            {
+                case "INVALID_API_KEY":
+                    <span>@(isRtl ? "أدخل API Key صالحًا (8 أحرف على الأقل) بدون أسطر جديدة." : "Enter a valid API key (minimum 8 characters) without line breaks.")</span>
+                    break;
+                case "INCOMPATIBLE_SECRET_SLOTS":
+                    <span>@(isRtl ? "الـ AuthProfile يحتوي بيانات اعتماد أخرى. تم إيقاف التحويل لحماية البيانات؛ راجع Authentication Profiles أولاً." : "The AuthProfile contains other credential slots. Conversion was stopped safely; review Authentication Profiles first.")</span>
+                    break;
+                default:
+                    <span>@(isRtl ? "فشل إعداد API Key بصورة آمنة. ظل الـ AuthProfile غير مفعّل." : "API-key configuration failed safely. The AuthProfile remains disabled.")</span>
+                    break;
+            }
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(Model.SuccessMessage))
+    {
+        <div class="auth-alert success" role="status">
+            @(Model.SuccessMessage == "UAT_DISABLED"
+                ? (isRtl ? "تم إيقاف UAT." : "UAT was disabled.")
+                : (isRtl ? "تم حفظ المفتاح وتفعيل UAT بنجاح." : "The API key was stored securely and UAT was enabled."))
+        </div>
+    }
+
+    <div class="auth-stat-grid" aria-label="@(isRtl ? "حالة UAT" : "UAT status")">
+        <article><strong>@(Model.ConfigurationActive ? "ON" : "OFF")</strong><span>UAT</span></article>
+        <article><strong>@Model.AuthenticationType</strong><span>@(isRtl ? "نوع المصادقة" : "Authentication")</span></article>
+        <article><strong>@(Model.ApiKeyConfigured ? "READY" : "MISSING")</strong><span>x-api-key</span></article>
+        <article><strong>@Model.Status</strong><span>@(isRtl ? "الحالة" : "Status")</span></article>
+    </div>
+
+    <div class="auth-workspace">
+        <section class="auth-panel create-panel" aria-labelledby="api129-config-title">
+            <div class="panel-heading">
+                <div>
+                    <h2 id="api129-config-title">@serviceName</h2>
+                    <p><code>@Model.ServiceCode</code></p>
+                </div>
+                <span class="isolation-badge isolated">UAT</span>
+            </div>
+
+            <div class="binding-ledger">
+                <div class="binding-chip"><strong>Base URL</strong><code>@Model.BaseUrl</code></div>
+                <div class="binding-chip"><strong>Path</strong><code>@Model.RelativePath</code></div>
+                <div class="binding-chip"><strong>Method</strong><code>@Model.HttpMethod</code></div>
+                <div class="binding-chip"><strong>Content-Type</strong><code>@Model.ContentType</code></div>
+            </div>
+
+            <form method="post" action="/moj-uat/api129/configure" class="auth-form" autocomplete="off">
+                @Html.AntiForgeryToken()
+                <label>
+                    x-api-key
+                    <input name="apiKey" type="password" required minlength="8" maxlength="4096" autocomplete="new-password" spellcheck="false" />
+                </label>
+                <small>@(isRtl ? "القيمة Write-only: إذا كان هناك مفتاح موجود، إدخال قيمة جديدة يعمل Rotation آمن ولا يعرض القيمة القديمة." : "Write-only value: if a key already exists, a new value performs a safe rotation and never reveals the previous value.")</small>
+                <button class="auth-button" type="submit">@(isRtl ? "حفظ المفتاح وتفعيل UAT" : "Save key and enable UAT")</button>
+            </form>
+
+            @if (Model.ReadyToExecute)
+            {
+                <p>
+                    <a class="auth-button secondary" href="/execute?entityId=@Model.EntityId&serviceId=@Model.ServiceId&environmentId=@Model.EnvironmentId">
+                        @(isRtl ? "فتح تجربة الخدمة" : "Open service test")
+                    </a>
+                </p>
+            }
+        </section>
+
+        <section class="auth-panel hierarchy-panel" aria-labelledby="uat-safety-title">
+            <div class="panel-heading">
+                <div>
+                    <h2 id="uat-safety-title">@(isRtl ? "حدود الأمان" : "Safety boundaries")</h2>
+                    <p>@(isRtl ? "إعدادات Production مستقلة ولا يتم نسخ UAT إليها." : "Production stays independent; UAT settings are never copied into it.")</p>
+                </div>
+            </div>
+            <div class="entity-stack">
+                <article class="hierarchy-entity">
+                    <header><span class="entity-code">UAT</span><h3>@(isRtl ? "المسموح الآن" : "Current allowed scope")</h3></header>
+                    <p>@(isRtl ? "POST إلى Marriage Cases مع civilId و x-api-key فقط حسب إعداد الاختبار الحالي." : "POST Marriage Cases with civilId and x-api-key only for the current test configuration.")</p>
+                </article>
+                <article class="hierarchy-entity">
+                    <header><span class="entity-code">PROD</span><h3>@(isRtl ? "مؤجل" : "Deferred")</h3></header>
+                    <p>@(isRtl ? "لا يتم تفعيل Production أو تخمين الرابط أو بيانات المصادقة. تُدخل بيانات Production الرسمية لاحقًا بصورة مستقلة." : "Production is not enabled and its URL/authentication are not inferred. Official Production details can be configured independently later.")</p>
+                </article>
+            </div>
+
+            <form method="post" action="/moj-uat/api129/disable" class="auth-form">
+                @Html.AntiForgeryToken()
+                <button class="auth-button danger-outline" type="submit">@(isRtl ? "إيقاف UAT" : "Disable UAT")</button>
+            </form>
+        </section>
+    </div>
+</section>
