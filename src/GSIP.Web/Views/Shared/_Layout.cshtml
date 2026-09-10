@@ -9,11 +9,12 @@
     var isPermissions = Context.Request.Path.StartsWithSegments("/permissions");
     var isMetadata = Context.Request.Path.StartsWithSegments("/metadata");
     var isAuthProfiles = Context.Request.Path.StartsWithSegments("/auth-profiles");
+    var isMojUat = Context.Request.Path.StartsWithSegments("/moj-uat");
     var isExecution = Context.Request.Path.StartsWithSegments("/execute");
     var isRequests = Context.Request.Path.StartsWithSegments("/requests");
     var isAudit = Context.Request.Path.StartsWithSegments("/audit");
     var isOperations = Context.Request.Path.StartsWithSegments("/operations");
-    var isHome = !isPermissions && !isMetadata && !isAuthProfiles && !isExecution && !isRequests && !isAudit && !isOperations;
+    var isHome = !isPermissions && !isMetadata && !isAuthProfiles && !isMojUat && !isExecution && !isRequests && !isAudit && !isOperations;
 }
 <!doctype html>
 <html lang="@language" dir="@direction" data-culture-name="@CultureInfo.CurrentUICulture.Name">
@@ -60,6 +61,7 @@
                 <a class="nav-item @(isMetadata ? "active" : string.Empty)" href="/metadata?culture=@CultureInfo.CurrentUICulture.Name"><span class="nav-glyph">◇</span><span>@L["Entities"]</span></a>
                 <a class="nav-item @(isExecution ? "active" : string.Empty)" href="/execute?culture=@CultureInfo.CurrentUICulture.Name"><span class="nav-glyph">▦</span><span>@L["Services"]</span></a>
                 <a class="nav-item @(isAuthProfiles ? "active" : string.Empty)" href="/auth-profiles?culture=@CultureInfo.CurrentUICulture.Name"><span class="nav-glyph">◆</span><span>@L["AuthProfiles"]</span></a>
+                <a class="nav-item @(isMojUat ? "active" : string.Empty)" href="/moj-uat?culture=@CultureInfo.CurrentUICulture.Name"><span class="nav-glyph">⚡</span><span>MOJ UAT</span></a>
                 <a class="nav-item @(isRequests ? "active" : string.Empty)" href="/requests?culture=@CultureInfo.CurrentUICulture.Name"><span class="nav-glyph">≡</span><span>@L["Requests"]</span></a>
                 <a class="nav-item @(isAudit ? "active" : string.Empty)" href="/audit?culture=@CultureInfo.CurrentUICulture.Name"><span class="nav-glyph">◴</span><span>@L["Audit"]</span></a>
                 <a class="nav-item @(isPermissions ? "active" : string.Empty)" href="/permissions?culture=@CultureInfo.CurrentUICulture.Name"><span class="nav-glyph">◈</span><span>@L["Permissions"]</span></a>
