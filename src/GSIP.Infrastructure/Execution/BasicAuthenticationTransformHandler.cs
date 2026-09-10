@@ -6,29 +6,36 @@ namespace GSIP.Infrastructure.Execution;
 
 /// <summary>
 /// Converts GSIP-internal protected credential headers into an RFC 7617 Basic
-/// Authorization header immediately before transport. The internal headers are
-/// always removed before a request can reach the network.
+/// Authorization header immediately before transport. The internal headers and
+/// Basic-required marker are always removed before a request can reach the network.
 /// </summary>
 public sealed class BasicAuthenticationTransformHandler : DelegatingHandler
 {
     public const string UsernameHeader = "X-GSIP-Basic-Username";
     public const string PasswordHeader = "X-GSIP-Basic-Password";
+    public const string RequiredMarkerHeader = "X-CAIT-Basic-Auth-Required";
 
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        var markerPresent = request.Headers.Contains(RequiredMarkerHeader);
+        var markerValid = TryReadSingle(request, RequiredMarkerHeader, out var markerValue)
+                          && string.Equals(markerValue, "1", StringComparison.Ordinal);
         var hasUsername = TryReadSingle(request, UsernameHeader, out var username);
         var hasPassword = TryReadSingle(request, PasswordHeader, out var password);
 
-        if (!hasUsername && !hasPassword)
+        if (!markerPresent && !hasUsername && !hasPassword)
             return base.SendAsync(request, cancellationToken);
 
-        // Never allow internal credential-carrier headers to escape the process.
+        // Never allow internal auth-control or credential-carrier headers to escape the process.
+        request.Headers.Remove(RequiredMarkerHeader);
         request.Headers.Remove(UsernameHeader);
         request.Headers.Remove(PasswordHeader);
 
-        if (!hasUsername || !hasPassword
+        if ((markerPresent && !markerValid)
+            || !hasUsername
+            || !hasPassword
             || request.Headers.Authorization is not null
             || !IsValidUsername(username)
             || !IsValidPassword(password))
