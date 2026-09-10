@@ -50,16 +50,16 @@ public static class DependencyInjection
         services.Configure<AdminOperationsOptions>(configuration.GetSection(AdminOperationsOptions.SectionName));
         services.AddTransient<BasicAuthenticationTransformHandler>();
         services.AddHttpClient("GSIP.Execution")
+            .ConfigurePrimaryHttpMessageHandler(() => new System.Net.Http.HttpClientHandler
+            {
+                AllowAutoRedirect = false,
+                UseCookies = false
+            })
             .AddHttpMessageHandler<BasicAuthenticationTransformHandler>()
             .RedactLoggedHeaders(new[]
             {
                 BasicAuthenticationTransformHandler.UsernameHeader,
                 BasicAuthenticationTransformHandler.PasswordHeader
-            })
-            .ConfigurePrimaryHttpMessageHandler(() => new System.Net.Http.HttpClientHandler
-            {
-                AllowAutoRedirect = false,
-                UseCookies = false
             });
         services.AddScoped<GenericServiceExecutionEngine>();
         services.AddScoped<IAuthenticationProbeService, MojAuthenticationProbeService>();
