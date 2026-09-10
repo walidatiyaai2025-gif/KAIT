@@ -29,7 +29,7 @@ $baseCss = Get-Content (Join-Path $root 'src/GSIP.Web/wwwroot/css/gsip.css') -Ra
 $baseline = Get-Content (Join-Path $root 'docs/ui-baseline/bilingual_kuwait_government_services_dashboard.svg') -Raw
 if (-not $controller.Contains('IMetadataCatalogService metadataCatalog', [System.StringComparison]::Ordinal)) { throw 'Home is not catalogue-backed.' }
 if (-not $view.Contains('data-testid="p13-home-dashboard"', [System.StringComparison]::Ordinal)) { throw 'P13 Home runtime marker is missing.' }
-if (-not $layout.Contains('<strong>P13</strong>', [System.StringComparison]::Ordinal)) { throw 'Shared shell is not marked P13.' }
+if ($layout -notmatch '<strong>P(?:1[3-7])</strong>') { throw 'Shared shell phase marker regressed below the P13 UI baseline.' }
 if (-not $p13Css.Contains(':focus-visible', [System.StringComparison]::Ordinal)) { throw 'P13 shared focus styling is missing.' }
 if (-not $baseline.Contains('Government Services Integration Portal', [System.StringComparison]::OrdinalIgnoreCase)) { throw 'Home visual baseline is unavailable.' }
 
