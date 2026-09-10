@@ -45,6 +45,7 @@ require("ReadInstallOwnership" in setup and "RequireOwnershipMatch" in setup and
 require("Install root is not empty and is not owned by GSIP" in setup and "Repair requires a valid GSIP ownership manifest" in setup, "unowned-root and repair fail-closed guards are missing")
 require("Existing IIS site is not owned" in setup and "Existing IIS application pool is not owned" in setup, "existing IIS resource ownership collision guards are missing")
 require("Uninstall requires a valid GSIP ownership manifest" in setup and "ownership manifest preserved" in setup, "destructive uninstall ownership proof or marker preservation is missing")
+require("originalManifestText" in setup and "WriteInstallManifestText" in setup and "File.Move(temporaryPath, manifestPath, overwrite: true)" in setup, "ownership manifest write/rollback is not atomic across failed maintenance")
 require("completed.protected" in runtime_db and 'Path.Combine(environment.ContentRootPath, "App_Data", "setup", "completed.protected")' in runtime_db, "protected database setup state path changed unexpectedly")
 require('Path.Combine(builder.Environment.ContentRootPath, "App_Data", "keys")' in program and "ProtectKeysWithDpapi" in program, "Data Protection key persistence/DPAPI protection is not preserved")
 require("aspnetcorev2" in setup.lower() and "Hosting Bundle" in setup, "IIS Hosting Bundle prerequisite is not enforced")
