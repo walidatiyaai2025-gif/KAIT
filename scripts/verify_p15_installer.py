@@ -67,6 +67,12 @@ require("[REDACTED]" in install_log and "authorization" in install_log.lower() a
 require("GSIP-$version-win-x64.zip" in build and "GSIP-$version-Setup-x64.exe" in build, "versioned artifact names do not match build contract")
 require("Get-FileHash" in build and "SHA256" in build and ".sha256" in build, "SHA-256 artifact evidence is missing")
 require("completed.protected" in build and "App_Data" in build and "forbiddenExtensions" in build, "package secret/state exclusion gate is missing")
+require("$sourceSha = (git rev-parse HEAD).Trim()" in build and "$env:CANDIDATE_SHA" in build and "Package source mismatch" in build,
+        "P15 package manifest is not bound to the checked-out candidate SHA")
+require("$env:GITHUB_SHA" not in build,
+        "P15 package provenance must not use GitHub's synthetic pull-request merge SHA")
+require("SourceSha = $sourceSha" in build,
+        "P15 manifest does not persist the exact checked-out source SHA")
 require("CANDIDATE_SHA" in workflow and "ref: ${{ env.CANDIDATE_SHA }}" in workflow and "git rev-parse HEAD" in workflow, "P15 workflow is not bound to exact candidate SHA")
 require("install --skip-iis" in workflow and "repair --skip-iis" in workflow and "uninstall --skip-iis" in workflow, "isolated install/repair/uninstall lifecycle acceptance is incomplete")
 require("P15_UNOWNED_ROOT_PROTECTION=PASS" in workflow and "Invoke-SetupExpectFailure" in workflow, "unowned-root destructive negative acceptance is missing")
