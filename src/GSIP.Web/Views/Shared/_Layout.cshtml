@@ -71,15 +71,7 @@
         </aside>
     }
     <main id="main-content" class="main-content @(isSetup ? "setup-main" : string.Empty)" tabindex="-1">@RenderBody()</main>
-    <script>
-        document.querySelectorAll('[data-culture]').forEach(function (button) {
-            button.addEventListener('click', function () {
-                const url = new URL(window.location.href);
-                url.searchParams.set('culture', button.dataset.culture);
-                window.location.assign(url.pathname + url.search + url.hash);
-            });
-        });
-    </script>
+    <script src="~/js/language-switch.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>
