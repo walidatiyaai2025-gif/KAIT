@@ -4,13 +4,13 @@
 
 **P14 — Security hardening and resilience**
 
-Status: **CLOSURE TRANSITION — P15 STAGED / IMPLEMENTATION LOCKED**
+Status: **OPEN / ACTIVE** — closure transition; P15 **STAGED / IMPLEMENTATION LOCKED**
 
 P13 is **CLOSED**. Its implementation PR #71 used exact implementation head `1576764a16ea6ddfed735cb0824cb38de26c83d8` and integrated to exact implementation `main` `203cc28db714fae5c2c70e85adc9cc2306bb2107`. Its closure transition PR #72 was then normally integrated at exact `main` `9f76f6593123a86c1ef999ba5ec5b7b9338a53de`, and the resulting exact-main matrix completed **32/32 push workflows SUCCESS**.
 
 P14 implementation was normally integrated by PR #73 from exact implementation head `3eca150b67663ec3e5c2d5ea918d4b75cfd9b2de` to exact implementation `main` `1f1def164d639c75d9cc26710a905cc491355a2b`. The PR head completed **37/37 governed workflows SUCCESS** before merge. The resulting exact implementation main completed **34/34 push workflows SUCCESS**, with failure=0, queued=0 and in-progress=0 at closure review.
 
-The P14 finding register contains no known cloud-actionable Critical or High vulnerability. All P14 cloud-actionable implementation work is terminal. This branch is therefore governance/evidence-only closure reconciliation; no P15 production implementation is authorized on this branch.
+The P14 finding register contains no known cloud-actionable Critical or High vulnerability. All P14 cloud-actionable implementation work is terminal. P14 nevertheless remains the sole canonical OPEN / ACTIVE phase until this closure transition is integrated and its exact-new-main CI is terminal green. This branch is governance/evidence-only closure reconciliation; no P15 production implementation is authorized on this branch.
 
 ## P14 closed implementation boundary
 
