@@ -18,8 +18,8 @@ This ledger is evidence-driven. Never mark a phase CLOSED because a prompt says 
 | P11 | CLOSED | Closed from exact integrated main `3d0a77f3f76fac37691cdd19a030932c876bd1e5`; PR #67 exact head `ae61ff7cedaf119bc6948a5b18eda811ab249b82` passed **36/36** workflows; exact integrated main passed **31/31** push workflows after P01 run `34408109285` same-SHA attempt 2 succeeded with no source/acceptance change; append-only/tamper/retention/concurrency/monitoring/security/browser evidence verified |
 | P12 | CLOSED | Closed from exact integrated main `1ed40707552f62058980b44d6cb1e7251dbeb2d4`; PR #69 exact head `f367ca78fca217e9d5c7da0a1328dca047940390` passed **35/35** workflows; exact integrated main passed **31/31** push workflows; P12 exact-main run `34413925793` SUCCESS with static/runtime artifacts; protected admin operations, health/diagnostics, no-revision ServiceId/version preservation, UAT/Production isolation, authorization/CSRF/IDOR and bilingual runtime/browser evidence verified |
 | P13 | CLOSED | Implementation PR #71 and closure transition PR #72 normally integrated; final closure-transition main `9f76f6593123a86c1ef999ba5ec5b7b9338a53de` completed **32/32** push workflows SUCCESS |
-| P14 | CLOSED FROM IMPLEMENTATION EVIDENCE / TRANSITION PENDING | PR #73 exact implementation head `3eca150b67663ec3e5c2d5ea918d4b75cfd9b2de` passed **37/37** governed workflows; exact implementation main `1f1def164d639c75d9cc26710a905cc491355a2b` passed **34/34** push workflows; no known cloud-actionable Critical/High vulnerability remains; closure transition + exact-new-main green verification still mandatory |
-| P15 | STAGED / IMPLEMENTATION LOCKED | Professional Windows/IIS installer, upgrade/repair/uninstall path, versioned artifact + SHA-256; becomes canonical only after P14 closure transition merges and resulting exact-new-main CI is terminal green |
+| P14 | CLOSED | PR #73 exact implementation head `3eca150b67663ec3e5c2d5ea918d4b75cfd9b2de` passed **37/37** governed workflows; implementation main `1f1def164d639c75d9cc26710a905cc491355a2b` passed **34/34** push workflows; closure PR #74 exact head `58022cc53c75a986cca3cb119671c213ca1fdf4d` integrated as exact main `f5dd87de7aa3f8e709d04cf8804f53c10c938633`, which passed **33/33** push workflows; no known cloud-actionable Critical/High vulnerability remains |
+| P15 | OPEN / ACTIVE | Canonical unit `P15::installer-packaging-convergence`, branch `worker/p15-installer-packaging`, PR #75; professional Windows/IIS GUI installer, HTTPS certificate selection/binding, upgrade/repair/uninstall/reinstall, state preservation, sanitized logging, versioned artifact + SHA-256; validated implementation candidate `4e811f17d707f2e1539c5dab9b40c64b6f498cc1` passed P15 run `34436171235`; final exact-head/merge/exact-main closure gates remain mandatory |
 | P16 | LOCKED | Full automated acceptance on exact release candidate including setup→login→RBAC→MOJ→history→audit→installer + UI parity + service/environment isolation |
 | P17 | LOCKED | Final convergence, exact-main regression repair, stale integration recovery, ledger/evidence reconciliation and final release closure |
 
@@ -153,23 +153,33 @@ P13 closure reconciliation PR #72 was normally integrated at exact `main` `9f76f
 
 Historical owner/external evidence remains `DEFERRED_EXTERNAL_NOT_PASS` / `PRODUCTION_DEFERRED_EXTERNAL_NOT_PASS`. Main branch protection remains `OWNER_LAST / NOT PASS`.
 
-## P14 closure transition record
+## P14 closure record
 
 P14 implementation was normally integrated through PR #73 from exact final implementation head `3eca150b67663ec3e5c2d5ea918d4b75cfd9b2de` into exact implementation `main` SHA `1f1def164d639c75d9cc26710a905cc491355a2b`.
 
-The final P14 implementation candidate completed **37/37 governed pull-request workflows SUCCESS**. The resulting exact implementation main completed **34/34 push workflows SUCCESS**, failure=0, queued=0 and in-progress=0 at closure review.
+The final P14 implementation candidate completed **37/37 governed pull-request workflows SUCCESS**. The resulting exact implementation main completed **34/34 push workflows SUCCESS**, failure=0, queued=0 and in-progress=0 at implementation closure review.
 
 P14 closes the cloud-actionable hardening scope covering restricted-session authorization bypass prevention, independent RBAC fail-closed enforcement, challenge rate limiting, anti-forgery/XSS/output-encoding checks, secure-header preservation, bounded retry/timeout/cancellation/response behavior, token-refresh concurrency safety, dependency vulnerability/deprecation review and threat-model/security-checklist evidence. The P14 register contains no known cloud-actionable Critical or High vulnerability.
 
-Detailed evidence: `docs/evidence/P14_SECURITY_HARDENING.md`.
+Governance/evidence closure PR #74 then normally integrated exact closure head `58022cc53c75a986cca3cb119671c213ca1fdf4d` into exact main `f5dd87de7aa3f8e709d04cf8804f53c10c938633`. The resulting exact-new-main gate completed **33/33 push workflows SUCCESS**, failure=0, queued=0 and in-progress=0. P14 is therefore formally CLOSED. Detailed evidence: `docs/evidence/P14_SECURITY_HARDENING.md`.
 
-This closure transition is governance/evidence-only. It must itself pass the governed PR matrix, be normally integrated, and the resulting exact-new-main SHA must complete every governed workflow terminal SUCCESS before P14 is formally CLOSED and P15 implementation is authorized.
+Historical authorized live-UAT and unproven Production evidence remain `DEFERRED_EXTERNAL_NOT_PASS` / `PRODUCTION_DEFERRED_EXTERNAL_NOT_PASS`; repository protection remains `OWNER_LAST / NOT PASS`.
 
-## P15 staged opening record
+## P15 active implementation record
 
-P15 is the next planned phase only after the P14 closure transition is normally integrated and the resulting exact-new-main gate is terminal green. Until then P15 implementation is forbidden.
+P15 became the sole canonical OPEN / ACTIVE phase only after the P14 closure transition was integrated and exact main `f5dd87de7aa3f8e709d04cf8804f53c10c938633` completed **33/33 push workflows SUCCESS**.
 
-Canonical P15 scope is the professional Windows/IIS installer and packaging boundary: install/upgrade/repair/uninstall behavior, data-preservation and rediscovery safety, production packaging, versioned artifact identity and SHA-256 evidence. P16/P17 remain locked.
+The existing canonical tracker unit is `P15::installer-packaging-convergence` on `worker/p15-installer-packaging`, PR #75, based on that exact closed-P14 main. The implementation provides a self-contained Windows GUI Setup EXE with real Next/Back/Finish wizard navigation; Windows/IIS prerequisite checks; application path, site and app-pool controls; explicit HTTP/HTTPS binding with Local Computer certificate selection; optional launch of protected First-Run Setup `/setup`; install, explicit previous-version upgrade, repair, default uninstall, reinstall and explicit purge behavior; replaceable-binary rollback; `App_Data`/Data Protection/setup-state preservation; sanitized install logging; deterministic versioned ZIP/EXE packaging and SHA-256 sidecars; and exact-candidate Windows CI.
+
+Validated pre-reconciliation implementation candidate `4e811f17d707f2e1539c5dab9b40c64b6f498cc1` passed P15 Installer and Packaging PR run `34436171235`: `P15_INSTALLER_STATIC_ACCEPTANCE=PASS checks=36`, solution/package build 0 warnings / 0 errors, clean install, explicit synthetic `0.0.9` upgrade, repair, default uninstall, reinstall, explicit purge, state preservation, sanitized log, execution-plan integrity and SHA-256 verification all PASS.
+
+Exact candidate artifacts from that run:
+
+- `GSIP-0.1.0-win-x64.zip` — SHA-256 `def9054f7a7746c04a5790f127836c17cadc35cabeb3922487fe9c8d65f69fa9`.
+- `GSIP-0.1.0-Setup-x64.exe` — SHA-256 `c9465545ade663a31fe7d83002e8a88001eb60dedcdc376f81bb60ac1db94d03`.
+- Actions artifact `10136339172` — digest `sha256:e7ddce03120177943bbfe4949fedac13462949c14858125068f38a1d6ff47867`, size 62,160,131 bytes.
+
+That SHA is implementation evidence only. The governance reconciliation commit supersedes it as the PR merge candidate. P15 remains OPEN / ACTIVE until the final exact PR head is fully green, PR #75 is normally integrated while based on current `main`, the resulting exact-new-main matrix is terminal green, exact integrated artifact/hash/source identity is recorded, and formal closure reconciliation is completed. Target-server IIS/TLS proof and owner-controlled signing are external evidence and remain NOT PASS where unavailable. P16/P17 remain locked.
 
 ## Cross-phase gates
 
