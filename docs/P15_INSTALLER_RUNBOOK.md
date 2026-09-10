@@ -2,20 +2,20 @@
 
 ## Deployment contract
 
-P15 packages GSIP `0.1.0` for `win-x64` and targets Windows Server with IIS. The setup executable is a self-contained Windows installer; the ASP.NET Core application payload is framework-dependent and requires the supported .NET 10 Hosting Bundle / `AspNetCoreModuleV2` on the target server. Microsoft SQL Server remains external and is configured through the existing protected First-Run Setup flow. The deployment installer never requests or packages database passwords, MOJ/API credentials, bearer tokens, private keys, Civil IDs or real MOJ personal data.
+P15 packages the GSIP version declared by `Directory.Build.props` (`VersionPrefix`) for `win-x64` and targets Windows Server with IIS. The setup executable is a self-contained Windows installer; the ASP.NET Core application payload is framework-dependent and requires the supported .NET 10 Hosting Bundle / `AspNetCoreModuleV2` on the target server. Microsoft SQL Server remains external and is configured through the existing protected First-Run Setup flow. The deployment installer never requests or packages database passwords, MOJ/API credentials, bearer tokens, private keys, Civil IDs or real MOJ personal data.
 
-Expected build outputs are:
+Expected build outputs for the exact candidate version are:
 
-- `GSIP-0.1.0-win-x64.zip`
-- `GSIP-0.1.0-win-x64.zip.sha256`
-- `GSIP-0.1.0-Setup-x64.exe`
-- `GSIP-0.1.0-Setup-x64.exe.sha256`
+- `GSIP-{Version}-win-x64.zip`
+- `GSIP-{Version}-win-x64.zip.sha256`
+- `GSIP-{Version}-Setup-x64.exe`
+- `GSIP-{Version}-Setup-x64.exe.sha256`
 
-`Directory.Build.props` remains the version source.
+`Directory.Build.props` remains the version source. `{Version}` in this runbook always means the exact `VersionPrefix` read from the same source SHA that produced the package; never substitute a historical phase version or rename an older artifact.
 
 ## Professional wizard
 
-Launching `GSIP-0.1.0-Setup-x64.exe` without command-line maintenance arguments opens the elevated Windows setup wizard. The wizard uses **Next/Back/Finish** navigation and presents:
+Launching `GSIP-{Version}-Setup-x64.exe` without command-line maintenance arguments opens the elevated Windows setup wizard. The wizard uses **Next/Back/Finish** navigation and presents:
 
 1. Welcome and the security boundary.
 2. Prerequisites for IIS and the .NET Hosting Bundle.
@@ -51,42 +51,42 @@ The published payload removes `App_Data` and rejects private-key file extensions
 
 ## Maintenance commands
 
-Normal users should use the graphical wizard for initial deployment. Explicit command-line actions are retained for deterministic maintenance and automated acceptance.
+Normal users should use the graphical wizard for initial deployment. Explicit command-line actions are retained for deterministic maintenance and automated acceptance. Replace `{Version}` below with the exact `Directory.Build.props` `VersionPrefix` from the source SHA whose SHA-256 evidence you are installing.
 
 Elevated HTTP installation:
 
 ```powershell
-.\GSIP-0.1.0-Setup-x64.exe install --site-name GSIP --app-pool GSIP --port 8080
+.\GSIP-{Version}-Setup-x64.exe install --site-name GSIP --app-pool GSIP --port 8080
 ```
 
-Repair uses the same setup executable, requires the matching ownership manifest, and preserves `App_Data`:
+Repair uses the same exact setup executable, requires the matching ownership manifest, and preserves `App_Data`:
 
 ```powershell
-.\GSIP-0.1.0-Setup-x64.exe repair --site-name GSIP --app-pool GSIP --port 8080
+.\GSIP-{Version}-Setup-x64.exe repair --site-name GSIP --app-pool GSIP --port 8080
 ```
 
 Default uninstall removes IIS registration and replaceable application binaries while retaining protected mutable state and the ownership marker:
 
 ```powershell
-.\GSIP-0.1.0-Setup-x64.exe uninstall --site-name GSIP --app-pool GSIP
+.\GSIP-{Version}-Setup-x64.exe uninstall --site-name GSIP --app-pool GSIP
 ```
 
 Destructive state removal is explicit and still requires matching GSIP ownership:
 
 ```powershell
-.\GSIP-0.1.0-Setup-x64.exe uninstall --site-name GSIP --app-pool GSIP --purge-state
+.\GSIP-{Version}-Setup-x64.exe uninstall --site-name GSIP --app-pool GSIP --purge-state
 ```
 
 `--install-root` may override the default `%ProgramFiles%\GSIP`. `--skip-iis` is an isolated lifecycle-acceptance mode used by CI; it bypasses only IIS mutation, not ownership checks, and is not target-server deployment evidence. `--log-path <path>` selects the sanitized setup log location for automation; otherwise the installer writes under `%ProgramData%\GSIP\InstallerLogs`.
 
 ## Upgrade and repair acceptance
 
-P15 CI performs an explicit previous-version upgrade rehearsal rather than treating repair as a synonym for upgrade. It first proves that an unowned non-empty directory cannot be installed over or purged, then performs a clean GSIP installation, writes only synthetic protected-state markers, verifies forged site/application-pool identities fail closed, changes the synthetic installed manifest version to `0.0.9`, adds a replaceable legacy file, and runs the current `0.1.0` installer again. Acceptance requires:
+P15 CI performs an explicit previous-version upgrade rehearsal rather than treating repair as a synonym for upgrade. It first proves that an unowned non-empty directory cannot be installed over or purged, then performs a clean GSIP installation, writes only synthetic protected-state markers, verifies forged site/application-pool identities fail closed, changes the synthetic installed manifest to a deliberately older synthetic version, adds a replaceable legacy file, and runs the current exact-candidate installer again. Acceptance requires:
 
 - foreign content in an unowned directory to survive rejected install and purge attempts;
 - forged ownership identity to be rejected without damaging the owned installation;
 - the replaceable legacy file to disappear;
-- the installed manifest to return to `0.1.0`;
+- the installed manifest to return to the exact candidate `{Version}`;
 - `App_Data/keys` to remain unchanged;
 - `App_Data/setup/completed.protected` to remain unchanged;
 - default uninstall to retain the GSIP ownership marker.
