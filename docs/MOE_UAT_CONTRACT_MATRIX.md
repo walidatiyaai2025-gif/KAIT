@@ -37,6 +37,8 @@ To provision a profile, create exactly these two protected secret slots:
 
 The generic execution engine resolves those values from the existing protected vault. `BasicAuthenticationTransformHandler` then removes both internal carrier headers before network transport and creates the standard `Authorization: Basic <credentials>` header in memory for the outbound request. It clears the Authorization header after the send completes. A partial/malformed Basic credential pair fails closed locally and is not sent to the provider.
 
+Automatic recognition of the owner-proven MOE operations is restricted to the exact HTTPS host/path on the default HTTPS port. A same-host request on a non-default port does not inherit the MOE Basic-auth scope and protected credential carriers are rejected before transport.
+
 No username, password, Civil ID, Authorization value, or other personal identifier is committed to source control.
 
 Production remains disabled with an empty endpoint until an authoritative Production contract is supplied.
