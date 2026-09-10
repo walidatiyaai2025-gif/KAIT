@@ -1,16 +1,25 @@
 # P14 Security Hardening and Resilience Evidence
 
-Status: **OPEN-PHASE CANDIDATE — NOT P14 CLOSURE**
+Status: **CLOSED FROM IMPLEMENTATION EVIDENCE / CLOSURE TRANSITION PENDING**
 
-Canonical unit: `P14::security-hardening-resilience-convergence`  
-Canonical branch: `worker/p14-security-hardening-resilience`  
-Opening base: exact `main` `9f76f6593123a86c1ef999ba5ec5b7b9338a53de`, after P13 closure PR #72 and **32/32 exact-main push workflows SUCCESS**.
+Canonical implementation unit: `P14::security-hardening-resilience-convergence`  
+Canonical implementation branch: `worker/p14-security-hardening-resilience`  
+Closure reconciliation branch: `worker/p14-closure-reconciliation`  
+Opening base: exact `main` `9f76f6593123a86c1ef999ba5ec5b7b9338a53de`, after P13 closure PR #72 and **32/32 exact-main push workflows SUCCESS**.  
+Final P14 implementation head: `3eca150b67663ec3e5c2d5ea918d4b75cfd9b2de`.  
+Integrated P14 implementation main: `1f1def164d639c75d9cc26710a905cc491355a2b`.
+
+## Closure decision
+
+P14 cloud-actionable implementation is terminal. PR #73 normally integrated the final P14 implementation candidate after the exact head `3eca150b67663ec3e5c2d5ea918d4b75cfd9b2de` completed **37/37 governed pull-request workflows SUCCESS**. The resulting exact implementation `main` SHA `1f1def164d639c75d9cc26710a905cc491355a2b` completed **34/34 push workflows SUCCESS**, with failure=0, queued=0 and in-progress=0 at closure review.
+
+No known cloud-actionable Critical or High vulnerability remains in the P14 finding register. The closure review therefore permits a governance/evidence-only P14 closure transition. P15 is only **STAGED** by that transition; P15 implementation is forbidden until the closure transition is normally integrated and every governed workflow on the resulting exact-new-main SHA is terminal SUCCESS.
 
 ## High-priority finding and repair
 
 The P14 audit found that restricted MFA / forced-password sessions are represented by an authenticated ASP.NET Core Identity principal. Before P14, the normal shell redirected restricted sessions, but the boundary was not enforced centrally for every controller and the RBAC evaluator did not independently reject the restriction claim. A restricted principal therefore had an unsafe path to authorization evaluation outside the shell flow.
 
-The candidate repairs that boundary with defense in depth:
+The integrated implementation repairs that boundary with defense in depth:
 
 - `RestrictedSessionBoundaryMiddleware` runs after authentication and before authorization;
 - a restricted principal can reach only its exact `/mfa/enroll`, `/mfa/verify`, or `/password/change` challenge plus `/logout`;
@@ -35,9 +44,9 @@ The candidate repairs that boundary with defense in depth:
 9. token-cache single-flight refresh and caller-cancellation isolation;
 10. CSP/script/framing hardening preservation.
 
-`.github/workflows/p14-security-hardening.yml` runs the exact-candidate acceptance and also captures an exact NuGet dependency graph. `scripts/verify_p14_dependency_audit.py` fails the gate if `dotnet list ... --vulnerable --include-transitive --format json` reports any known vulnerable package. A deprecated-package report is retained for review; it is evidence, not an automatic claim that all deprecated packages are exploitable.
+`.github/workflows/p14-security-hardening.yml` binds acceptance to the exact candidate and captures an exact NuGet dependency graph. `scripts/verify_p14_dependency_audit.py` fails the gate if `dotnet list ... --vulnerable --include-transitive --format json` reports a known vulnerable package. Deprecated-package reporting is retained for review and is not treated as proof of exploitability.
 
-## Threat model (current P14 scope)
+## Threat model (closed P14 scope)
 
 ### Protected assets
 
@@ -63,7 +72,7 @@ The candidate repairs that boundary with defense in depth:
 - cross-service/environment token reuse and concurrent refresh races;
 - dangerous dynamic input/regex behavior;
 - vulnerable/deprecated dependencies and unsafe package drift;
-- unsafe installer/deployment behavior (future P15/P16 ownership; not claimed by P14).
+- unsafe installer/deployment behavior (P15/P16 ownership; not claimed by P14).
 
 ### Trust boundaries
 
@@ -78,14 +87,19 @@ Browser -> ASP.NET Core pipeline -> authorization/RBAC -> application services -
 - [x] Existing secure headers/CSP baseline is preserved and checked.
 - [x] Existing execution retries are capped at three and Retry-After is capped at two seconds; cancellation/timeout and response-size controls are checked.
 - [x] Existing token cache single-flight/caller-cancellation safety is checked.
-- [ ] Exact-candidate P14 workflow must become terminal green.
-- [ ] NuGet vulnerable/deprecated reports must be reviewed from exact-candidate artifacts; known Critical/High vulnerabilities must be zero before closure.
-- [ ] Full governed regression matrix must be terminal green on one exact final P14 head.
-- [ ] Exact-new-main regression matrix must be terminal green after normal integration.
-- [ ] Final P14 governance/ledger reconciliation must be integrated before P15 may open.
+- [x] Exact P14 implementation head completed 37/37 governed workflows SUCCESS.
+- [x] NuGet vulnerable/deprecated reports were reviewed from exact-candidate evidence; no known cloud-actionable Critical/High vulnerability remains.
+- [x] Full governed regression matrix was terminal green on the exact final P14 implementation head.
+- [x] Exact implementation main `1f1def164d639c75d9cc26710a905cc491355a2b` completed 34/34 push workflows SUCCESS.
+- [x] All P14 cloud-actionable implementation tasks are terminal.
+- [ ] P14 closure-transition head must complete its governed PR matrix SUCCESS.
+- [ ] The closure transition must be normally integrated.
+- [ ] Every governed workflow on the resulting exact-new-main SHA must be terminal SUCCESS before P15 implementation is authorized.
 
 ## Preserved deferred boundaries
 
-P09 authorized live UAT remains `DEFERRED_EXTERNAL_NOT_PASS`. Production MOJ operation proof remains `PRODUCTION_DEFERRED_EXTERNAL_NOT_PASS`. Main branch protection/rulesets remain `OWNER_LAST / NOT PASS` until an authorized repository administrator applies and independently reads back the required policy. None of these are converted to PASS by this P14 candidate.
+P09 authorized live UAT remains `DEFERRED_EXTERNAL_NOT_PASS`. Production MOJ operation proof remains `PRODUCTION_DEFERRED_EXTERNAL_NOT_PASS`. Main branch protection/rulesets remain `OWNER_LAST / NOT PASS` until an authorized repository administrator applies and independently reads back the required policy. None of these are converted to PASS by P14 closure.
 
-P15–P17 remain locked.
+## P14 -> P15 transition rule
+
+This artifact records terminal P14 implementation evidence and authorizes only the closure transition. P15 remains staged/implementation-locked until this closure transition is normally merged and exact-new-main CI is terminal green. After that verification, P14 is formally CLOSED and P15 may become the sole canonical implementation phase.
