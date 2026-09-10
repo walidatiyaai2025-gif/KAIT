@@ -6,7 +6,7 @@
 - Repository: `walidatiyaai2025-gif/KAIT`
 - Default branch: `main`
 - Delivery model: phase-gated autonomous implementation
-- Current planned product state: P00-P15 are formally CLOSED from exact integrated evidence. P16 cloud-actionable implementation and its superseding 0.1.2 exact-main regression recovery are terminal from exact repository evidence. P16 is now in a governance/evidence-only **CLOSURE TRANSITION CANDIDATE** on `worker/p16-closure-reconciliation`. P17 remains **STAGED / IMPLEMENTATION LOCKED** until that reconciliation PR itself passes every governed exact-head check, integrates normally, and the resulting exact-new-main governed CI is terminal green.
+- Current planned product state: P00-P16 are formally CLOSED from exact integrated evidence. P16 closure reconciliation PR #86 exact head `eeb03879d4b31b04bf333c8b5d021983ace8afe9` passed **39/39 governed pull-request workflows SUCCESS**, normally integrated as exact `main` `18efd6c71a35505105d44df673d1d75fde293a2e`, and that resulting exact-new-main completed **36/36 governed push workflows SUCCESS**. P17 is therefore the sole canonical **OPEN / READY** phase for final convergence and release closure.
 - Initial executable version: `0.1.0`
 - Pinned SDK / target framework: .NET SDK `10.0.400` / `net10.0`
 - Initial entity: Ministry of Justice (MOJ), Kuwait
@@ -25,6 +25,8 @@ P14 closed evidence covers restricted-session authorization repair, independent 
 P15 is formally **CLOSED**. Final implementation PR #75 head `1c1af59fac0489d645e5323a9c6c97f8a76bc5a7` completed **37/37 governed pull-request workflows SUCCESS** and was normally integrated as exact implementation `main` `d60318da5b19d06df20864083f5a4a78b9792e88`. That exact integrated main completed **34/34 governed push workflows SUCCESS**. Exact-main P15 run `34440072557` completed 45 static installer checks, package/lifecycle acceptance, ownership/destructive-operation negatives, maintenance-state preservation, sanitized logging, execution-plan validation and SHA-256 verification. Closure-transition PR #77 exact head `7ad7f07b760f3102bd2776cdfe4e35d2fb427765` completed **37/37 governed pull-request workflows SUCCESS**, normally integrated as exact closure main `48267786e9f0d21934dee339eed32688b6e2d488`, and that exact-new-main completed **34/34 governed push workflows SUCCESS**, failure=0, queued=0 and in-progress=0.
 
 Exact integrated P15 ZIP SHA-256 is `5c25b2df2970d2a52ce570ae1419630b8b22c244b092cea38516975e2ec86e4b`; Setup EXE SHA-256 is `971dfe4a50ce7c8a834bc20ec18c5ed490881808a4a5b9e037cf38fb1e044c03`; artifact `10137632143` has archive digest `sha256:20aea809e37f4ca716ebe6b6b0c587cbbf80f5224e93d890ec18835c1d6a6846`.
+
+P16 is formally **CLOSED**. Canonical closure PR #86 final exact head `eeb03879d4b31b04bf333c8b5d021983ace8afe9` completed **39/39 governed pull-request workflows SUCCESS**. It normally integrated as exact closure main `18efd6c71a35505105d44df673d1d75fde293a2e`, and that exact-new-main completed **36/36 governed push workflows SUCCESS**, failure=0, queued=0 and in-progress=0. The accepted same-candidate release identity remains version `0.1.2`, with `GSIP-0.1.2-win-x64.zip` SHA-256 `b4971d31b11f3c1c6a6afba9026afd6865b7c006063eb59ffbdc9e2182efd426` and `GSIP-0.1.2-Setup-x64.exe` SHA-256 `7a5de1c18bf9b84bd052d855d089f51ffdae175d40c872b574a68892fba99ff0`.
 
 Historical P08/P09 owner/external classifications remain unchanged. Evidence proven for UAT is not promoted to Production. `DEFERRED_EXTERNAL_NOT_PASS` and `PRODUCTION_DEFERRED_EXTERNAL_NOT_PASS` remain NOT PASS and Production→UAT fallback is forbidden. Target-server/certificate/signing evidence remains owner/external NOT PASS where unavailable. Main branch protection remains `OWNER_LAST / NOT PASS` while live read-back reports `protected=false` and required status-check enforcement off.
 
@@ -48,13 +50,11 @@ No old prompt, screenshot caption, branch description, stale ledger or supersede
 ## Phase policy
 
 - Exactly one canonical current phase exists at a time.
-- P00 through P15 are CLOSED from integrated evidence.
-- P16 is the sole canonical phase in **CLOSURE TRANSITION CANDIDATE** state through `P16::closure-reconciliation`, branch `worker/p16-closure-reconciliation`.
-- P17 remains **STAGED / IMPLEMENTATION LOCKED** until the P16 reconciliation PR final exact head passes every governed workflow, the PR normally integrates from exact current main, and every governed workflow on the resulting exact-new-main is terminal SUCCESS.
+- P00 through P16 are CLOSED from integrated evidence.
+- P17 is the sole canonical **OPEN / READY** phase for final convergence and release closure.
+- P17 may claim final completion only when exact final source, required CI, artifacts/hashes, evidence, UI parity, security, installer/setup validation and governance all agree on the same candidate, while external/owner-only items remain accurately classified rather than promoted to PASS.
 - Phase exit requires implementation/acceptance + tests + evidence + documentation reconciliation + pushed commit + required CI + exact-main recheck.
 - Integration recovery and exact-main regressions take priority over new feature or acceptance work.
-- A phase-transition branch does not authorize future-phase implementation until that transition is integrated and the resulting exact-new-main gate is green.
-- Legitimate future-phase recovery work may repair a known real defect only under the explicit owner non-stop exception; it remains DO NOT MERGE and does not change canonical phase authority.
 - Deferred external evidence remains explicitly deferred and must never be converted to PASS without real evidence.
 - Evidence proven for one environment or operation must not be promoted to another environment or operation without official support.
 
@@ -155,26 +155,30 @@ Formal closure unit `P15::closure-reconciliation` used `worker/p15-closure-recon
 
 Target-server Windows/IIS deployment proof, owner-approved Production certificate selection, Production DNS/network/proxy/firewall behavior, owner-controlled signing and previously deferred live MOJ evidence remain external/owner-only and are NOT PASS where unavailable. They are not converted to cloud PASS by P15 closure evidence.
 
-## P16 full automated acceptance boundary
+## P16 full automated acceptance closed boundary
 
-P16 cloud-actionable implementation and the superseding 0.1.2 regression recovery are terminal from exact integrated evidence. P16 is in **CLOSURE TRANSITION CANDIDATE** state on the canonical `worker/p16-closure-reconciliation` line; P17 remains locked until this governance/evidence-only transition itself is integrated and its resulting exact-new-main gate is green.
+P16 is formally **CLOSED** from exact integrated 0.1.2 evidence. Canonical implementation unit `P16::full-acceptance-release-candidate` used branch `worker/p16-full-acceptance-continuation`, PR #80. Final implementation head `e655dc4d0effb4f962d3e97e4a0230471238ba55` completed **38/38 governed pull-request workflows SUCCESS** and integrated as exact implementation main `75ef2f322a53f1e2ed0bfdf8fa3e4ccece5edd85`, which completed **35/35 governed push workflows SUCCESS**.
 
-Canonical P16 implementation unit `P16::full-acceptance-release-candidate` used branch `worker/p16-full-acceptance-continuation`, PR #80. Final implementation head `e655dc4d0effb4f962d3e97e4a0230471238ba55` completed **38/38 governed pull-request workflows SUCCESS** and integrated as exact implementation main `75ef2f322a53f1e2ed0bfdf8fa3e4ccece5edd85`, which completed **35/35 governed push workflows SUCCESS**.
+The later API129 UAT authentication regression was recovered by PR #85. Its exact corrected head `0e767d4f355e403b70602a7645cd7ffba25b3b43` completed **40/40 governed pull-request workflows SUCCESS** and normally integrated as exact main `8863b4b8151ebb08e98fdb225ea5418c5297eb5c`. That exact main completed **36/36 governed push workflows SUCCESS** and exact-main P16 run `34456867989` completed `static-contract`, `release-candidate-package`, `runtime-ui-recovery`, and aggregate `p16-gate` SUCCESS.
 
-The later API129 UAT authentication regression was finally recovered by PR #85. Its exact corrected head `0e767d4f355e403b70602a7645cd7ffba25b3b43` completed **40/40 governed pull-request workflows SUCCESS** and was normally integrated as exact main `8863b4b8151ebb08e98fdb225ea5418c5297eb5c`. That exact main completed **36/36 governed push workflows SUCCESS**, with failure=0, queued=0 and in-progress=0 at terminal verification. Exact-main P16 run `34456867989` completed `static-contract`, `release-candidate-package`, `runtime-ui-recovery`, and aggregate `p16-gate` SUCCESS on that same SHA.
+The accepted 0.1.2 API129 UAT contract remains exact-scope `x-api-key + username + password` -> `/genToken` -> transient Bearer from response `data` -> target request carrying the same API key plus Bearer. Optional empty-credential placeholders and broad cross-service MOJ authentication convergence remain removed. P04 Default Deny remains authoritative, including per-service permissions. Production remains independent and fail-closed; no UAT credential/endpoint fallback is permitted.
 
-The accepted 0.1.2 API129 UAT contract is exact-scope `x-api-key + username + password` -> `/genToken` -> transient Bearer from response `data` -> target request carrying the same API key plus Bearer. Optional empty-credential placeholders and broad cross-service MOJ authentication convergence are removed. P04 Default Deny remains authoritative, including per-service permissions. Production remains independent and fail-closed; no UAT credential/endpoint fallback is permitted.
+P16 closure reconciliation used canonical branch `worker/p16-closure-reconciliation`, PR #86. Final exact closure head `eeb03879d4b31b04bf333c8b5d021983ace8afe9` passed **39/39 governed pull-request workflows SUCCESS**. PR #86 normally integrated as exact main `18efd6c71a35505105d44df673d1d75fde293a2e`, and that exact-new-main completed **36/36 governed push workflows SUCCESS**, with failure=0, queued=0 and in-progress=0. Issue #1 records this transition evidence and all deferred boundaries. P16 is therefore formally CLOSED and P17 is legally OPEN / READY.
 
-Current same-SHA P16 closure candidate is version `0.1.2`:
+Accepted same-candidate release identity remains version `0.1.2`:
 
 - `GSIP-0.1.2-win-x64.zip` — SHA-256 `b4971d31b11f3c1c6a6afba9026afd6865b7c006063eb59ffbdc9e2182efd426`;
 - `GSIP-0.1.2-Setup-x64.exe` — SHA-256 `7a5de1c18bf9b84bd052d855d089f51ffdae175d40c872b574a68892fba99ff0`;
 - release-candidate artifact `10143946003`, digest `sha256:b7c8f175b1669323917bbfa6b557076ce8b2d2c611af7009b13f83e4282429d6`, size 62,185,768 bytes;
 - runtime/UI artifact `10144204144`, digest `sha256:4b5564603f8c00c5d07357dd206647f0f4dabfa5b04cd8fcc931bc1ab5a4965d`, size 3,482,259 bytes.
 
-Earlier 0.1.0/0.1.1 P16 release identities remain historical provenance only. They must not substitute for the exact 0.1.2 closure candidate above.
+Earlier 0.1.0/0.1.1 P16 release identities remain historical provenance only and must not substitute for the accepted 0.1.2 candidate.
 
-Canonical closure unit is `P16::closure-reconciliation`, branch `worker/p16-closure-reconciliation`. Before P16 may be recorded formally CLOSED and P17 opened, the reconciliation PR final exact head must pass every governed pull-request workflow, normally integrate from exact current main, and every governed workflow on the resulting exact-new-main must be terminal SUCCESS. Historical/external UAT, unproven Production, target-server/certificate/signing and branch-protection evidence remains NOT PASS where unavailable.
+## P17 final convergence boundary
+
+P17 is the sole canonical **OPEN / READY** phase. Its scope is final convergence from live repository evidence: recover legitimate in-progress/stale work, repair exact-main regressions, ensure all P00-P16 closed contracts remain present on the exact final candidate, reconcile UI parity and security evidence, bind installer/package/hashes to the exact final candidate, and produce the final handoff required by `docs/FINAL_ACCEPTANCE_CRITERIA.md`.
+
+P17 must not fabricate owner-only/external evidence. Authorized live MOJ UAT, unproven Production operations, target Windows Server/IIS/certificate/network/performance/signing evidence, and branch-protection enforcement remain NOT PASS where unavailable. `VERIFIED_FINAL_COMPLETE` is legal only if all cloud-actionable final criteria pass on one exact final integrated commit and those remaining external boundaries are stated precisely.
 
 ## Service environment / Go-Live control
 
@@ -184,7 +188,7 @@ Every service owns independent UAT/Production bindings by default. Follow `docs/
 
 No live secrets or real personal data are allowed in Git. All sensitive runtime values must be stored through the approved configuration/secret-vault design and redacted from logs/audit/evidence.
 
-Repository administration is a separate acceptance boundary: live P16 reconciliation read-back shows `main` with `protected=false` and required status-check enforcement off. This remains `OWNER_LAST / NOT PASS` until an authorized administrator applies the required policy and independent read-back proves it.
+Repository administration is a separate acceptance boundary: latest live read-back shows `main` with `protected=false` and required status-check enforcement off. This remains `OWNER_LAST / NOT PASS` until an authorized administrator applies the required policy and independent read-back proves it.
 
 ## UI control
 
@@ -192,4 +196,4 @@ Repository administration is a separate acceptance boundary: live P16 reconcilia
 
 ## Release control
 
-A release candidate is valid only when source, tests, evidence, installer/package, hashes and CI all refer to the same exact commit. P17 is the only phase allowed to make a final-completion claim. `VERIFIED_FINAL_COMPLETE` is forbidden before actual P17 exact final evidence exists.
+A release candidate is valid only when source, tests, evidence, installer/package, hashes and CI all refer to the same exact commit. P17 is the only phase allowed to make a final-completion claim. `VERIFIED_FINAL_COMPLETE` is forbidden until actual P17 exact final evidence exists.
