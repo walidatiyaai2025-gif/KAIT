@@ -14,10 +14,21 @@ jobs:
   setup-wizard-acceptance:
     runs-on: windows-latest
     timeout-minutes: 25
+    env:
+      CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
     steps:
-      - name: Checkout
+      - name: Checkout exact candidate
         uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          fetch-depth: 0
+
+      - name: Assert exact candidate SHA
+        shell: pwsh
+        run: |
+          $actual = (git rev-parse HEAD).Trim()
+          if ($actual -ne $env:CANDIDATE_SHA) { throw "Exact candidate mismatch: expected=$env:CANDIDATE_SHA actual=$actual" }
 
       - name: Setup pinned .NET SDK
         uses: actions/setup-dotnet@v4
@@ -56,7 +67,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: P02-Setup-Evidence-${{ github.sha }}
+          name: P02-Setup-Evidence-${{ env.CANDIDATE_SHA }}
           path: artifacts/p02-setup/
           if-no-files-found: error
           retention-days: 30
@@ -64,10 +75,19 @@ jobs:
   sql-authentication-acceptance:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
     steps:
-      - name: Checkout
+      - name: Checkout exact candidate
         uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          fetch-depth: 0
+
+      - name: Assert exact candidate SHA
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
 
       - name: Setup pinned .NET SDK
         uses: actions/setup-dotnet@v4

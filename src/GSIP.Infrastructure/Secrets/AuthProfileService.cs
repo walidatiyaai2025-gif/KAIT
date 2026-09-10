@@ -122,6 +122,8 @@ public sealed class AuthProfileService(
         var profile = await LoadProfileAsync(command.AuthProfileId, asTracking: true, cancellationToken);
         if (!profile.IsEnabled)
             throw new InvalidOperationException("A disabled AuthProfile cannot be shared.");
+        if (profile.OwnerEnvironmentId != command.TargetEnvironmentId)
+            throw new InvalidOperationException("AuthProfile sharing cannot cross environment boundaries.");
         if (profile.OwnerServiceId == command.TargetServiceId && profile.OwnerEnvironmentId == command.TargetEnvironmentId)
             throw new InvalidOperationException("The owner binding already exists and is not a shared binding.");
 

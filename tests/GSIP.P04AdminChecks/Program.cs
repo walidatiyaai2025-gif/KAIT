@@ -46,6 +46,20 @@ try
 
     var controller = new PermissionsController(db, roleManager);
 
+    var lastManagerGrantRemoval = await controller.SetRolePermission(
+        systemAdminRoleId,
+        GsipPermissions.RolesManage,
+        false,
+        adminOne.Id,
+        "en",
+        CancellationToken.None);
+    Assert(lastManagerGrantRemoval is BadRequestObjectResult,
+        "Removing the final effective Roles.Manage grant must be rejected.");
+    Assert(await db.RolePermissions.AnyAsync(row => row.RoleId == systemAdminRoleId
+            && row.PermissionKey == GsipPermissions.RolesManage
+            && row.IsAllowed),
+        "Last-manager grant protection modified the protected Roles.Manage grant.");
+
     var createResult = await controller.CreateRole("  Synthetic Analyst  ", regular.Id, "en", CancellationToken.None);
     Assert(createResult is RedirectToActionResult, "Creating a valid role must redirect back to the dashboard.");
     var customRole = await db.Roles.SingleAsync(role => role.Name == "Synthetic Analyst");
@@ -85,6 +99,24 @@ try
     Assert(await db.UserRoles.CountAsync(row => row.UserId == regular.Id && row.RoleId == customRole.Id) == 1,
         "Idempotent role assignment created a duplicate UserRole row.");
 
+    Assert(await controller.SetRolePermission(customRole.Id, GsipPermissions.RolesManage, true, regular.Id, "en", CancellationToken.None)
+        is RedirectToActionResult,
+        "Granting Roles.Manage to a second enabled manager role must succeed.");
+    Assert(await controller.SetRolePermission(systemAdminRoleId, GsipPermissions.RolesManage, false, adminOne.Id, "en", CancellationToken.None)
+        is RedirectToActionResult,
+        "Removing Roles.Manage from one role must succeed when another enabled manager remains.");
+    var lastManagerAssignmentRemoval = await controller.SetUserRole(regular.Id, customRole.Id, false, "en", CancellationToken.None);
+    Assert(lastManagerAssignmentRemoval is BadRequestObjectResult,
+        "Removing the final effective Roles.Manage role assignment must be rejected.");
+    Assert(await db.UserRoles.AnyAsync(row => row.UserId == regular.Id && row.RoleId == customRole.Id),
+        "Last-manager assignment protection removed the protected role assignment.");
+    Assert(await controller.SetRolePermission(systemAdminRoleId, GsipPermissions.RolesManage, true, adminOne.Id, "en", CancellationToken.None)
+        is RedirectToActionResult,
+        "Restoring the System Administrator Roles.Manage grant must succeed.");
+    Assert(await controller.SetRolePermission(customRole.Id, GsipPermissions.RolesManage, false, regular.Id, "en", CancellationToken.None)
+        is RedirectToActionResult,
+        "Removing a secondary Roles.Manage grant must succeed when another enabled manager remains.");
+
     Assert(await controller.SetUserRole(Guid.NewGuid(), customRole.Id, true, "en", CancellationToken.None) is NotFoundResult,
         "Forged/unknown user IDs must be rejected.");
     Assert(await controller.SetUserRole(regular.Id, Guid.NewGuid(), true, "en", CancellationToken.None) is NotFoundResult,
@@ -119,7 +151,7 @@ try
     Assert(model.SelectedUser?.Id == regular.Id, "Selected user identity was not preserved by the dashboard.");
 
     Console.WriteLine("P04 admin and IDOR gate PASS.");
-    Console.WriteLine("role_create_default_deny=PASS; seed_role_edit=PASS; user_role_assign_remove=PASS; forged_ids=DENY; last_admin_lockout=DENY; pending_approvals_truthful_zero=PASS");
+    Console.WriteLine("role_create_default_deny=PASS; seed_role_edit=PASS; user_role_assign_remove=PASS; forged_ids=DENY; last_admin_lockout=DENY; last_roles_manager_lockout=DENY; pending_approvals_truthful_zero=PASS");
 }
 finally
 {

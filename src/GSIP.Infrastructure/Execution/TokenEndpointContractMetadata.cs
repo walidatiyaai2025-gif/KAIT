@@ -12,6 +12,7 @@ internal sealed record TokenEndpointContractMetadata(
     string UsernameField,
     string PasswordField,
     string? GehaField,
+    string GehaValueType,
     int? DocumentedTtlSeconds,
     bool ApiKeyRequired)
 {
@@ -21,6 +22,7 @@ internal sealed record TokenEndpointContractMetadata(
     public const string UsernameFieldKey = "X-GSIP-TokenUsernameField";
     public const string PasswordFieldKey = "X-GSIP-TokenPasswordField";
     public const string GehaFieldKey = "X-GSIP-TokenGehaField";
+    public const string GehaValueTypeKey = "X-GSIP-TokenGehaValueType";
     public const string DocumentedTtlSecondsKey = "X-GSIP-TokenDocumentedTtlSeconds";
     public const string ApiKeyRequiredKey = "X-GSIP-TokenApiKeyRequired";
     public const string ApiKeySecretName = "x-api-key";
@@ -35,6 +37,7 @@ internal sealed record TokenEndpointContractMetadata(
         UsernameFieldKey,
         PasswordFieldKey,
         GehaFieldKey,
+        GehaValueTypeKey,
         DocumentedTtlSecondsKey,
         ApiKeyRequiredKey
     };
@@ -68,10 +71,16 @@ internal sealed record TokenEndpointContractMetadata(
             var usernameField = OptionalString(document.RootElement, UsernameFieldKey) ?? "username";
             var passwordField = OptionalString(document.RootElement, PasswordFieldKey) ?? "password";
             var gehaField = OptionalString(document.RootElement, GehaFieldKey);
+            var gehaValueType = OptionalString(document.RootElement, GehaValueTypeKey) ?? "string";
             ValidateWireName(responsePath);
             ValidateWireName(usernameField);
             ValidateWireName(passwordField);
             if (gehaField is not null) ValidateWireName(gehaField);
+            if (gehaField is null && document.RootElement.TryGetProperty(GehaValueTypeKey, out _))
+                throw new InvalidOperationException("Token endpoint metadata is invalid.");
+            if (!string.Equals(gehaValueType, "string", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(gehaValueType, "integer", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Token endpoint metadata is invalid.");
 
             int? ttl = null;
             if (document.RootElement.TryGetProperty(DocumentedTtlSecondsKey, out var ttlElement))
@@ -93,7 +102,7 @@ internal sealed record TokenEndpointContractMetadata(
                 };
             }
 
-            return new TokenEndpointContractMetadata(path, contentType, responsePath, usernameField, passwordField, gehaField, ttl, apiKeyRequired);
+            return new TokenEndpointContractMetadata(path, contentType, responsePath, usernameField, passwordField, gehaField, gehaValueType, ttl, apiKeyRequired);
         }
         catch (JsonException exception)
         {
@@ -103,7 +112,22 @@ internal sealed record TokenEndpointContractMetadata(
 
     public HttpContent BuildRequestContent(string username, string password, string? geha)
     {
-        var values = new Dictionary<string, string>(StringComparer.Ordinal)
+        if (string.Equals(RequestContentType, "application/json", StringComparison.OrdinalIgnoreCase))
+        {
+            var values = new Dictionary<string, object?>(StringComparer.Ordinal)
+            {
+                [UsernameField] = username,
+                [PasswordField] = password
+            };
+            if (GehaField is not null)
+                values[GehaField] = ParseGehaJsonValue(geha);
+
+            var content = new StringContent(JsonSerializer.Serialize(values), Encoding.UTF8, "application/json");
+            content.Headers.ContentType = MediaTypeHeaderValue.Parse(RequestContentType);
+            return content;
+        }
+
+        var formValues = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             [UsernameField] = username,
             [PasswordField] = password
@@ -112,17 +136,12 @@ internal sealed record TokenEndpointContractMetadata(
         {
             if (string.IsNullOrWhiteSpace(geha))
                 throw new InvalidOperationException("Token endpoint credential metadata is incomplete.");
-            values[GehaField] = geha;
+            if (string.Equals(GehaValueType, "integer", StringComparison.OrdinalIgnoreCase)
+                && !long.TryParse(geha, NumberStyles.Integer, CultureInfo.InvariantCulture, out _))
+                throw new InvalidOperationException("Token endpoint credential metadata is incomplete.");
+            formValues[GehaField] = geha;
         }
-
-        if (string.Equals(RequestContentType, "application/json", StringComparison.OrdinalIgnoreCase))
-        {
-            var content = new StringContent(JsonSerializer.Serialize(values), Encoding.UTF8, "application/json");
-            content.Headers.ContentType = MediaTypeHeaderValue.Parse(RequestContentType);
-            return content;
-        }
-
-        return new FormUrlEncodedContent(values);
+        return new FormUrlEncodedContent(formValues);
     }
 
     public string ResolveToken(JsonElement root)
@@ -170,6 +189,7 @@ internal sealed record TokenEndpointContractMetadata(
         if (GehaField is not null)
         {
             result["token-geha-field"] = GehaField;
+            result["token-geha-value-type"] = GehaValueType;
             result["geha-generation"] = gehaGeneration?.ToString(CultureInfo.InvariantCulture);
         }
         if (apiKeyGeneration is int apiGeneration)
@@ -178,6 +198,19 @@ internal sealed record TokenEndpointContractMetadata(
             result["api-key-generation"] = apiGeneration.ToString(CultureInfo.InvariantCulture);
         }
         return result;
+    }
+
+    private object ParseGehaJsonValue(string? geha)
+    {
+        if (string.IsNullOrWhiteSpace(geha))
+            throw new InvalidOperationException("Token endpoint credential metadata is incomplete.");
+        if (string.Equals(GehaValueType, "integer", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!long.TryParse(geha, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value))
+                throw new InvalidOperationException("Token endpoint credential metadata is incomplete.");
+            return value;
+        }
+        return geha;
     }
 
     private static string RequiredString(JsonElement root, string name) => OptionalString(root, name)

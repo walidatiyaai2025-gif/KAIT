@@ -3,6 +3,11 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $artifactDir = Join-Path $root 'artifacts/p05-evidence'
 New-Item -ItemType Directory -Path $artifactDir -Force | Out-Null
+$candidateSha = (git -C $root rev-parse HEAD).Trim()
+if ([string]::IsNullOrWhiteSpace($candidateSha)) { throw 'Could not resolve exact P05 evidence candidate SHA.' }
+if ($env:CANDIDATE_SHA -and $candidateSha -ne $env:CANDIDATE_SHA) {
+    throw "P05 evidence candidate mismatch: expected=$env:CANDIDATE_SHA actual=$candidateSha"
+}
 
 function Assert-Contains([string]$Text, [string]$Needle, [string]$Message) {
     if (-not $Text.Contains($Needle, [System.StringComparison]::Ordinal)) { throw $Message }
@@ -21,7 +26,7 @@ Assert-Contains $controller '[ValidateAntiForgeryToken]' 'Metadata mutations are
 Assert-Contains $view '@Html.AntiForgeryToken()' 'Metadata forms do not emit antiforgery tokens.'
 Assert-Contains $view 'serviceJson' 'Generic service definition editor is missing.'
 Assert-Contains $layout 'href="/metadata?culture=' 'Metadata navigation is not active in the shell.'
-Assert-Contains $layout '<strong>P05</strong>' 'Shell phase marker was not advanced to P05.'
+if ($layout -notmatch '<strong>P(?:0[5-9]|1[0-7])</strong>') { throw 'Shell phase marker is missing or predates closed P05.' }
 Assert-Contains $css '@media(max-width:620px)' 'Narrow responsive metadata layout is missing.'
 Assert-Contains $arResource 'دليل الجهات والخدمات' 'Arabic metadata resource is missing.'
 Assert-Contains $schema '"schemaVersion"' 'Metadata JSON schema does not govern schemaVersion.'
@@ -216,7 +221,7 @@ try {
 
     $manifest = foreach ($capture in $captures) {
         $path = Join-Path $artifactDir $capture.Name
-        [pscustomobject]@{ file=$capture.Name; bytes=(Get-Item $path).Length; sha256=(Get-FileHash $path -Algorithm SHA256).Hash.ToLowerInvariant(); route='/metadata'; culture=$capture.Culture; direction=$capture.Direction; viewport=$capture.Size; phase='P05'; commit=$env:GITHUB_SHA; dataClassification='synthetic-only' }
+        [pscustomobject]@{ file=$capture.Name; bytes=(Get-Item $path).Length; sha256=(Get-FileHash $path -Algorithm SHA256).Hash.ToLowerInvariant(); route='/metadata'; culture=$capture.Culture; direction=$capture.Direction; viewport=$capture.Size; phase='P05'; commit=$candidateSha; dataClassification='synthetic-only' }
     }
     $manifest | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $artifactDir 'ui-screenshot-manifest.json') -Encoding utf8
     Write-Host 'P05 metadata authorization, bilingual and responsive browser verification passed.'

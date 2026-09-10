@@ -253,6 +253,13 @@ public sealed class PermissionsController(
                 }
             }
 
+            if (user.IsEnabled
+                && await RoleGrantsRolesManageAsync(roleId, cancellationToken)
+                && !await HasEnabledRolesManagerExcludingAssignmentAsync(userId, roleId, cancellationToken))
+            {
+                return BadRequest("The last enabled Roles.Manage assignment cannot be removed.");
+            }
+
             dbContext.UserRoles.Remove(existing);
             await dbContext.SaveChangesAsync(cancellationToken);
         }
@@ -283,6 +290,15 @@ public sealed class PermissionsController(
             .SingleOrDefaultAsync(
                 permission => permission.RoleId == roleId && permission.PermissionKey == permissionKey,
                 cancellationToken);
+
+        if (!isAllowed
+            && string.Equals(permissionKey, GsipPermissions.RolesManage, StringComparison.Ordinal)
+            && row?.IsAllowed == true
+            && !await HasEnabledRolesManagerOutsideRoleAsync(roleId, cancellationToken))
+        {
+            return BadRequest("The last enabled Roles.Manage grant cannot be removed.");
+        }
+
         if (row is null)
         {
             dbContext.RolePermissions.Add(new RolePermission
@@ -356,6 +372,40 @@ public sealed class PermissionsController(
         await dbContext.SaveChangesAsync(cancellationToken);
         return RedirectToAction(nameof(Index), new { culture = NormalizeCulture(culture), userId });
     }
+
+    private async Task<bool> RoleGrantsRolesManageAsync(Guid roleId, CancellationToken cancellationToken) =>
+        await dbContext.RolePermissions.AsNoTracking().AnyAsync(
+            row => row.RoleId == roleId
+                && row.PermissionKey == GsipPermissions.RolesManage
+                && row.IsAllowed,
+            cancellationToken);
+
+    private async Task<bool> HasEnabledRolesManagerOutsideRoleAsync(Guid excludedRoleId, CancellationToken cancellationToken) =>
+        await (
+            from userRole in dbContext.UserRoles.AsNoTracking()
+            join candidate in dbContext.Users.AsNoTracking() on userRole.UserId equals candidate.Id
+            join grant in dbContext.RolePermissions.AsNoTracking() on userRole.RoleId equals grant.RoleId
+            where userRole.RoleId != excludedRoleId
+                && candidate.IsEnabled
+                && grant.PermissionKey == GsipPermissions.RolesManage
+                && grant.IsAllowed
+            select candidate.Id)
+            .AnyAsync(cancellationToken);
+
+    private async Task<bool> HasEnabledRolesManagerExcludingAssignmentAsync(
+        Guid excludedUserId,
+        Guid excludedRoleId,
+        CancellationToken cancellationToken) =>
+        await (
+            from userRole in dbContext.UserRoles.AsNoTracking()
+            join candidate in dbContext.Users.AsNoTracking() on userRole.UserId equals candidate.Id
+            join grant in dbContext.RolePermissions.AsNoTracking() on userRole.RoleId equals grant.RoleId
+            where candidate.IsEnabled
+                && grant.PermissionKey == GsipPermissions.RolesManage
+                && grant.IsAllowed
+                && !(userRole.UserId == excludedUserId && userRole.RoleId == excludedRoleId)
+            select candidate.Id)
+            .AnyAsync(cancellationToken);
 
     private static string GetCategory(string permission) => permission switch
     {

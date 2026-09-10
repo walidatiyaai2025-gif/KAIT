@@ -12,6 +12,15 @@ Set-Location $repoRoot
 $version = [string]$props.Project.PropertyGroup.VersionPrefix
 if ([string]::IsNullOrWhiteSpace($version)) { throw 'VersionPrefix is missing from Directory.Build.props.' }
 
+# Artifact provenance must describe the exact checked-out source, never GitHub's
+# synthetic pull-request merge SHA. Workflows may publish CANDIDATE_SHA; when
+# present it is an assertion against HEAD rather than an alternate source of truth.
+$sourceSha = (git rev-parse HEAD).Trim()
+if ([string]::IsNullOrWhiteSpace($sourceSha)) { throw 'Could not resolve exact package source SHA.' }
+if ($env:CANDIDATE_SHA -and $sourceSha -ne $env:CANDIDATE_SHA) {
+    throw "Package source mismatch: expected=$env:CANDIDATE_SHA actual=$sourceSha"
+}
+
 $outputRoot = Join-Path $repoRoot $OutputDirectory
 $publishDir = Join-Path $outputRoot 'publish'
 $setupPublishDir = Join-Path $outputRoot 'setup-publish'
@@ -20,6 +29,7 @@ Remove-Item $publishDir,$setupPublishDir -Recurse -Force -ErrorAction SilentlyCo
 New-Item -ItemType Directory -Force -Path $publishDir,$setupPublishDir | Out-Null
 
 Write-Host "P15_PACKAGE_VERSION=$version"
+Write-Host "P15_PACKAGE_SOURCE_SHA=$sourceSha"
 dotnet restore GSIP.sln
 dotnet build GSIP.sln -c Release --no-restore
 
@@ -69,7 +79,6 @@ function Write-Sha256([string]$Path) {
 
 $zipHash = Write-Sha256 $zipPath
 $setupHash = Write-Sha256 $setupPath
-$sourceSha = if ($env:GITHUB_SHA) { $env:GITHUB_SHA } else { (git rev-parse HEAD).Trim() }
 $manifest = [ordered]@{
     Product = 'Government Services Integration Portal'
     Version = $version

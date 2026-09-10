@@ -123,20 +123,25 @@ public sealed class MetadataCatalogService(GsipDbContext dbContext, ISystemClock
             var revision = CreateRevision(service, normalized, normalized.Active);
             await AddChildrenAsync(revision, normalized, cancellationToken);
 
-            await using var revisionTransaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+            await using var revisionTransaction = dbContext.Database.CurrentTransaction is null
+                ? await dbContext.Database.BeginTransactionAsync(cancellationToken)
+                : null;
             service.IsCurrent = false;
             service.UpdatedAtUtc = clock.UtcNow;
             await dbContext.SaveChangesAsync(cancellationToken);
             dbContext.CatalogServices.Add(revision);
             await dbContext.SaveChangesAsync(cancellationToken);
-            await revisionTransaction.CommitAsync(cancellationToken);
+            if (revisionTransaction is not null)
+                await revisionTransaction.CommitAsync(cancellationToken);
             return revision;
         }
 
         var replacementChildren = new CatalogService();
         await AddChildrenAsync(replacementChildren, normalized, cancellationToken);
 
-        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+        await using var transaction = dbContext.Database.CurrentTransaction is null
+            ? await dbContext.Database.BeginTransactionAsync(cancellationToken)
+            : null;
         await dbContext.ServiceEnvironmentConfigs.Where(x => x.ServiceId == service.Id).ExecuteDeleteAsync(cancellationToken);
         await dbContext.ServiceFieldDefinitions.Where(x => x.ServiceId == service.Id).ExecuteDeleteAsync(cancellationToken);
         await dbContext.ResultMappingDefinitions.Where(x => x.ServiceId == service.Id).ExecuteDeleteAsync(cancellationToken);
@@ -169,7 +174,8 @@ public sealed class MetadataCatalogService(GsipDbContext dbContext, ISystemClock
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
+        if (transaction is not null)
+            await transaction.CommitAsync(cancellationToken);
         dbContext.ChangeTracker.Clear();
         return await LoadCurrentServiceAsync(updatedService.Id, cancellationToken);
     }
@@ -258,41 +264,57 @@ public sealed class MetadataCatalogService(GsipDbContext dbContext, ISystemClock
         if (package.SchemaVersion != 1) throw new InvalidOperationException($"Unsupported metadata schema version '{package.SchemaVersion}'.");
         if (package.Entities.Count > 500) throw new InvalidOperationException("Metadata package contains too many entities.");
 
-        var entitiesProcessed = 0;
-        var servicesProcessed = 0;
-        var revisionsCreated = 0;
-        foreach (var entityPackage in package.Entities)
+        await using var importTransaction = dbContext.Database.CurrentTransaction is null
+            ? await dbContext.Database.BeginTransactionAsync(cancellationToken)
+            : null;
+        try
         {
-            var entityInput = new EntityInput(entityPackage.Code, entityPackage.NameAr, entityPackage.NameEn,
-                entityPackage.Logo, entityPackage.Active, entityPackage.DisplayOrder);
-            var code = NormalizeCode(entityPackage.Code, 40, "entity code");
-            var existingEntity = await dbContext.CatalogEntities.AsNoTracking()
-                .SingleOrDefaultAsync(x => x.Code == code, cancellationToken);
-            var entity = existingEntity is null
-                ? await CreateEntityAsync(entityInput, cancellationToken)
-                : await UpdateEntityAsync(existingEntity.Id, entityInput, cancellationToken);
-            entitiesProcessed++;
-            if (entityPackage.Services.Count > 500) throw new InvalidOperationException($"Entity '{entity.Code}' contains too many services.");
-
-            foreach (var servicePackage in entityPackage.Services)
+            var entitiesProcessed = 0;
+            var servicesProcessed = 0;
+            var revisionsCreated = 0;
+            foreach (var entityPackage in package.Entities)
             {
-                var input = new ServiceInput(servicePackage.Code, servicePackage.NameAr, servicePackage.NameEn,
-                    servicePackage.DescriptionAr, servicePackage.DescriptionEn, servicePackage.Active,
-                    servicePackage.EnvironmentConfigs ?? [], servicePackage.Fields ?? [], servicePackage.ResultMappings ?? []);
-                var serviceCode = NormalizeCode(servicePackage.Code, 120, "service code");
-                var existing = await dbContext.CatalogServices.AsNoTracking().SingleOrDefaultAsync(
-                    x => x.EntityId == entity.Id && x.Code == serviceCode && x.IsCurrent, cancellationToken);
-                if (existing is null)
-                    await CreateServiceAsync(entity.Id, input, cancellationToken);
-                else
+                var entityInput = new EntityInput(entityPackage.Code, entityPackage.NameAr, entityPackage.NameEn,
+                    entityPackage.Logo, entityPackage.Active, entityPackage.DisplayOrder);
+                var code = NormalizeCode(entityPackage.Code, 40, "entity code");
+                var existingEntity = await dbContext.CatalogEntities.AsNoTracking()
+                    .SingleOrDefaultAsync(x => x.Code == code, cancellationToken);
+                var entity = existingEntity is null
+                    ? await CreateEntityAsync(entityInput, cancellationToken)
+                    : await UpdateEntityAsync(existingEntity.Id, entityInput, cancellationToken);
+                entitiesProcessed++;
+                if (entityPackage.Services.Count > 500) throw new InvalidOperationException($"Entity '{entity.Code}' contains too many services.");
+
+                foreach (var servicePackage in entityPackage.Services)
                 {
-                    var next = await UpdateServiceAsync(existing.Id, input, cancellationToken);
-                    if (next.Id != existing.Id) revisionsCreated++;
+                    var input = new ServiceInput(servicePackage.Code, servicePackage.NameAr, servicePackage.NameEn,
+                        servicePackage.DescriptionAr, servicePackage.DescriptionEn, servicePackage.Active,
+                        servicePackage.EnvironmentConfigs ?? [], servicePackage.Fields ?? [], servicePackage.ResultMappings ?? []);
+                    var serviceCode = NormalizeCode(servicePackage.Code, 120, "service code");
+                    var existing = await dbContext.CatalogServices.AsNoTracking().SingleOrDefaultAsync(
+                        x => x.EntityId == entity.Id && x.Code == serviceCode && x.IsCurrent, cancellationToken);
+                    if (existing is null)
+                        await CreateServiceAsync(entity.Id, input, cancellationToken);
+                    else
+                    {
+                        var next = await UpdateServiceAsync(existing.Id, input, cancellationToken);
+                        if (next.Id != existing.Id) revisionsCreated++;
+                    }
+                    servicesProcessed++;
                 }
-                servicesProcessed++;
             }
+
+            if (importTransaction is not null)
+                await importTransaction.CommitAsync(cancellationToken);
+            return new MetadataImportResult(entitiesProcessed, servicesProcessed, revisionsCreated);
         }
-        return new MetadataImportResult(entitiesProcessed, servicesProcessed, revisionsCreated);
+        catch
+        {
+            if (importTransaction is not null)
+                await importTransaction.RollbackAsync(cancellationToken);
+            dbContext.ChangeTracker.Clear();
+            throw;
+        }
     }
 
     private async Task<CatalogService> LoadCurrentServiceAsync(Guid serviceId, CancellationToken cancellationToken) =>

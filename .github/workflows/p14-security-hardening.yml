@@ -34,7 +34,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p artifacts/p14-security
-          printf 'CandidateSha=%s\nUnit=P14::security-hardening-resilience-convergence\nState=OPEN_PHASE_CANDIDATE_NOT_CLOSURE\n' "$CANDIDATE_SHA" > artifacts/p14-security/manifest.txt
+          printf 'CandidateSha=%s\nUnit=P14::security-hardening-resilience-convergence\nState=CLOSED_PHASE_REGRESSION_ACCEPTANCE_CANDIDATE\n' "$CANDIDATE_SHA" > artifacts/p14-security/manifest.txt
       - name: Setup pinned .NET SDK
         uses: actions/setup-dotnet@v4
         with:

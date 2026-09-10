@@ -37,9 +37,10 @@ criteria = (ROOT / "docs/FINAL_ACCEPTANCE_CRITERIA.md").read_text(encoding="utf-
 parity_gate = (ROOT / "docs/UI_DESIGN_PARITY_GATE.md").read_text(encoding="utf-8")
 workflow = (ROOT / ".github/workflows/p16-full-acceptance.yml").read_text(encoding="utf-8")
 evidence = (ROOT / "docs/evidence/P16_FULL_ACCEPTANCE.md").read_text(encoding="utf-8")
+release_builder = (ROOT / "scripts/build-p16-release-candidate.ps1").read_text(encoding="utf-8")
 
 p16_current_authority = "P16 — Full automated acceptance on the exact release candidate" in phase
-p17_post_p16_authority = (
+p17_open_authority = (
     "P17 — Final convergence and release closure" in phase
     and "Status: **OPEN / READY**" in phase
     and "P00-P16 are formally **CLOSED**" in phase
@@ -49,8 +50,20 @@ p17_post_p16_authority = (
     and "P00-P16 are formally CLOSED" in control
     and "P17" in control
 )
-if not (p16_current_authority or p17_post_p16_authority):
-    raise SystemExit("Missing canonical P16 phase authority or governed post-P16 P17 authority")
+p17_closed_authority = (
+    "P17 — Final convergence and release closure" in phase
+    and "Status: **CLOSED**" in phase
+    and "P16 is formally **CLOSED**" in phase
+    and "| P16 | CLOSED |" in ledger
+    and "| P17 | CLOSED |" in ledger
+    and "P17" in control
+    and (
+        "P17 is formally **CLOSED**" in control
+        or "P00-P17 are formally CLOSED" in control
+    )
+)
+if not (p16_current_authority or p17_open_authority or p17_closed_authority):
+    raise SystemExit("Missing canonical P16 authority or governed P17 OPEN/CLOSED post-P16 authority")
 
 for text, needle, description in [
     (control, "P16", "P16 project-control boundary"),
@@ -62,6 +75,11 @@ for text, needle, description in [
 ]:
     if needle not in text:
         raise SystemExit(f"Missing {description}: {needle}")
+
+if "AcceptanceState = 'EXACT_CANDIDATE_EVIDENCE'" not in release_builder:
+    raise SystemExit("P16 release manifest must use neutral exact-candidate evidence state.")
+if "CANDIDATE_NOT_FINAL_P17" in release_builder:
+    raise SystemExit("P16 release manifest still contains stale pre-final P17 state.")
 
 version_parts = tuple(int(part) for part in current_version.split("."))
 if version_parts < (0, 1, 0):
@@ -97,3 +115,5 @@ for path in release_docs:
 print("P16_ACCEPTANCE_CONTRACT=PASS")
 print(f"P16_VERSION={current_version}")
 print("P16_SAME_CANDIDATE_RULE=ENFORCED")
+print("P16_P17_OPEN_CLOSED_AUTHORITY=SUPPORTED")
+print("P16_RELEASE_MANIFEST_FINALITY=NEUTRAL")

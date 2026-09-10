@@ -48,12 +48,18 @@ public static class DependencyInjection
         services.Configure<RequestHistoryOptions>(configuration.GetSection(RequestHistoryOptions.SectionName));
         services.Configure<AuditTrailOptions>(configuration.GetSection(AuditTrailOptions.SectionName));
         services.Configure<AdminOperationsOptions>(configuration.GetSection(AdminOperationsOptions.SectionName));
-        services.AddHttpClient("GSIP.Execution")
+        services.AddTransient<BasicAuthenticationTransformHandler>();
+        var executionClient = services.AddHttpClient("GSIP.Execution")
             .ConfigurePrimaryHttpMessageHandler(() => new System.Net.Http.HttpClientHandler
             {
                 AllowAutoRedirect = false,
                 UseCookies = false
             });
+        executionClient
+            .AddHttpMessageHandler<BasicAuthenticationTransformHandler>()
+            // Preserve HttpClientFactory's fail-closed logging posture for every header,
+            // including Authorization, x-api-key and internal credential carriers.
+            .RedactLoggedHeaders(_ => true);
         services.AddScoped<GenericServiceExecutionEngine>();
         services.AddScoped<IAuthenticationProbeService, MojAuthenticationProbeService>();
         services.AddScoped<SensitiveResponseMaskingExecutionEngine>(serviceProvider => new SensitiveResponseMaskingExecutionEngine(

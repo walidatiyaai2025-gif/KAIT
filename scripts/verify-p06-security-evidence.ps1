@@ -4,10 +4,25 @@ $root = Split-Path -Parent $PSScriptRoot
 $artifactsRoot = Join-Path $root 'artifacts'
 $artifactDir = Join-Path $artifactsRoot 'p06-security-evidence'
 New-Item -ItemType Directory -Path $artifactDir -Force | Out-Null
+$candidateSha = (git -C $root rev-parse HEAD).Trim()
+if ([string]::IsNullOrWhiteSpace($candidateSha)) { throw 'Could not resolve exact P06 evidence candidate SHA.' }
+if ($env:CANDIDATE_SHA -and $candidateSha -ne $env:CANDIDATE_SHA) {
+    throw "P06 evidence candidate mismatch: expected=$env:CANDIDATE_SHA actual=$candidateSha"
+}
 
 $sentinel = $env:GSIP_P06_SECRET_SENTINEL
 if ([string]::IsNullOrWhiteSpace($sentinel)) {
     throw 'GSIP_P06_SECRET_SENTINEL is required for P06 leakage verification.'
+}
+
+$ciContextPath = Join-Path $artifactDir 'ci-context.json'
+if (-not (Test-Path $ciContextPath)) { throw 'P06 CI context is required before evidence finalization.' }
+$ciContext = Get-Content $ciContextPath -Raw | ConvertFrom-Json
+foreach ($gate in @('defaultDenyVerified','coreVerified','rotationVerified','adminVerified')) {
+    if ($ciContext.$gate -ne $true) { throw "Required P06 gate did not execute successfully: $gate" }
+}
+if ([string]$ciContext.commit -ne $candidateSha) {
+    throw "P06 CI context commit mismatch: expected=$candidateSha actual=$($ciContext.commit)"
 }
 
 function Get-Sha256Text([string]$Value) {
@@ -59,7 +74,7 @@ $specialistReferences = @($p06Directories |
         }
     })
 [ordered]@{
-    commit = $env:GITHUB_SHA
+    commit = $candidateSha
     references = $specialistReferences
 } | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $artifactDir 'specialist-evidence-references.json') -Encoding utf8
 
@@ -109,7 +124,7 @@ if ($unsafeHeaderFiles.Count -gt 0) {
 
 [ordered]@{
     phase = 'P06'
-    commit = $env:GITHUB_SHA
+    commit = $candidateSha
     scannedDirectories = @($p06Directories.Name)
     scannedFiles = $files.Count
     syntheticSentinelSha256 = $sentinelHash
@@ -124,10 +139,16 @@ $manifest = [ordered]@{
     project = 'GSIP'
     phase = 'P06'
     unit = 'P06::security-ci-evidence'
-    commit = $env:GITHUB_SHA
+    commit = $candidateSha
     generatedAtUtc = [DateTimeOffset]::UtcNow.ToString('O')
     secretMaterialIncluded = $false
     syntheticSentinelSha256 = $sentinelHash
+    requiredGates = [ordered]@{
+        defaultDeny = $true
+        core = $true
+        rotation = $true
+        admin = $true
+    }
     files = @($manifestFiles | ForEach-Object {
         [ordered]@{
             file = $_.Name
@@ -140,4 +161,4 @@ $manifestPath = Join-Path $artifactDir 'manifest.json'
 $manifest | ConvertTo-Json -Depth 8 | Set-Content $manifestPath -Encoding utf8
 (Get-FileHash $manifestPath -Algorithm SHA256).Hash.ToLowerInvariant() | Set-Content (Join-Path $artifactDir 'manifest.sha256') -Encoding ascii
 
-Write-Host "P06 security evidence leak scan PASS; scanned $($p06Directories.Count) P06 artifact directories and $($files.Count) files; no plaintext sentinel retained."
+Write-Host "P06 security evidence leak scan PASS; scanned $($p06Directories.Count) P06 artifact directories and $($files.Count) files; all required specialist gates executed and no plaintext sentinel was retained."

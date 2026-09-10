@@ -3,6 +3,11 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $artifactDir = Join-Path $root 'artifacts/p04-permissions-ui'
 New-Item -ItemType Directory -Path $artifactDir -Force | Out-Null
+$candidateSha = (git -C $root rev-parse HEAD).Trim()
+if ([string]::IsNullOrWhiteSpace($candidateSha)) { throw 'Could not resolve exact P04 evidence candidate SHA.' }
+if ($env:CANDIDATE_SHA -and $candidateSha -ne $env:CANDIDATE_SHA) {
+    throw "P04 evidence candidate mismatch: expected=$env:CANDIDATE_SHA actual=$candidateSha"
+}
 
 function Assert-Contains([string]$Text, [string]$Needle, [string]$Message) {
     if (-not $Text.Contains($Needle, [System.StringComparison]::Ordinal)) { throw $Message }
@@ -24,7 +29,7 @@ Assert-Contains $view 'RolesPermissions' 'Roles and permissions matrix is missin
 Assert-Contains $view 'ServiceMatrix' 'Service permission matrix is missing.'
 Assert-Contains $view '@Html.AntiForgeryToken()' 'Permission forms do not emit antiforgery tokens.'
 Assert-Contains $layout 'href="/permissions?culture=' 'Permissions navigation is not active in the shell.'
-Assert-Contains $layout '<strong>P04</strong>' 'Shell phase marker was not advanced to P04.'
+if ($layout -notmatch '<strong>P(?:0[4-9]|1[0-7])</strong>') { throw 'Shell phase marker is missing or predates closed P04.' }
 Assert-Contains $css '@media(max-width:680px)' 'Narrow responsive permissions layout is missing.'
 Assert-Contains $arResource 'إدارة الصلاحيات والأدوار' 'Arabic permissions resource is missing.'
 
@@ -249,7 +254,7 @@ try {
             direction = $capture.Direction
             viewport = $capture.Size
             phase = 'P04'
-            commit = $env:GITHUB_SHA
+            commit = $candidateSha
             renderSource = 'authenticated server-rendered response from exact candidate; exact candidate CSS embedded for deterministic browser rendering'
             dataClassification = 'synthetic-only'
         }

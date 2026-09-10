@@ -19,18 +19,10 @@ if ($LASTEXITCODE -ne 0) { throw 'P15 installer source contract failed on the P1
 python scripts/verify_p16_acceptance_contract.py
 if ($LASTEXITCODE -ne 0) { throw 'P16 acceptance source contract failed.' }
 
-$previousGitHubSha = $env:GITHUB_SHA
-try {
-    # P15 packaging predates the P16 same-candidate rule and reads GITHUB_SHA for its manifest.
-    # Pin that process value to the actual checked-out candidate so a PR synthetic merge SHA can
-    # never be recorded as the P16 release source identity.
-    $env:GITHUB_SHA = $candidateSha
-    ./scripts/build-p15-package.ps1 -OutputDirectory $outputDirectory
-    if ($LASTEXITCODE -ne 0) { throw 'P16 release-candidate package build failed.' }
-}
-finally {
-    if ($null -eq $previousGitHubSha) { Remove-Item Env:GITHUB_SHA -ErrorAction SilentlyContinue } else { $env:GITHUB_SHA = $previousGitHubSha }
-}
+# P15 packaging derives SourceSha from the checked-out HEAD and treats
+# CANDIDATE_SHA as an assertion, so P16 consumes canonical provenance directly.
+./scripts/build-p15-package.ps1 -OutputDirectory $outputDirectory
+if ($LASTEXITCODE -ne 0) { throw 'P16 release-candidate package build failed.' }
 
 $manifestPath = Join-Path $outputRoot 'manifest.json'
 if (-not (Test-Path $manifestPath)) { throw 'P16 release-candidate package manifest is missing.' }
@@ -51,6 +43,9 @@ foreach ($entry in @(
     if ($actual -ne $entry.Expected.ToLowerInvariant()) { throw "P16 $($entry.Kind) SHA-256 mismatch." }
 }
 
+# This manifest describes exact-candidate evidence only. It intentionally does not
+# claim or deny P17 finality: finality is established by the integrated final main,
+# terminal same-SHA CI, reconciled governance/evidence and the required live sweeps.
 $releaseManifest = [ordered]@{
     CandidateSha = $candidateSha
     Unit = 'P16::full-acceptance-release-candidate'
@@ -66,7 +61,7 @@ $releaseManifest = [ordered]@{
     InstallerSha256 = [string]$manifest.InstallerSha256
     SourceIdentity = 'EXACT_CHECKED_OUT_CANDIDATE'
     ArtifactIdentity = 'SAME_CANDIDATE'
-    AcceptanceState = 'CANDIDATE_NOT_FINAL_P17'
+    AcceptanceState = 'EXACT_CANDIDATE_EVIDENCE'
     ExternalUat = 'DEFERRED_EXTERNAL_NOT_PASS_WHERE_UNAVAILABLE'
     ProductionEvidence = 'PRODUCTION_DEFERRED_EXTERNAL_NOT_PASS_WHERE_UNAVAILABLE'
 }
