@@ -169,11 +169,12 @@ async Task OfficialAgencySeedPersistenceAsync()
         var beforeIds = services.Select(service => service.Id).Order().ToArray();
         await new OfficialAgencyMetadataSeedService(db, clock).SeedAsync();
         var after = await CaptureCountsAsync(db);
-        var afterIds = await db.CatalogServices.AsNoTracking()
+        var afterIds = (await db.CatalogServices.AsNoTracking()
             .Where(service => service.IsCurrent && officialCodes.Contains(service.Code))
             .Select(service => service.Id)
-            .OrderBy(id => id)
-            .ToArrayAsync();
+            .ToArrayAsync())
+            .Order()
+            .ToArray();
         Check(before == after && beforeIds.SequenceEqual(afterIds),
             "P17 official agency seed is not idempotent.");
 

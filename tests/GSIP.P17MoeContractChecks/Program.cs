@@ -105,11 +105,12 @@ try
     var beforeIds = services.Select(service => service.Id).Order().ToArray();
     await new MoeMetadataSeedService(db, clock).SeedAsync();
     var after = await CaptureCountsAsync(db);
-    var afterIds = await db.CatalogServices.AsNoTracking()
+    var afterIds = (await db.CatalogServices.AsNoTracking()
         .Where(service => service.IsCurrent && expectedCodes.Contains(service.Code))
         .Select(service => service.Id)
-        .OrderBy(id => id)
-        .ToArrayAsync();
+        .ToArrayAsync())
+        .Order()
+        .ToArray();
     Check(before == after && beforeIds.SequenceEqual(afterIds),
         "MOE official contract seed is not idempotent.");
 
