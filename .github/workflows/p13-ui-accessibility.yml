@@ -46,7 +46,7 @@ jobs:
         run: |
           mkdir -p artifacts/p13-ui-accessibility
           python scripts/verify_p13_ui_accessibility.py | tee artifacts/p13-ui-accessibility/static-contract.txt
-          printf 'CandidateSha=%s\nUnit=P13::ui-accessibility-convergence\nState=OPEN_PHASE_CANDIDATE_NOT_CLOSURE\n' "$CANDIDATE_SHA" > artifacts/p13-ui-accessibility/manifest.txt
+          printf 'CandidateSha=%s\nUnit=P13::ui-accessibility-convergence\nState=CLOSED_PHASE_REGRESSION_ACCEPTANCE_CANDIDATE\n' "$CANDIDATE_SHA" > artifacts/p13-ui-accessibility/manifest.txt
       - name: Upload P13 static evidence
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
