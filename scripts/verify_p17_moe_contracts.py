@@ -40,13 +40,16 @@ for fragment in required_handler_fragments:
 
 required_di_fragments = [
     'AddHttpMessageHandler<BasicAuthenticationTransformHandler>()',
-    '.RedactLoggedHeaders(',
-    'BasicAuthenticationTransformHandler.UsernameHeader',
-    'BasicAuthenticationTransformHandler.PasswordHeader',
+    '.RedactLoggedHeaders(_ => true)',
 ]
 for fragment in required_di_fragments:
     if fragment not in di:
         raise SystemExit(f"Basic-auth client wiring/redaction drift: missing {fragment!r}")
+
+# HttpClientFactory redaction is fail-closed only when all header values remain redacted.
+# A selective header list can expose Authorization, x-api-key or future secret-bearing headers.
+if di.count('.RedactLoggedHeaders(') != 1 or '.RedactLoggedHeaders(new' in di:
+    raise SystemExit("GSIP.Execution must retain one redact-all HttpClient logging policy")
 
 if 'CreateInstance<MoeMetadataSeedService>' not in bootstrap:
     raise SystemExit("MOE metadata seed is not wired into catalog bootstrap")

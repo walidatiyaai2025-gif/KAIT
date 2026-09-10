@@ -57,11 +57,9 @@ public static class DependencyInjection
             });
         executionClient
             .AddHttpMessageHandler<BasicAuthenticationTransformHandler>()
-            .RedactLoggedHeaders(new[]
-            {
-                BasicAuthenticationTransformHandler.UsernameHeader,
-                BasicAuthenticationTransformHandler.PasswordHeader
-            });
+            // Preserve HttpClientFactory's fail-closed logging posture for every header,
+            // including Authorization, x-api-key and internal credential carriers.
+            .RedactLoggedHeaders(_ => true);
         services.AddScoped<GenericServiceExecutionEngine>();
         services.AddScoped<IAuthenticationProbeService, MojAuthenticationProbeService>();
         services.AddScoped<SensitiveResponseMaskingExecutionEngine>(serviceProvider => new SensitiveResponseMaskingExecutionEngine(
