@@ -38,8 +38,16 @@ for fragment in required_handler_fragments:
     if fragment not in handler:
         raise SystemExit(f"Basic-auth transport drift: missing {fragment!r}")
 
-if 'AddHttpMessageHandler<BasicAuthenticationTransformHandler>()' not in di:
-    raise SystemExit("Basic-auth transport handler is not wired to GSIP.Execution")
+required_di_fragments = [
+    'AddHttpMessageHandler<BasicAuthenticationTransformHandler>()',
+    '.RedactLoggedHeaders(',
+    'BasicAuthenticationTransformHandler.UsernameHeader',
+    'BasicAuthenticationTransformHandler.PasswordHeader',
+]
+for fragment in required_di_fragments:
+    if fragment not in di:
+        raise SystemExit(f"Basic-auth client wiring/redaction drift: missing {fragment!r}")
+
 if 'CreateInstance<MoeMetadataSeedService>' not in bootstrap:
     raise SystemExit("MOE metadata seed is not wired into catalog bootstrap")
 
