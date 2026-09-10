@@ -4,7 +4,7 @@
 
 **P16 — Full automated acceptance on the exact release candidate**
 
-Status: **CLOSURE TRANSITION CANDIDATE**. P17 is **STAGED / IMPLEMENTATION LOCKED** until this reconciliation is normally integrated and every governed workflow on the resulting exact-new-main is terminal SUCCESS.
+Status: **OPEN / ACTIVE** — CLOSURE TRANSITION CANDIDATE. P17 is **STAGED / IMPLEMENTATION LOCKED** until this reconciliation is normally integrated and every governed workflow on the resulting exact-new-main is terminal SUCCESS.
 
 P00-P15 remain formally CLOSED from preserved integrated evidence. P16 cloud-actionable implementation, regression recovery, exact release-candidate packaging, runtime/browser acceptance, backup/restore rehearsal, bounded performance smoke and UI parity evidence are terminal from exact repository evidence on the current accepted integrated source. This branch performs governance/evidence reconciliation only and does not authorize P17 implementation before its merge and exact-new-main gate complete.
 
