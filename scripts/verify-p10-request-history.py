@@ -29,6 +29,20 @@ for forbidden in ["authorization: bearer", "x-api-key:", "password=", "civilid =
     if forbidden in persistence:
         raise SystemExit(f"P10 persistence contains forbidden secret/personal-data fixture: {forbidden}")
 
+history_service = (root / "src/GSIP.Infrastructure/Execution/RequestHistoryService.cs").read_text(encoding="utf-8")
+if '<script src=\\"/js/request-history-print.js\\" defer></script>' not in history_service:
+    raise SystemExit("P10 print export must use the CSP-compatible same-origin print script.")
+if '<script>window.print()' in history_service or '<script>window.print();' in history_service:
+    raise SystemExit("P10 print export regressed to an inline script blocked by the application CSP.")
+
+print_script_path = root / "src/GSIP.Web/wwwroot/js/request-history-print.js"
+if not print_script_path.is_file():
+    raise SystemExit("P10 print export script is missing from web static assets.")
+print_script = print_script_path.read_text(encoding="utf-8")
+for marker in ['window.addEventListener("load"', "window.print();"]:
+    if marker not in print_script:
+        raise SystemExit(f"P10 print export script is incomplete: missing {marker!r}")
+
 index_view = (root / "src/GSIP.Web/Views/Requests/Index.cshtml").read_text(encoding="utf-8")
 index_markers = [
     'Model.Text("Request history", "سجل الطلبات")',
@@ -70,4 +84,5 @@ if 'href="/requests?culture=@CultureInfo.CurrentUICulture.Name"' not in layout:
     raise SystemExit("P10 request-history navigation is not reachable from the canonical layout.")
 
 print("P10_REQUEST_HISTORY_STATIC_SECURITY=PASS")
+print("P10_REQUEST_HISTORY_PRINT_CSP=PASS")
 print("P10_REQUEST_HISTORY_UI_CONTRACT=PASS")
