@@ -28,20 +28,31 @@ permissions:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+    runs-on: windows-latest
+    timeout-minutes: 40
+    env:
+      GSIP_P17_SQL: 'Server=(localdb)\MSSQLLocalDB;Database=GSIP_P17_${{ github.run_id }}_${{ github.run_attempt }};Integrated Security=true;TrustServerCertificate=true;MultipleActiveResultSets=true'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+      - name: Setup pinned .NET SDK
+        uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '10.0.x'
+          global-json-file: global.json
       - name: Static contract verification
-        run: python3 scripts/verify_p17_official_agency_contracts.py
+        run: python scripts/verify_p17_official_agency_contracts.py
       - name: Restore solution
         run: dotnet restore GSIP.sln
-      - name: Build solution
-        run: dotnet build GSIP.sln -c Release --no-restore
       - name: Restore P17 contract checks
         run: dotnet restore tests/GSIP.P17OfficialAgencyContractChecks/GSIP.P17OfficialAgencyContractChecks.csproj
-      - name: Run P17 contract checks
-        run: dotnet run --project tests/GSIP.P17OfficialAgencyContractChecks/GSIP.P17OfficialAgencyContractChecks.csproj -c Release --no-restore
+      - name: Build solution Release
+        run: dotnet build GSIP.sln -c Release --no-restore
+      - name: Build P17 contract checks Release
+        run: dotnet build tests/GSIP.P17OfficialAgencyContractChecks/GSIP.P17OfficialAgencyContractChecks.csproj -c Release --no-restore
+      - name: Start SQL Server LocalDB
+        shell: pwsh
+        run: |
+          sqllocaldb start MSSQLLocalDB
+          sqllocaldb info MSSQLLocalDB
+      - name: Run P17 official agency contract acceptance
+        run: dotnet run --project tests/GSIP.P17OfficialAgencyContractChecks/GSIP.P17OfficialAgencyContractChecks.csproj -c Release --no-build
