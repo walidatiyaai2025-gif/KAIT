@@ -32,8 +32,6 @@ runbook = read("docs/P15_INSTALLER_RUNBOOK.md")
 program = read("src/GSIP.Web/Program.cs")
 runtime_db = read("src/GSIP.Infrastructure/Identity/RuntimeDatabaseConnection.cs")
 phase = read("CURRENT_PHASE.md")
-ledger = read("docs/TASK_LEDGER.md")
-project_control = read("PROJECT_CONTROL.md")
 props = read("Directory.Build.props")
 
 require("<TargetFramework>net10.0-windows</TargetFramework>" in project, "setup executable is not pinned to the Windows .NET 10 target")
@@ -80,29 +78,13 @@ require("P15_SANITIZED_INSTALL_LOG=PASS" in workflow and "--log-path" in workflo
 require("ownership manifest" in runbook.lower() and "SNI" in runbook, "installer runbook does not document ownership and host-specific HTTPS safety")
 require("Next/Back/Finish" in runbook and "HTTPS certificate" in runbook and "First-Run Setup" in runbook, "installer runbook does not document the professional wizard contract")
 
-legacy_p15_authority = "P14" in phase and "CLOSED" in phase.upper() and "P15" in phase
-post_p15_authority = (
-    "**P17 — Final convergence and release closure**" in phase
-    and "Status: **OPEN / READY**" in phase
-    and "P00-P16 are formally **CLOSED**" in phase
-    and "P16 is formally **CLOSED**" in phase
-    and "| P15 | CLOSED |" in ledger
-    and "| P16 | CLOSED |" in ledger
-    and "| P17 | OPEN / READY |" in ledger
-    and "P00-P16 are formally CLOSED" in project_control
-    and "P17" in project_control
-    and "OPEN / READY" in project_control
-)
-require(legacy_p15_authority or post_p15_authority, "canonical phase authority does not preserve the closed P15 baseline through the governed current phase")
+require("P14" in phase and "CLOSED" in phase.upper() and "P15" in phase, "canonical phase authority does not preserve P14 closure and identify P15")
 version_match = re.search(r"<VersionPrefix>(\d+)\.(\d+)\.(\d+)</VersionPrefix>", props)
 require(version_match is not None, "executable version is missing or is not semantic x.y.z")
 version = tuple(int(part) for part in version_match.groups()) if version_match else (0, 0, 0)
 require(version >= (0, 1, 0), "executable version regressed below the accepted 0.1.0 baseline")
 require("DEFERRED_EXTERNAL_NOT_PASS" in phase and "PRODUCTION_DEFERRED_EXTERNAL_NOT_PASS" in phase, "historical external NOT-PASS classifications were lost")
-require(
-    "OWNER_LAST / NOT PASS" in phase or "OWNER_LAST_BRANCH_PROTECTION_NOT_PASS" in phase,
-    "repository-administration NOT-PASS boundary was lost",
-)
+require("OWNER_LAST / NOT PASS" in phase, "repository-administration NOT-PASS boundary was lost")
 
 print(f"P15_INSTALLER_STATIC_ACCEPTANCE=PASS checks={checks}")
 print(f"P15_VERSION_BASELINE_PRESERVED={'.'.join(str(part) for part in version)}")
