@@ -62,7 +62,10 @@ p12_closure_evidence_preserved = (
 )
 phase_post_p12_open = (
     current_phase_number >= 13
-    and "Status: **OPEN / READY**" in text["phase"]
+    and (
+        "Status: **OPEN / READY**" in text["phase"]
+        or "Status: **OPEN / ACTIVE**" in text["phase"]
+    )
     and p12_closure_evidence_preserved
 )
 phase_post_p12_staged_transition = (
