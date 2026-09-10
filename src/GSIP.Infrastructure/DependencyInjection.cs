@@ -126,6 +126,7 @@ public static class DependencyInjection
         services.AddHostedService<IdentityDatabaseMigrationService>();
         services.AddHostedService<RbacBootstrapService>();
         services.AddHostedService<MojMetadataBootstrapService>();
+        services.AddHostedService<GreenGovernmentCatalogBootstrapService>();
         services.AddHostedService<SystemAdministratorServiceEntitlementBootstrapService>();
         return services;
     }
