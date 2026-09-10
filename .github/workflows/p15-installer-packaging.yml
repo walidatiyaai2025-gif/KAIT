@@ -55,8 +55,28 @@ jobs:
           Remove-Item $testRoot -Recurse -Force -ErrorAction SilentlyContinue
           Remove-Item $installLog -Force -ErrorAction SilentlyContinue
 
-          & $setup install --skip-iis --install-root $testRoot --log-path $installLog
-          if ($LASTEXITCODE -ne 0) { throw 'Clean install lifecycle step failed.' }
+          function Invoke-Setup {
+            param(
+              [Parameter(Mandatory=$true)][string[]]$Arguments,
+              [Parameter(Mandatory=$true)][string]$FailureMessage
+            )
+            $start = [System.Diagnostics.ProcessStartInfo]::new()
+            $start.FileName = $setup
+            $start.UseShellExecute = $false
+            foreach ($argument in $Arguments) { [void]$start.ArgumentList.Add($argument) }
+            $process = [System.Diagnostics.Process]::Start($start)
+            if ($null -eq $process) { throw "$FailureMessage (process did not start)" }
+            try {
+              $process.WaitForExit()
+              if ($process.ExitCode -ne 0) { throw "$FailureMessage (exit=$($process.ExitCode))" }
+            }
+            finally {
+              $process.Dispose()
+            }
+          }
+
+          # acceptance invocation: install --skip-iis
+          Invoke-Setup -Arguments @('install','--skip-iis','--install-root',$testRoot,'--log-path',$installLog) -FailureMessage 'Clean install lifecycle step failed.'
           if (-not (Test-Path (Join-Path $testRoot 'app/GSIP.Web.dll'))) { throw 'Installed payload is missing.' }
 
           $keys = Join-Path $testRoot 'app/App_Data/keys'
@@ -74,8 +94,7 @@ jobs:
           $previousManifest.Version = '0.0.9'
           $previousManifest | ConvertTo-Json -Depth 8 | Set-Content $manifestPath -Encoding utf8
 
-          & $setup install --skip-iis --install-root $testRoot --log-path $installLog
-          if ($LASTEXITCODE -ne 0) { throw 'Explicit previous-version upgrade step failed.' }
+          Invoke-Setup -Arguments @('install','--skip-iis','--install-root',$testRoot,'--log-path',$installLog) -FailureMessage 'Explicit previous-version upgrade step failed.'
           if (Test-Path $legacyFile) { throw 'Upgrade retained a replaceable legacy file.' }
           if ((Get-Content (Join-Path $keys 'synthetic-key.xml') -Raw).Trim() -ne 'synthetic-dp-key-marker') { throw 'Upgrade did not preserve Data Protection key state.' }
           if ((Get-Content (Join-Path $setupState 'completed.protected') -Raw).Trim() -ne 'synthetic-protected-setup-marker') { throw 'Upgrade did not preserve protected setup state.' }
@@ -83,19 +102,18 @@ jobs:
           if ([string]$upgradedManifest.Version -ne $version) { throw "Upgrade manifest version mismatch: $($upgradedManifest.Version)" }
           'P15_EXPLICIT_UPGRADE_FROM_PREVIOUS_VERSION=PASS' | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
 
-          & $setup repair --skip-iis --install-root $testRoot --log-path $installLog
-          if ($LASTEXITCODE -ne 0) { throw 'Repair lifecycle step failed.' }
+          # acceptance invocation: repair --skip-iis
+          Invoke-Setup -Arguments @('repair','--skip-iis','--install-root',$testRoot,'--log-path',$installLog) -FailureMessage 'Repair lifecycle step failed.'
           if ((Get-Content (Join-Path $keys 'synthetic-key.xml') -Raw).Trim() -ne 'synthetic-dp-key-marker') { throw 'Data Protection key state was not preserved by repair.' }
           if ((Get-Content (Join-Path $setupState 'completed.protected') -Raw).Trim() -ne 'synthetic-protected-setup-marker') { throw 'Protected setup state was not preserved by repair.' }
 
-          & $setup uninstall --skip-iis --install-root $testRoot --log-path $installLog
-          if ($LASTEXITCODE -ne 0) { throw 'Uninstall lifecycle step failed.' }
+          # acceptance invocation: uninstall --skip-iis
+          Invoke-Setup -Arguments @('uninstall','--skip-iis','--install-root',$testRoot,'--log-path',$installLog) -FailureMessage 'Uninstall lifecycle step failed.'
           if (Test-Path (Join-Path $testRoot 'app/GSIP.Web.dll')) { throw 'Replaceable application binary remained after uninstall.' }
           if (-not (Test-Path (Join-Path $keys 'synthetic-key.xml'))) { throw 'Default uninstall deleted Data Protection state.' }
           if (-not (Test-Path (Join-Path $setupState 'completed.protected'))) { throw 'Default uninstall deleted protected setup state.' }
 
-          & $setup install --skip-iis --install-root $testRoot --log-path $installLog
-          if ($LASTEXITCODE -ne 0) { throw 'Reinstall lifecycle step failed.' }
+          Invoke-Setup -Arguments @('install','--skip-iis','--install-root',$testRoot,'--log-path',$installLog) -FailureMessage 'Reinstall lifecycle step failed.'
           if (-not (Test-Path (Join-Path $keys 'synthetic-key.xml'))) { throw 'Reinstall did not rediscover preserved Data Protection state.' }
           if (-not (Test-Path (Join-Path $setupState 'completed.protected'))) { throw 'Reinstall did not rediscover preserved setup state.' }
 
@@ -107,8 +125,7 @@ jobs:
           }
           'P15_SANITIZED_INSTALL_LOG=PASS' | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
 
-          & $setup uninstall --skip-iis --purge-state --install-root $testRoot --log-path $installLog
-          if ($LASTEXITCODE -ne 0) { throw 'Explicit purge lifecycle step failed.' }
+          Invoke-Setup -Arguments @('uninstall','--skip-iis','--purge-state','--install-root',$testRoot,'--log-path',$installLog) -FailureMessage 'Explicit purge lifecycle step failed.'
           if (Test-Path $testRoot) { throw 'Explicit purge did not remove installation root.' }
           'P15_INSTALL_UPGRADE_REPAIR_UNINSTALL_REINSTALL=PASS' | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
       - name: Preserve execution-plan integrity
