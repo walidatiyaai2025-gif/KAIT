@@ -10,6 +10,8 @@ P15 is formally **CLOSED** from exact repository evidence. Its closure-transitio
 
 P14 and all earlier phases P00-P14 remain **CLOSED** from their preserved integrated evidence. P17 remains **LOCKED** until P16 closes normally.
 
+P13 remains **CLOSED** from its preserved exact implementation provenance: final implementation head `1576764a16ea6ddfed735cb0824cb38de26c83d8`, integrated implementation main `203cc28db714fae5c2c70e85adc9cc2306bb2107`, followed by closure-transition main `9f76f6593123a86c1ef999ba5ec5b7b9338a53de`. This provenance is retained explicitly so the closed P13 UI/accessibility baseline remains independently verifiable during later phases.
+
 ## P15 formal closure evidence
 
 Canonical implementation unit: `P15::installer-packaging-convergence`.
