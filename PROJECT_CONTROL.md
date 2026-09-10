@@ -6,7 +6,7 @@
 - Repository: `walidatiyaai2025-gif/KAIT`
 - Default branch: `main`
 - Delivery model: phase-gated autonomous implementation
-- Current planned product state: P14 is formally CLOSED after closure PR #74 and exact-main `f5dd87de7aa3f8e709d04cf8804f53c10c938633` completed 33/33 push workflows SUCCESS. P15 is the sole canonical OPEN / ACTIVE phase under `P15::installer-packaging-convergence`, branch `worker/p15-installer-packaging`, PR #75. P16/P17 remain locked until P15 closes normally.
+- Current planned product state: P14 is formally CLOSED. P15 implementation/integration is terminal from exact evidence and P15 remains the sole canonical **OPEN / ACTIVE closure-transition phase** under `P15::closure-reconciliation`, branch `worker/p15-closure-reconciliation`. P16 is **STAGED / IMPLEMENTATION LOCKED** until that transition is normally integrated and its resulting exact-new-main gate is terminal green; P17 remains locked.
 - Initial executable version: `0.1.0`
 - Pinned SDK / target framework: .NET SDK `10.0.400` / `net10.0`
 - Initial entity: Ministry of Justice (MOJ), Kuwait
@@ -22,9 +22,9 @@ P14 is **CLOSED**. PR #73 normally integrated exact implementation head `3eca150
 
 P14 closed evidence covers restricted-session authorization repair, independent RBAC fail-closed enforcement, authenticated challenge throttling, anti-forgery and Razor output-encoding checks, CSP/security-header preservation, bounded retry/timeout/cancellation/response behavior, token-refresh concurrency safety, dependency vulnerability/deprecation review and preservation of all closed P00-P13 security/isolation contracts. The P14 register has no known cloud-actionable Critical or High vulnerability. Detailed evidence: `docs/evidence/P14_SECURITY_HARDENING.md`.
 
-P15 is **OPEN / ACTIVE**. Its canonical implementation PR #75 is based on exact closed-P14 main `f5dd87de7aa3f8e709d04cf8804f53c10c938633`. Validated pre-reconciliation implementation candidate `4e811f17d707f2e1539c5dab9b40c64b6f498cc1` passed P15 Installer and Packaging run `34436171235`, including 36 static checks, 0-warning/0-error package build, explicit previous-version upgrade, repair/uninstall/reinstall/purge lifecycle, protected-state preservation, sanitized log acceptance, execution-plan integrity and SHA-256 verification. This is implementation-candidate evidence only; the reconciliation commit supersedes that SHA as the PR merge candidate and P15 remains OPEN until final exact-head CI, normal merge, exact-new-main CI and closure reconciliation are complete.
+P15 cloud implementation and integration are terminal from exact evidence, but P15 is **not formally closed until this closure transition itself is integrated and exact-new-main CI is green**. Final implementation PR #75 head `1c1af59fac0489d645e5323a9c6c97f8a76bc5a7` completed **37/37 governed pull-request workflows SUCCESS** and was normally integrated as exact `main` `d60318da5b19d06df20864083f5a4a78b9792e88`. That exact integrated main completed **34/34 governed push workflows SUCCESS**. Exact-main P15 run `34440072557` completed 45 static installer checks, package/lifecycle acceptance, ownership/destructive-operation negatives, maintenance-state preservation, sanitized logging, execution-plan validation and SHA-256 verification. Exact integrated ZIP SHA-256 is `5c25b2df2970d2a52ce570ae1419630b8b22c244b092cea38516975e2ec86e4b`; Setup EXE SHA-256 is `971dfe4a50ce7c8a834bc20ec18c5ed490881808a4a5b9e037cf38fb1e044c03`; artifact `10137632143` has archive digest `sha256:20aea809e37f4ca716ebe6b6b0c587cbbf80f5224e93d890ec18835c1d6a6846`.
 
-Historical P08/P09 owner/external classifications remain unchanged. Evidence proven for UAT is not promoted to Production. `DEFERRED_EXTERNAL_NOT_PASS` and `PRODUCTION_DEFERRED_EXTERNAL_NOT_PASS` remain NOT PASS and Production→UAT fallback is forbidden. Main branch protection remains `OWNER_LAST / NOT PASS` while live read-back reports `protected=false` and repository rulesets are absent.
+Historical P08/P09 owner/external classifications remain unchanged. Evidence proven for UAT is not promoted to Production. `DEFERRED_EXTERNAL_NOT_PASS` and `PRODUCTION_DEFERRED_EXTERNAL_NOT_PASS` remain NOT PASS and Production→UAT fallback is forbidden. Main branch protection remains `OWNER_LAST / NOT PASS` while live read-back reports `protected=false` and required status-check enforcement off.
 
 ## Authoritative documents
 
@@ -47,8 +47,8 @@ No old prompt, screenshot caption, branch description, stale ledger or supersede
 
 - Exactly one canonical current phase exists at a time.
 - P00 through P14 are CLOSED from integrated evidence.
-- P15 is the sole canonical OPEN / ACTIVE phase under its existing tracker lease, branch and PR.
-- P16–P17 remain locked until their preceding phases close normally.
+- P15 is the sole canonical OPEN / ACTIVE phase while governance/evidence closure transition is in progress; its implementation and integration evidence is terminal but formal phase closure still requires transition merge + exact-new-main verification.
+- P16 is STAGED / IMPLEMENTATION LOCKED; P17 remains locked until its preceding phase closes normally.
 - Phase exit requires implementation + tests + evidence + documentation reconciliation + pushed commit + required CI + exact-main recheck.
 - Integration recovery and exact-main regressions take priority over new feature work.
 - A phase-transition branch does not authorize new-phase implementation until that transition is integrated and the resulting exact-new-main gate is green.
@@ -137,13 +137,23 @@ P14 is formally **CLOSED**. PR #73 final implementation head `3eca150b67663ec3e5
 
 The closed boundary includes authorization-bypass/IDOR hardening for restricted authentication sessions, RBAC defense in depth, CSRF/XSS/output-encoding acceptance, authenticated challenge rate limiting, secure-header preservation, secret/log leakage protection, retry/timeout/cancellation/response bounds, token-refresh concurrency safety, dependency vulnerability/deprecation review, threat-model evidence and preservation of all earlier service/environment/authentication/audit boundaries. No known cloud-actionable Critical/High vulnerability remains in the P14 register.
 
-## P15 installer / packaging active boundary
+## P15 installer / packaging closure-transition boundary
 
-P15 is **OPEN / ACTIVE** under canonical tracker unit `P15::installer-packaging-convergence`, branch `worker/p15-installer-packaging`, PR #75, based on exact closed-P14 main `f5dd87de7aa3f8e709d04cf8804f53c10c938633`.
+P15 implementation and integration are **terminal from exact evidence**, while formal phase status remains **OPEN / ACTIVE** until the closure transition itself is integrated and exact-new-main CI is green.
 
-The cloud implementation provides a self-contained single-file Windows GUI Setup EXE with a real Next/Back/Finish wizard, prerequisite checks, application-path/site/app-pool choices, HTTP/HTTPS binding and explicit Local Computer certificate selection, protected First-Run Setup launch, install/upgrade/repair/uninstall/reinstall/purge lifecycle, rollback and `App_Data` preservation, sanitized install logging, versioned ZIP/EXE packaging and SHA-256 evidence. Validated implementation candidate `4e811f17d707f2e1539c5dab9b40c64b6f498cc1` passed P15 run `34436171235` with 36/36 static contract checks and complete package/lifecycle acceptance. Detailed current evidence: `docs/evidence/P15_INSTALLER_PACKAGING.md`.
+Canonical implementation unit `P15::installer-packaging-convergence` used branch `worker/p15-installer-packaging`, PR #75. The final exact implementation head `1c1af59fac0489d645e5323a9c6c97f8a76bc5a7` passed **37/37 governed pull-request workflows SUCCESS** before normal merge. PR #75 integrated as exact `main` `d60318da5b19d06df20864083f5a4a78b9792e88`; that exact integrated main passed **34/34 governed push workflows SUCCESS**, failure=0, queued=0 and in-progress=0.
 
-The reconciliation commit supersedes `4e811f17...` as the PR merge candidate. P15 is not CLOSED until the final exact PR head is fully green, PR #75 is normally integrated from current exact main, the resulting exact-new-main governed matrix is terminal green, package/installer/hash identity is reconciled to the exact integrated source, and formal closure governance is recorded. P16/P17 remain locked.
+The closed cloud implementation boundary provides a self-contained single-file Windows GUI Setup EXE with Next/Back/Finish wizard; Windows/IIS prerequisite validation; application path/site/app-pool controls; explicit HTTP/HTTPS binding with Local Computer certificate selection; host-specific SNI correctness; protected First-Run Setup launch; install/upgrade/repair/default-uninstall/reinstall/explicit-purge lifecycle; fail-closed install-root and IIS ownership isolation; atomic ownership-manifest rollback; `App_Data`/Data Protection/setup-state preservation; sanitized install logging; deterministic versioned ZIP/EXE packaging; and SHA-256 verification.
+
+Exact integrated P15 run `34440072557` completed `P15_INSTALLER_STATIC_ACCEPTANCE=PASS checks=45`, 0-warning/0-error package build and full Setup EXE lifecycle acceptance. Exact integrated package identities are:
+
+- `GSIP-0.1.0-win-x64.zip` — SHA-256 `5c25b2df2970d2a52ce570ae1419630b8b22c244b092cea38516975e2ec86e4b`;
+- `GSIP-0.1.0-Setup-x64.exe` — SHA-256 `971dfe4a50ce7c8a834bc20ec18c5ed490881808a4a5b9e037cf38fb1e044c03`;
+- Actions artifact `10137632143`, digest `sha256:20aea809e37f4ca716ebe6b6b0c587cbbf80f5224e93d890ec18835c1d6a6846`, size 62,159,500 bytes.
+
+Formal closure unit is `P15::closure-reconciliation` on `worker/p15-closure-reconciliation`. P16 remains **STAGED / IMPLEMENTATION LOCKED** until this transition passes its exact-head governed matrix, merges normally from current main, and the resulting exact-new-main governed matrix is terminal SUCCESS. Detailed evidence: `docs/evidence/P15_INSTALLER_PACKAGING.md`.
+
+Target-server Windows/IIS deployment proof, owner-approved Production certificate selection, Production DNS/network/proxy/firewall behavior, owner-controlled signing and previously deferred live MOJ evidence remain external/owner-only and are NOT PASS where unavailable. They are not converted to cloud PASS by P15 packaging evidence.
 
 ## Service environment / Go-Live control
 
@@ -153,7 +163,7 @@ Every service owns independent UAT/Production bindings by default. Follow `docs/
 
 No live secrets or real personal data are allowed in Git. All sensitive runtime values must be stored through the approved configuration/secret-vault design and redacted from logs/audit/evidence.
 
-Repository administration is a separate acceptance boundary: live read-back currently shows `main` unprotected and no repository rulesets. This remains `OWNER_LAST / NOT PASS` until an authorized administrator applies the required policy and independent read-back proves it.
+Repository administration is a separate acceptance boundary: latest live read-back before this closure reconciliation shows `main` with `protected=false` and required status-check enforcement off. This remains `OWNER_LAST / NOT PASS` until an authorized administrator applies the required policy and independent read-back proves it.
 
 ## UI control
 
