@@ -1,0 +1,101 @@
+name: P13 UI Accessibility Convergence
+
+on:
+  push:
+    branches:
+      - main
+      - 'worker/p13-ui-accessibility-convergence'
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  ui-accessibility-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          fetch-depth: 0
+      - name: Assert exact candidate SHA
+        shell: bash
+        run: |
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          echo "EXACT_CANDIDATE_SHA=$CANDIDATE_SHA"
+      - name: Setup pinned .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Restore and build Release
+        run: |
+          dotnet restore GSIP.sln
+          dotnet build GSIP.sln -c Release --no-restore
+      - name: Verify P13 cross-screen UI accessibility contract
+        run: python scripts/verify_p13_ui_accessibility.py
+      - name: Preserve planning integrity
+        run: python scripts/validate_execution_plan.py
+      - name: Preserve candidate contract evidence
+        shell: bash
+        run: |
+          mkdir -p artifacts/p13-ui-accessibility
+          python scripts/verify_p13_ui_accessibility.py | tee artifacts/p13-ui-accessibility/static-contract.txt
+          printf 'CandidateSha=%s\nUnit=P13::ui-accessibility-convergence\nState=OPEN_PHASE_CANDIDATE_NOT_CLOSURE\n' "$CANDIDATE_SHA" > artifacts/p13-ui-accessibility/manifest.txt
+      - name: Upload P13 static evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: P13-UI-Accessibility-Static-${{ env.CANDIDATE_SHA }}
+          path: artifacts/p13-ui-accessibility/
+          if-no-files-found: error
+          retention-days: 30
+
+  home-runtime-browser:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          fetch-depth: 0
+      - name: Assert exact candidate SHA
+        shell: pwsh
+        run: |
+          $actual = (git rev-parse HEAD).Trim()
+          if ($actual -ne $env:CANDIDATE_SHA) { throw "Exact candidate mismatch: expected=$env:CANDIDATE_SHA actual=$actual" }
+          Write-Host "EXACT_CANDIDATE_SHA=$actual"
+      - name: Setup pinned .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Restore and build Release
+        run: |
+          dotnet restore GSIP.sln
+          dotnet build GSIP.sln -c Release --no-restore
+      - name: Start SQL Server LocalDB
+        shell: pwsh
+        run: |
+          sqllocaldb start MSSQLLocalDB
+          sqllocaldb info MSSQLLocalDB
+      - name: Verify protected bilingual responsive Home runtime
+        shell: pwsh
+        run: ./scripts/verify-p13-home-ui.ps1
+      - name: Validate execution plan and governance
+        run: python scripts/validate_execution_plan.py
+      - name: Upload P13 Home browser evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: P13-Home-UI-${{ env.CANDIDATE_SHA }}
+          path: artifacts/p13-home-ui/
+          if-no-files-found: error
+          retention-days: 30

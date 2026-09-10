@@ -44,3 +44,23 @@ The canonical Service Execution reference remains `docs/ui-baseline/bilingual_ku
 The inherited shell muted token `#7690aa` was too light for the 10.5–12px normal-weight secondary text used on the P07 Service Execution screen. It produced only about 3.10:1 contrast on the GSIP canvas (`#f4f8fc`) and 3.31:1 on white cards, below the 4.5:1 WCAG AA threshold for normal text.
 
 P07 therefore applies a screen-scoped muted tone of `#58738d` to the execution hero, request/service workspace and result workspace. The resulting contrast is approximately 4.63:1 on the canvas, 4.76:1 on the light result surfaces and 4.94:1 on white cards. This is an accessibility-only deviation permitted by `docs/UI_DESIGN_PARITY_GATE.md`; it does not change layout, component hierarchy, responsive breakpoints, bidi behavior, institutional branding, or introduce a generic admin template.
+
+## P13 — UI and accessibility convergence
+
+### Dashboard least-privilege data boundary
+
+The canonical Home reference is `docs/ui-baseline/bilingual_kuwait_government_services_dashboard.svg`. P13 converges the former P01 preview into a real catalogue-backed dashboard while retaining the reference hierarchy: government-services hero, four status cards, entity/search controls, entity summary cards, available-service cards, status badges, service actions, bilingual RTL/LTR behavior and the established navy/blue/gold shell. Entity and service content is rendered as cards rather than a generic administration table so the approved reference hierarchy and visual density remain intact.
+
+The reference artwork includes operational request and alert totals. P13 intentionally does **not** aggregate those totals onto Home. Request history and audit/monitoring have narrower authorization boundaries than the authenticated metadata catalogue, and moving their totals into Home would broaden disclosure merely to match decorative reference values. Home therefore shows only least-privilege non-secret catalogue facts: active entities, active current services, active environments and executable build version. Request and audit information remains in its separately authorized surfaces. This is a security-only deviation permitted by `docs/UI_DESIGN_PARITY_GATE.md`; no synthetic production-looking KPI values are used.
+
+### Mobile primary navigation
+
+The inherited P01 mobile rule hid navigation items five and later. That became invalid once Requests, Audit, Permissions and Settings were real modules. P13 keeps the bottom navigation pattern but makes it horizontally reachable instead of deleting routes. All primary links remain in the accessibility tree and are keyboard focusable.
+
+### Service Execution history convergence
+
+The Service Execution reference includes Result, Raw Response and History navigation in the result workspace. P07 correctly deferred History before request history existed, but P10 subsequently delivered the protected `/requests` surface. P13 therefore removes the stale disabled History control and links it to P10 request history filtered by the selected service code. Authorization remains owned and enforced by `RequestHistoryController`/`IRequestHistoryService`; P13 does not duplicate or weaken that boundary.
+
+### Cross-phase screenshot reuse
+
+P13 does not clone the established P04, P07 or P11 browser harnesses. Their workflows remain independent regression gates and capture the Permissions, Service Execution and Audit reference surfaces on the same exact candidate SHA. P13 adds the missing Home bilingual desktop/narrow browser evidence and strengthens P04 to checkout and retain artifacts for the exact pull-request head. This preserves independent acceptance while avoiding duplicate test implementations.

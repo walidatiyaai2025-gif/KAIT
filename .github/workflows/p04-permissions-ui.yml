@@ -16,10 +16,21 @@ jobs:
     timeout-minutes: 40
     env:
       GSIP_P04_SQL: 'Server=(localdb)\MSSQLLocalDB;Database=GSIP_P04_UI_CORE_${{ github.run_id }}_${{ github.run_attempt }};Integrated Security=true;TrustServerCertificate=true;MultipleActiveResultSets=true'
+      CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
     steps:
-      - name: Checkout
+      - name: Checkout exact candidate
         uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          fetch-depth: 0
+
+      - name: Assert exact candidate SHA
+        shell: pwsh
+        run: |
+          $actual = (git rev-parse HEAD).Trim()
+          if ($actual -ne $env:CANDIDATE_SHA) { throw "Exact candidate mismatch: expected=$env:CANDIDATE_SHA actual=$actual" }
+          Write-Host "EXACT_CANDIDATE_SHA=$actual"
 
       - name: Setup pinned .NET SDK
         uses: actions/setup-dotnet@v4
@@ -64,10 +75,10 @@ jobs:
         run: python scripts/validate_execution_plan.py
 
       - name: Upload P04 permissions UI evidence
-        if: ${{ always() && github.event_name == 'push' }}
+        if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
-          name: P04-Permissions-UI-Evidence-${{ github.sha }}
+          name: P04-Permissions-UI-Evidence-${{ env.CANDIDATE_SHA }}
           path: artifacts/p04-permissions-ui/
           if-no-files-found: error
           retention-days: 30

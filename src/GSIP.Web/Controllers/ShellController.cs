@@ -1,6 +1,7 @@
 using System.Reflection;
 using GSIP.Application.Abstractions;
 using GSIP.Application.Identity;
+using GSIP.Application.Metadata;
 using GSIP.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -10,14 +11,24 @@ namespace GSIP.Web.Controllers;
 
 public sealed class ShellController(
     ISystemClock clock,
-    IAccountAuthenticationService authentication) : Controller
+    IAccountAuthenticationService authentication,
+    IMetadataCatalogService metadataCatalog) : Controller
 {
     [Authorize]
     [HttpGet("/")]
-    public async Task<IActionResult> Index(CancellationToken cancellationToken)
+    public async Task<IActionResult> Index(
+        [FromQuery] string? entityCode,
+        [FromQuery] string? search,
+        CancellationToken cancellationToken)
     {
         var restrictionRedirect = await RedirectForRestrictionAsync(cancellationToken);
-        return restrictionRedirect ?? View(CreateModel());
+        if (restrictionRedirect is not null)
+        {
+            return restrictionRedirect;
+        }
+
+        var snapshot = await metadataCatalog.GetSnapshotAsync(cancellationToken);
+        return View(CreateModel(snapshot, entityCode, search));
     }
 
     [AllowAnonymous]
@@ -274,9 +285,82 @@ public sealed class ShellController(
         }
     }
 
-    private ShellViewModel CreateModel()
+    private ShellViewModel CreateModel(
+        MetadataCatalogSnapshot snapshot,
+        string? entityCode,
+        string? search)
     {
         var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "0.1.0";
-        return new ShellViewModel(version, "P03", clock.UtcNow);
+        var normalizedEntityCode = entityCode?.Trim() ?? string.Empty;
+        var normalizedSearch = search?.Trim() ?? string.Empty;
+
+        var activeEntities = snapshot.Entities
+            .Where(entity => entity.Active)
+            .OrderBy(entity => entity.DisplayOrder)
+            .ThenBy(entity => entity.Code, StringComparer.Ordinal)
+            .ToArray();
+        var activeEntityById = activeEntities.ToDictionary(entity => entity.Id);
+
+        var activeServices = snapshot.Services
+            .Where(service => service.Active && service.IsCurrent && activeEntityById.ContainsKey(service.EntityId))
+            .OrderBy(service => service.Code, StringComparer.Ordinal)
+            .ToArray();
+
+        var visibleServices = activeServices.AsEnumerable();
+        if (!string.IsNullOrWhiteSpace(normalizedEntityCode))
+        {
+            visibleServices = visibleServices.Where(service =>
+                string.Equals(activeEntityById[service.EntityId].Code, normalizedEntityCode, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (!string.IsNullOrWhiteSpace(normalizedSearch))
+        {
+            visibleServices = visibleServices.Where(service =>
+            {
+                var entity = activeEntityById[service.EntityId];
+                return service.Code.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase)
+                    || service.NameAr.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase)
+                    || service.NameEn.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase)
+                    || entity.Code.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase)
+                    || entity.NameAr.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase)
+                    || entity.NameEn.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase);
+            });
+        }
+
+        var entityOptions = activeEntities
+            .Select(entity => new ShellEntityOptionViewModel(entity.Id, entity.Code, entity.NameAr, entity.NameEn))
+            .ToArray();
+        var serviceCards = visibleServices
+            .Take(50)
+            .Select(service =>
+            {
+                var entity = activeEntityById[service.EntityId];
+                return new ShellServiceCardViewModel(
+                    service.Id,
+                    service.EntityId,
+                    entity.Code,
+                    entity.NameAr,
+                    entity.NameEn,
+                    service.Code,
+                    service.NameAr,
+                    service.NameEn,
+                    service.DescriptionAr,
+                    service.DescriptionEn,
+                    service.Version,
+                    service.EnvironmentConfigs.Count(configuration => configuration.Active));
+            })
+            .ToArray();
+
+        return new ShellViewModel(
+            version,
+            "P13",
+            clock.UtcNow,
+            activeEntities.Length,
+            activeServices.Length,
+            snapshot.Environments.Count(environment => environment.Active),
+            normalizedEntityCode,
+            normalizedSearch,
+            entityOptions,
+            serviceCards);
     }
 }

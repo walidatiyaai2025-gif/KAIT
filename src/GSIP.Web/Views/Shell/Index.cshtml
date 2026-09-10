@@ -1,50 +1,130 @@
+@using System.Globalization
 @model ShellViewModel
-@inject ShellText L
 @{
-    ViewData["Title"] = L["Dashboard"];
+    var isArabic = CultureInfo.CurrentUICulture.TextInfo.IsRightToLeft;
+    Func<string, string, string> t = (en, ar) => isArabic ? ar : en;
+    ViewData["Title"] = t("Government Services Dashboard", "لوحة الخدمات الحكومية");
+    var visibleEntities = string.IsNullOrWhiteSpace(Model.SelectedEntityCode)
+        ? Model.Entities.Take(4).ToArray()
+        : Model.Entities.Where(entity => string.Equals(entity.Code, Model.SelectedEntityCode, StringComparison.OrdinalIgnoreCase)).ToArray();
 }
-<section class="hero-row">
+<section class="hero-row p13-dashboard-hero" data-testid="p13-home-dashboard" data-phase="@Model.Phase">
     <div>
         <span class="eyebrow">GSIP · @Model.Phase</span>
-        <h1>@L["Welcome"]</h1>
-        <p>@L["WelcomeSubtitle"]</p>
+        <h1>@t("Integrated Government Services Portal", "بوابة تكامل الخدمات الحكومية")</h1>
+        <p>@t("Browse the active service catalogue and continue to governed execution, request history, permissions and audit workspaces.", "استعرض كتالوج الخدمات النشطة وانتقل إلى مساحات التنفيذ المحكوم وسجل الطلبات والصلاحيات والتدقيق.")</p>
     </div>
-    <div class="search-shell" aria-disabled="true">
-        <span aria-hidden="true">⌕</span>
-        <span>@L["SearchPlaceholder"]</span>
-        <kbd>⌘ K</kbd>
-    </div>
+    <a class="dashboard-primary-link" href="/execute?culture=@CultureInfo.CurrentUICulture.Name">@t("Open Service Execution", "فتح تنفيذ الخدمات")</a>
 </section>
 
-<section class="kpi-grid" aria-label="@L["FoundationStatus"]">
-    <article class="kpi-card"><span class="kpi-icon blue">✓</span><div><strong>.NET 10</strong><span>@L["PlatformReady"]</span></div></article>
-    <article class="kpi-card"><span class="kpi-icon teal">文</span><div><strong>AR / EN</strong><span>@L["BilingualReady"]</span></div></article>
-    <article class="kpi-card"><span class="kpi-icon gold">P01</span><div><strong>@L["CurrentPhase"]</strong><span>@L["ShellArchitecture"]</span></div></article>
-    <article class="kpi-card"><span class="kpi-icon navy">#</span><div><strong>v@(Model.ProductVersion)</strong><span>@L["BuildVersion"]</span></div></article>
+<section class="kpi-grid" aria-label="@t("Live catalogue summary", "ملخص الكتالوج الحالي")">
+    <article class="kpi-card"><span class="kpi-icon blue" aria-hidden="true">◇</span><div><strong>@Model.ActiveEntityCount</strong><span>@t("Active entities", "الجهات النشطة")</span></div></article>
+    <article class="kpi-card"><span class="kpi-icon teal" aria-hidden="true">▦</span><div><strong>@Model.ActiveServiceCount</strong><span>@t("Active services", "الخدمات النشطة")</span></div></article>
+    <article class="kpi-card"><span class="kpi-icon gold" aria-hidden="true">◎</span><div><strong>@Model.ActiveEnvironmentCount</strong><span>@t("Active environments", "البيئات النشطة")</span></div></article>
+    <article class="kpi-card"><span class="kpi-icon navy" aria-hidden="true">#</span><div><strong>v@(Model.ProductVersion)</strong><span>@t("Build version", "إصدار التطبيق")</span></div></article>
 </section>
 
-<section class="foundation-panel">
-    <div class="panel-accent"></div>
-    <div class="foundation-icon" aria-hidden="true">G</div>
-    <div class="foundation-copy">
-        <span class="status-badge"><i></i>@L["FoundationActive"]</span>
-        <h2>@L["FoundationTitle"]</h2>
-        <p>@L["FoundationDescription"]</p>
+<form class="dashboard-filter" method="get" action="/" role="search" aria-label="@t("Service catalogue filters", "مرشحات كتالوج الخدمات")">
+    <div>
+        <label for="dashboard-entity">@t("Government entity", "الجهة الحكومية")</label>
+        <select id="dashboard-entity" name="entityCode">
+            <option value="">@t("All active entities", "كل الجهات النشطة")</option>
+            @foreach (var entity in Model.Entities)
+            {
+                <option value="@entity.Code" selected="@(string.Equals(Model.SelectedEntityCode, entity.Code, StringComparison.OrdinalIgnoreCase))">@(isArabic ? entity.NameAr : entity.NameEn) · @entity.Code</option>
+            }
+        </select>
     </div>
-    <div class="foundation-meta">
-        <span>@L["Architecture"]</span><strong>Web · Application · Domain · Infrastructure · Integrations · Contracts</strong>
-        <span>@L["Direction"]</span><strong>RTL / LTR</strong>
+    <div class="dashboard-search-field">
+        <label for="dashboard-search">@t("Search services", "بحث الخدمات")</label>
+        <input id="dashboard-search" type="search" name="search" maxlength="120" value="@Model.Search" placeholder="@t("Service or entity name/code", "اسم أو رمز الخدمة أو الجهة")" />
     </div>
+    <button class="dashboard-filter-button" type="submit">@t("Apply", "تطبيق")</button>
+    @if (!string.IsNullOrWhiteSpace(Model.SelectedEntityCode) || !string.IsNullOrWhiteSpace(Model.Search))
+    {
+        <a class="dashboard-clear-link" href="/?culture=@CultureInfo.CurrentUICulture.Name">@t("Clear filters", "مسح المرشحات")</a>
+    }
+</form>
+
+<section class="dashboard-entities" aria-labelledby="active-entities-title">
+    <div class="section-heading">
+        <div>
+            <h2 id="active-entities-title">@t("Government Entities", "الجهات الحكومية")</h2>
+            <p>@t("Active catalogue owners represented in the current governed service workspace.", "الجهات النشطة المالكة للخدمات في مساحة العمل المحكومة الحالية.")</p>
+        </div>
+        <span class="preview-chip">@visibleEntities.Length @t("shown", "معروضة")</span>
+    </div>
+    @if (visibleEntities.Length == 0)
+    {
+        <div class="dashboard-empty" role="status">@t("No active entity matches the current filter.", "لا توجد جهة نشطة تطابق المرشح الحالي.")</div>
+    }
+    else
+    {
+        <div class="dashboard-entity-grid">
+            @foreach (var entity in visibleEntities)
+            {
+                var visibleServiceCount = Model.Services.Count(service => service.EntityId == entity.Id);
+                <article class="dashboard-entity-card" data-testid="dashboard-entity-card">
+                    <div class="dashboard-entity-mark" aria-hidden="true">◇</div>
+                    <div class="dashboard-entity-copy">
+                        <span class="status-badge"><i></i>@t("Active entity", "جهة نشطة")</span>
+                        <h3>@(isArabic ? entity.NameAr : entity.NameEn)</h3>
+                        <code dir="ltr">@entity.Code</code>
+                    </div>
+                    <div class="dashboard-entity-meta">
+                        <span>@t("Visible services", "الخدمات المعروضة")</span>
+                        <strong>@visibleServiceCount</strong>
+                    </div>
+                </article>
+            }
+        </div>
+    }
 </section>
 
-<div class="section-heading">
-    <div><h2>@L["WorkspacePreview"]</h2><p>@L["WorkspacePreviewSubtitle"]</p></div>
-    <span class="preview-chip">@L["PreviewOnly"]</span>
-</div>
-<section class="workspace-grid">
-    <article class="workspace-card"><span class="workspace-icon">◇</span><h3>@L["Entities"]</h3><p>@L["EntitiesPreview"]</p><button disabled>@L["AvailableAfterSetup"]</button></article>
-    <article class="workspace-card"><span class="workspace-icon">▦</span><h3>@L["Services"]</h3><p>@L["ServicesPreview"]</p><button disabled>@L["AvailableAfterSetup"]</button></article>
-    <article class="workspace-card"><span class="workspace-icon">◈</span><h3>@L["Permissions"]</h3><p>@L["PermissionsPreview"]</p><button disabled>@L["FuturePhase"]</button></article>
-    <article class="workspace-card"><span class="workspace-icon">◴</span><h3>@L["Audit"]</h3><p>@L["AuditPreview"]</p><button disabled>@L["FuturePhase"]</button></article>
+<section class="dashboard-services" aria-labelledby="available-services-title">
+    <div class="section-heading">
+        <div>
+            <h2 id="available-services-title">@t("Available Services", "الخدمات المتاحة")</h2>
+            <p>@t("Only active current catalogue definitions are shown. Execution permissions are enforced independently on the execution screen.", "تظهر تعريفات الكتالوج الحالية والنشطة فقط. يتم فرض صلاحيات التنفيذ بشكل مستقل في شاشة التنفيذ.")</p>
+        </div>
+        <span class="preview-chip">@Model.Services.Count @t("shown", "معروضة")</span>
+    </div>
+
+    @if (Model.Services.Count == 0)
+    {
+        <div class="dashboard-empty" role="status">@t("No active services match the current filters.", "لا توجد خدمات نشطة تطابق المرشحات الحالية.")</div>
+    }
+    else
+    {
+        <div class="dashboard-service-grid">
+            @foreach (var service in Model.Services)
+            {
+                <article class="dashboard-service-card" data-testid="dashboard-service-card" data-entity-code="@service.EntityCode" data-service-code="@service.ServiceCode">
+                    <header>
+                        <div class="dashboard-service-icon" aria-hidden="true">▦</div>
+                        <span class="status-badge"><i></i>@t("Active", "نشطة")</span>
+                    </header>
+                    <div class="dashboard-service-copy">
+                        <span class="dashboard-service-entity">@(isArabic ? service.EntityNameAr : service.EntityNameEn)</span>
+                        <h3>@(isArabic ? service.ServiceNameAr : service.ServiceNameEn)</h3>
+                        <p>@(isArabic ? service.DescriptionAr : service.DescriptionEn)</p>
+                    </div>
+                    <dl class="dashboard-service-meta">
+                        <div><dt>@t("Entity", "الجهة")</dt><dd dir="ltr">@service.EntityCode</dd></div>
+                        <div><dt>@t("Service code", "رمز الخدمة")</dt><dd dir="ltr">@service.ServiceCode</dd></div>
+                        <div><dt>@t("Version", "الإصدار")</dt><dd dir="ltr">v@service.Version</dd></div>
+                        <div><dt>@t("Environments", "البيئات")</dt><dd>@service.ActiveEnvironmentCount</dd></div>
+                    </dl>
+                    <a class="dashboard-service-link" href="/execute?entityId=@service.EntityId&serviceId=@service.ServiceId&culture=@CultureInfo.CurrentUICulture.Name">@t("Open Service", "فتح الخدمة")</a>
+                </article>
+            }
+        </div>
+    }
 </section>
-<footer class="shell-footer">@L["GeneratedAt"] @Model.GeneratedAtUtc.ToString("u") · @L["NoLiveData"]</footer>
+
+<aside class="dashboard-assurance" aria-label="@t("Dashboard data boundary", "حدود بيانات لوحة المعلومات")">
+    <span aria-hidden="true">i</span>
+    <p>@t("Dashboard counts come from the non-secret metadata catalogue. Request and audit totals remain inside their separately authorized workspaces rather than being exposed here.", "تأتي أرقام لوحة المعلومات من كتالوج البيانات الوصفية غير السري. تبقى إجماليات الطلبات والتدقيق داخل مساحات العمل ذات الصلاحيات المنفصلة ولا يتم كشفها هنا.")</p>
+</aside>
+
+<footer class="shell-footer">@t("Rendered", "وقت العرض") @Model.GeneratedAtUtc.ToString("u", CultureInfo.InvariantCulture)</footer>
