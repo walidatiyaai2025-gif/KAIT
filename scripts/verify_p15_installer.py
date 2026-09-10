@@ -99,7 +99,10 @@ require(version_match is not None, "executable version is missing or is not sema
 version = tuple(int(part) for part in version_match.groups()) if version_match else (0, 0, 0)
 require(version >= (0, 1, 0), "executable version regressed below the accepted 0.1.0 baseline")
 require("DEFERRED_EXTERNAL_NOT_PASS" in phase and "PRODUCTION_DEFERRED_EXTERNAL_NOT_PASS" in phase, "historical external NOT-PASS classifications were lost")
-require("OWNER_LAST / NOT PASS" in phase, "repository-administration NOT-PASS boundary was lost")
+require(
+    "OWNER_LAST / NOT PASS" in phase or "OWNER_LAST_BRANCH_PROTECTION_NOT_PASS" in phase,
+    "repository-administration NOT-PASS boundary was lost",
+)
 
 print(f"P15_INSTALLER_STATIC_ACCEPTANCE=PASS checks={checks}")
 print(f"P15_VERSION_BASELINE_PRESERVED={'.'.join(str(part) for part in version)}")
