@@ -4,47 +4,60 @@
 
 **P14 — Security hardening and resilience**
 
-Status: **OPEN / ACTIVE**
+Status: **OPEN / ACTIVE** — closure transition; P15 **STAGED / IMPLEMENTATION LOCKED**
 
-P13 — Arabic/English UX and accessibility convergence is **CLOSED**. Its implementation was normally integrated by PR #71 from exact implementation head `1576764a16ea6ddfed735cb0824cb38de26c83d8` to `main` `203cc28db714fae5c2c70e85adc9cc2306bb2107`. PR #71 completed **35/35 exact-head pull-request workflows SUCCESS** before merge, including a same-SHA retry of one transient LocalDB timeout without source/test/acceptance changes, and implementation main completed **32/32 push workflows SUCCESS**.
+P13 is **CLOSED**. Its implementation PR #71 used exact implementation head `1576764a16ea6ddfed735cb0824cb38de26c83d8` and integrated to exact implementation `main` `203cc28db714fae5c2c70e85adc9cc2306bb2107`. Its closure transition PR #72 was then normally integrated at exact `main` `9f76f6593123a86c1ef999ba5ec5b7b9338a53de`, and the resulting exact-main matrix completed **32/32 push workflows SUCCESS**.
 
-P13 closure reconciliation was then normally integrated by PR #72 from exact transition head `7bec3bac79d9fb31f2d9b2fcf15778290f833f68`. That exact transition head completed **35/35 pull-request workflows SUCCESS**. The resulting exact `main` SHA `9f76f6593123a86c1ef999ba5ec5b7b9338a53de` completed **32/32 push workflows SUCCESS**, failure=0, queued=0, in-progress=0. The P13 phase-exit condition is therefore satisfied and P14 is the sole canonical implementation phase.
+P14 implementation was normally integrated by PR #73 from exact implementation head `3eca150b67663ec3e5c2d5ea918d4b75cfd9b2de` to exact implementation `main` `1f1def164d639c75d9cc26710a905cc491355a2b`. The PR head completed **37/37 governed workflows SUCCESS** before merge. The resulting exact implementation main completed **34/34 push workflows SUCCESS**, with failure=0, queued=0 and in-progress=0 at closure review.
 
-## P13 closure truth
+The P14 finding register contains no known cloud-actionable Critical or High vulnerability. All P14 cloud-actionable implementation work is terminal. P14 nevertheless remains the sole canonical OPEN / ACTIVE phase until this closure transition is integrated and its exact-new-main CI is terminal green. This branch is governance/evidence-only closure reconciliation; no P15 production implementation is authorized on this branch.
 
-The integrated P13 baseline provides:
+## P14 closed implementation boundary
 
-- high-fidelity Home convergence to the repository-native entity-summary-card and service-card hierarchy instead of a generic administration table;
-- least-privilege Home metrics using only authenticated non-secret catalogue facts, without widening Request/Audit visibility merely to mimic decorative reference values;
-- exact-candidate and exact-main bilingual Arabic RTL / English LTR Home browser evidence across desktop and narrow/mobile viewports;
-- reachable mobile primary navigation, skip-to-content, keyboard focus treatment and preserved LTR presentation for technical identifiers;
-- preserved Permissions, Service Execution and Audit reference hierarchies through their independent exact-candidate browser gates;
-- Service Execution History connected to the protected P10 `/requests` history surface;
-- phase-monotonic P12/P13 acceptance so closed security/UI baselines remain executable after legal phase progression;
-- preservation of all closed P00-P12 functional, authorization, secret-isolation, audit, diagnostics and evidence controls.
+P14 hardened the existing P00-P13 architecture without creating competing runtime engines. The integrated boundary includes:
 
-Exact P13 evidence includes implementation main `203cc28db714fae5c2c70e85adc9cc2306bb2107`, implementation exact-main P13 run `34421612012`, and final closure-transition main `9f76f6593123a86c1ef999ba5ec5b7b9338a53de`. Detailed evidence is recorded in `docs/evidence/P13_UI_ACCESSIBILITY_CONVERGENCE.md`.
+- centralized restricted-session enforcement between authentication and authorization;
+- independent RBAC fail-closed rejection of restricted MFA/forced-password principals;
+- authenticated challenge rate limiting while preserving login lockout/IP throttling;
+- executable anti-forgery coverage for mutating MVC actions;
+- executable Razor output-encoding/XSS bypass checks and preserved CSP/security headers;
+- bounded retry, Retry-After, timeout/cancellation, response-size and external-outage behavior;
+- token-cache single-flight refresh/caller-cancellation safety;
+- dependency vulnerability/deprecation evidence and a fail gate for known vulnerable NuGet packages;
+- preservation of Service + Environment + AuthProfile + SecretRef isolation, secret redaction, audit integrity, request-history authorization and bilingual RTL/LTR behavior.
+
+Detailed evidence: `docs/evidence/P14_SECURITY_HARDENING.md`.
 
 ## Legal work now
 
-Canonical P14 branch/lease: `worker/p14-security-hardening-resilience`, unit `P14::security-hardening-resilience-convergence`, based only on exact green P13-closed main `9f76f6593123a86c1ef999ba5ec5b7b9338a53de`.
+Canonical closure branch/lease: `worker/p14-closure-reconciliation`.
 
-P14 scope is security hardening and resilience: authorization-bypass/IDOR, CSRF/XSS/output encoding, rate limiting/session fixation/brute force, secure headers, secret/log leakage, migration safety, retry-storm prevention, timeout/cancellation and external-outage behavior, token-refresh concurrency, dynamic-input fuzzing, applicable upload/logo restrictions, dependency/license/vulnerability review, threat model and security checklist. P14 cannot close with a known Critical/High vulnerability.
+Legal work is limited to P14 closure materialization: reconcile `docs/TASK_LEDGER.md`, `docs/evidence/P14_SECURITY_HARDENING.md`, `CURRENT_PHASE.md`, `PROJECT_CONTROL.md`, tracker Issue #1, and exact closure CI evidence. Preserve all integrated P14 implementation and all historical deferred classifications.
 
-The active P14 audit found a restricted-session authorization boundary gap: MFA/forced-password challenge principals were authenticated and shell-local redirects were not a sufficient global authorization boundary. The canonical P14 line is repairing this with central restricted-session middleware, RBAC fail-closed enforcement, authenticated challenge rate limiting, executable CSRF/XSS/resilience checks and an exact-candidate dependency-vulnerability gate. This is **OPEN-PHASE work**, not closure evidence yet.
+## P14 exit condition
+
+The implementation side of the P14 exit gate is satisfied on exact `main` `1f1def164d639c75d9cc26710a905cc491355a2b`: final implementation candidate green, no known Critical/High cloud-actionable finding, all governed exact-main workflows terminal green, and cloud-actionable implementation tasks terminal.
+
+The remaining transition gate is procedural but still mandatory:
+
+1. the closure-transition head must complete its governed PR workflow matrix successfully;
+2. the closure transition must be normally integrated while based on current `main`;
+3. every governed workflow on the resulting exact-new-main SHA must be terminal SUCCESS.
+
+Only after all three are true is P14 formally **CLOSED** and P15 legally authorized as the sole canonical implementation phase.
+
+## Staged next phase
+
+**P15 — Professional Windows/IIS installer and packaging** is **STAGED / IMPLEMENTATION LOCKED**.
+
+Its planned scope is the professional Windows/IIS installer, upgrade/repair/uninstall behavior, versioned artifact and SHA-256 evidence. No P15 implementation may merge before the P14 closure-transition exact-new-main gate above is green.
 
 ## Locked future work
 
-P15–P17 remain **LOCKED**. Installer/package, release-candidate automated acceptance and final release convergence must not begin before their canonical phase opens.
-
-Legitimate already-started future-phase recovery work may repair a known real defect only under the documented owner non-stop exception; it remains **DO NOT MERGE** and does not change canonical phase authority until preceding phases close normally.
+P16–P17 remain **LOCKED** until their preceding phases close normally.
 
 ## Deferred boundaries
 
 Historical owner/external classifications remain unchanged. P09 authorized live-UAT evidence that remains unavailable is still `DEFERRED_EXTERNAL_NOT_PASS`; unproven Production operation proof remains `PRODUCTION_DEFERRED_EXTERNAL_NOT_PASS`. Production details are never inferred from UAT, and no Production→UAT fallback is allowed.
 
 Main branch protection remains `OWNER_LAST / NOT PASS` while live read-back reports `main` unprotected and no repository ruleset configured. This repository-administration gap is not converted to PASS by P14 cloud evidence.
-
-## P14 exit condition
-
-P14 closes only after the full required hardening scope is implemented or explicitly evidenced as already safe; executable P14 acceptance and dependency review are terminal green on one exact candidate; no known Critical/High vulnerability remains; all governed closed-baseline workflows are green on the same candidate; governance/evidence is reconciled; normal integration completes; and exact-new-main CI is terminal green. Only then may P15 open.

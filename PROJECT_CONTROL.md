@@ -6,7 +6,7 @@
 - Repository: `walidatiyaai2025-gif/KAIT`
 - Default branch: `main`
 - Delivery model: phase-gated autonomous implementation
-- Current planned product state: P13 implementation is integrated and exact-main verified at `203cc28db714fae5c2c70e85adc9cc2306bb2107`; this branch is the governance/evidence-only P13 closure transition. P14 is staged as the next phase but remains implementation-locked until this transition is normally merged and the resulting exact-new-main CI is terminal green.
+- Current planned product state: P14 implementation is integrated and exact-main verified at `1f1def164d639c75d9cc26710a905cc491355a2b`; this branch is the governance/evidence-only P14 closure transition. P15 is staged as the next phase but remains implementation-locked until this transition is normally merged and the resulting exact-new-main CI is terminal green.
 - Initial executable version: `0.1.0`
 - Pinned SDK / target framework: .NET SDK `10.0.400` / `net10.0`
 - Initial entity: Ministry of Justice (MOJ), Kuwait
@@ -16,13 +16,11 @@
 
 ## Last closed phase evidence
 
-P13 is CLOSED from implementation evidence on exact integrated `main` SHA `203cc28db714fae5c2c70e85adc9cc2306bb2107` after normal integration of PR #71 from exact implementation head `1576764a16ea6ddfed735cb0824cb38de26c83d8`.
+P13 is **CLOSED** after its closure transition PR #72 was normally integrated at exact `main` `9f76f6593123a86c1ef999ba5ec5b7b9338a53de` and the resulting exact-main matrix completed **32/32 push workflows SUCCESS**.
 
-PR #71 completed **35/35 exact-head governed workflows SUCCESS** before merge. One P08 Authentication Convergence attempt failed only because ephemeral LocalDB creation timed out; the same exact candidate SHA was rerun without source, test or acceptance changes and completed SUCCESS. The resulting exact integrated main completed **32/32 push workflows SUCCESS**, with failure=0, queued=0 and in-progress=0.
+P14 implementation is terminal from exact implementation evidence. PR #73 normally integrated exact implementation head `3eca150b67663ec3e5c2d5ea918d4b75cfd9b2de` after **37/37 governed pull-request workflows SUCCESS**. The resulting exact implementation `main` SHA `1f1def164d639c75d9cc26710a905cc491355a2b` completed **34/34 push workflows SUCCESS**, with failure=0, queued=0 and in-progress=0 at closure review.
 
-Exact-main P13 workflow run `34421612012` completed SUCCESS on the same integrated SHA. It produced Home artifact `P13-Home-UI-203cc28db714fae5c2c70e85adc9cc2306bb2107` (artifact `10131131126`, digest `sha256:19b8a382a59cc049374578d1fc8f865439bc16a523268f74ef98175aeb68fe2e`) and static artifact `P13-UI-Accessibility-Static-203cc28db714fae5c2c70e85adc9cc2306bb2107` (artifact `10131148598`, digest `sha256:062421c5545952d26d42b1a91b8865ffbd4626ef7f3f9d8041504362a3d4e329`). Independent Permissions, Service Execution and Audit browser gates were also green on the exact implementation candidate before merge.
-
-P13 closure evidence preserves all P00-P12 functional/security boundaries, Arabic/English RTL/LTR behavior, responsive/mobile navigation, keyboard/focus/accessibility semantics, protected History routing, high-fidelity reference-surface structure, and least-privilege dashboard behavior. Detailed evidence: `docs/evidence/P13_UI_ACCESSIBILITY_CONVERGENCE.md`.
+P14 closed implementation evidence covers the restricted-session authorization repair, independent RBAC fail-closed enforcement, authenticated challenge throttling, anti-forgery and Razor output-encoding checks, CSP/security-header preservation, bounded retry/timeout/cancellation/response behavior, token-refresh concurrency safety, dependency vulnerability/deprecation review and preservation of all closed P00-P13 security/isolation contracts. The P14 register has no known cloud-actionable Critical or High vulnerability. Detailed evidence: `docs/evidence/P14_SECURITY_HARDENING.md`.
 
 Historical P08/P09 owner/external classifications remain unchanged. Evidence proven for UAT is not promoted to Production. `DEFERRED_EXTERNAL_NOT_PASS` and `PRODUCTION_DEFERRED_EXTERNAL_NOT_PASS` remain NOT PASS and Production→UAT fallback is forbidden. Main branch protection remains `OWNER_LAST / NOT PASS` while live read-back reports `protected=false` and repository rulesets are absent.
 
@@ -46,10 +44,10 @@ No old prompt, screenshot caption, branch description, stale ledger or supersede
 ## Phase policy
 
 - Exactly one canonical current phase exists at a time.
-- P00 through P12 are CLOSED from integrated evidence.
-- P13 implementation is integrated and exact-main verified; this branch records its closure transition.
-- P14 is the next planned phase but remains implementation-locked until this P13 closure transition is normally merged and the resulting exact-new-main gate is terminal green.
-- P15–P17 remain locked until their preceding phases close normally.
+- P00 through P13 are CLOSED from integrated evidence.
+- P14 implementation is integrated and exact-main verified; this branch records its closure transition.
+- P15 is the next planned phase but remains implementation-locked until this P14 closure transition is normally merged and the resulting exact-new-main gate is terminal green.
+- P16–P17 remain locked until their preceding phases close normally.
 - Phase exit requires implementation + tests + evidence + documentation reconciliation + pushed commit + required CI + exact-main recheck.
 - Integration recovery and exact-main regressions take priority over new feature work.
 - A phase-transition branch does not authorize new-phase implementation until that transition is integrated and the resulting exact-new-main gate is green.
@@ -128,15 +126,21 @@ The closed P12 boundary includes exact Entity -> Service -> Environment operatio
 
 ## P13 UX / accessibility / parity contract boundary
 
-P13 is CLOSED from implementation evidence on exact integrated `main` SHA `203cc28db714fae5c2c70e85adc9cc2306bb2107` after normal integration of PR #71. It converged the authenticated Home/dashboard, shared shell, responsive/mobile navigation and accessibility semantics while preserving independent protected browser evidence for Home, Permissions, Service Execution and Audit.
+P13 is CLOSED after normal integration of implementation PR #71 and closure transition PR #72. Its final closure-transition main is `9f76f6593123a86c1ef999ba5ec5b7b9338a53de`, which completed **32/32 push workflows SUCCESS**.
 
-The closed implementation boundary includes Arabic RTL / English LTR rendering, reachable mobile primary navigation, skip-to-content, visible keyboard focus, semantic labels/statuses, explicit LTR technical identifiers, protected P10 History routing from Service Execution, reference-card hierarchy on Home, and least-privilege catalogue-backed metrics without widening Request/Audit visibility solely for visual parity. Closed P00-P12 security and isolation boundaries remain authoritative.
+The closed boundary includes Arabic RTL / English LTR rendering, reachable mobile primary navigation, skip-to-content, visible keyboard focus, semantic labels/statuses, explicit LTR technical identifiers, protected P10 History routing from Service Execution, reference-card hierarchy on Home, and least-privilege catalogue-backed metrics without widening Request/Audit visibility solely for visual parity. Closed P00-P12 security and isolation boundaries remain authoritative.
 
-This governance/evidence transition must itself be normally integrated and followed by terminal-green exact-new-main CI before P14 implementation is authorized.
+## P14 security hardening / resilience closure boundary
 
-## P14 security hardening / resilience staged boundary
+P14 implementation is terminal on exact integrated implementation main `1f1def164d639c75d9cc26710a905cc491355a2b`. PR #73 final implementation head `3eca150b67663ec3e5c2d5ea918d4b75cfd9b2de` passed **37/37** governed pull-request workflows; the exact implementation main completed **34/34** push workflows SUCCESS.
 
-P14 is staged only. Once the P13 closure transition is integrated and exact-new-main CI is green, P14 becomes the sole implementation phase. Its required scope includes authorization bypass/IDOR, CSRF/XSS/output encoding, rate limiting, session fixation and brute-force behavior, secure headers, secret/log leakage, migration safety, retry-storm prevention, timeout/cancellation/external-outage behavior, token refresh concurrency, dynamic-input fuzzing, applicable upload/logo restrictions, dependency/license/vulnerability review, threat model and security checklist. P14 cannot close with a known Critical/High vulnerability.
+The closed implementation boundary includes authorization-bypass/IDOR hardening for restricted authentication sessions, RBAC defense in depth, CSRF/XSS/output-encoding acceptance, authenticated challenge rate limiting, secure-header preservation, secret/log leakage protection, retry/timeout/cancellation/response bounds, token-refresh concurrency safety, dependency vulnerability/deprecation review, threat-model evidence and preservation of all earlier service/environment/authentication/audit boundaries. No known cloud-actionable Critical/High vulnerability remains in the P14 register.
+
+This governance/evidence closure transition must itself be normally integrated and followed by terminal-green exact-new-main CI before P14 is formally CLOSED and P15 implementation is authorized.
+
+## P15 installer / packaging staged boundary
+
+P15 is **STAGED / IMPLEMENTATION LOCKED**. After the P14 closure transition is integrated and exact-new-main CI is terminal green, P15 becomes the sole canonical implementation phase. Planned scope: professional Windows/IIS installer, upgrade/repair/uninstall path, versioned artifact and SHA-256 evidence. P16/P17 remain locked.
 
 ## Service environment / Go-Live control
 
