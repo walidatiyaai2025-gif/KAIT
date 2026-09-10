@@ -21,7 +21,7 @@ This ledger is evidence-driven. `DEFERRED_EXTERNAL` and `OWNER_LAST` are never e
 | P14 | CLOSED | Security/resilience hardening, IDOR/CSRF/XSS/rate-limit/timeout/retry/concurrency/dependency review preserved. |
 | P15 | CLOSED | Windows/IIS installer/package lifecycle, upgrade/repair/uninstall, state preservation, redaction and package hashing preserved. |
 | P16 | CLOSED | Full automated acceptance, backup/restore rehearsal, multi-screen bilingual UI, security/runtime and same-candidate release packaging preserved. |
-| P17 | CLOSED | Implementation PR #92 head `18bedd6891bfa7812c1da7715f504e7cc233e752` passed **43/43** and integrated as `2723e85e9d63182b1384615400a20ecc8babfe83` with **38/38** push SUCCESS. Closure-transition PR #93 head `7e4fb7264c346f4f5310ad4b44c07fe51a07c151` passed **41/41** and integrated as `72d1ea92e14978b08a1b0ed1727716001ebf1390` with **37/37** push SUCCESS. Formal-closure PR #94 head `6d3aa3008f08b4d8a534bff2a1bd5e81cde8ad1f` passed **41/41**, merged normally with expected-head protection, and produced `4d7e5371a28d37237b32cfc382e748582af01b46`, which passed **37/37** governed push workflows with fresh same-SHA P15/P16/P17 artifacts. |
+| P17 | CLOSED | Implementation PR #92 head `18bedd6891bfa7812c1da7715f504e7cc233e752` passed **43/43** and integrated as `2723e85e9d63182b1384615400a20ecc8babfe83` with **38/38** push SUCCESS. Closure-transition PR #93 head `7e4fb7264c346f4f5310ad4b44c07fe51a07c151` passed **41/41** and integrated as `72d1ea92e14978b08a1b0ed1727716001ebf1390` with **37/37** push SUCCESS. Formal-closure PR #94 head `6d3aa3008f08b4d8a534bff2a1bd5e81cde8ad1f` passed **41/41**, merged normally with expected-head protection, and produced `4d7e5371a28d37237b32cfc382e748582af01b46`, which passed **38/38** governed push workflows. Post-formal evidence PR #95 head `75c85e21f9c06943cd2bb31724f8fa1924c27896` passed **40/40** and integrated as `cbbcd4eaadb98d61b65e040c048e57b2c0f50e47`, which passed **38/38** governed push workflows with fresh same-SHA P15/P16/P17 artifacts. |
 
 ## P17 implementation/convergence record
 
@@ -45,7 +45,7 @@ These remain closure-transition provenance only after formal-closure source chan
 
 Canonical formal-closure PR #94 exact head `6d3aa3008f08b4d8a534bff2a1bd5e81cde8ad1f` completed **41/41 governed PR workflows SUCCESS**, with failure=0, queued=0 and in-progress=0. Same-head P15/P16/P17 artifacts and archive SHA-256 digests were read back before merge. Reviews and review threads were empty, no conflicting tracker claim displaced the line, and exact base main remained `72d1ea92e14978b08a1b0ed1727716001ebf1390` through the immediate pre-merge gate.
 
-PR #94 merged normally using expected-head protection, producing exact formal-closure integration main `4d7e5371a28d37237b32cfc382e748582af01b46`. That exact main completed **37/37 governed push workflows SUCCESS**, with failure=0, queued=0 and in-progress=0. Exact-main P16 run `34520888811` completed all four jobs including aggregate `p16-gate` SUCCESS.
+PR #94 merged normally using expected-head protection, producing exact formal-closure integration main `4d7e5371a28d37237b32cfc382e748582af01b46`. That exact main completed **38/38 governed push workflows SUCCESS**, with failure=0, queued=0 and in-progress=0. Exact-main P16 run `34520888811` completed all four jobs including aggregate `p16-gate` SUCCESS.
 
 Fresh exact `4d7e5371...` evidence includes:
 
@@ -54,6 +54,18 @@ Fresh exact `4d7e5371...` evidence includes:
 - P17 run `34520888987`: artifact `10169702431`, digest `sha256:7f1f91ec8d741f34c8bb3b46805b718205a89a1711300b1344df188eb3aae100`, 342 bytes.
 
 Both downloaded P15/P16 manifests bind source identity to exact `4d7e5371a28d37237b32cfc382e748582af01b46`. This evidence may not be reused after any later main movement; any governance/evidence reconciliation merge must be validated on its own resulting exact main.
+
+## P17 post-formal-closure evidence reconciliation
+
+Canonical post-formal-closure evidence PR #95 exact head `75c85e21f9c06943cd2bb31724f8fa1924c27896` completed **40/40 governed pull-request workflows SUCCESS** and merged normally with expected-head protection to exact main `cbbcd4eaadb98d61b65e040c048e57b2c0f50e47`. That exact main completed **38/38 governed push workflows SUCCESS**, failure=0.
+
+Fresh exact `cbbcd4ea...` evidence includes:
+
+- P15 run `34525041438`: package `GSIP-0.1.2-win-x64.zip` SHA-256 `1620aa6bad7358da5ade77392d995c2315f4bb57bc5f018e022e02860253b2f2`; installer `GSIP-0.1.2-Setup-x64.exe` SHA-256 `b072319217532a3944d952e8938b7f8a991d97dd3092802538e0fe77f577ddd1`; artifact `10171329005`, digest `sha256:f09c187422a8fdadeec34ca41d529439dc92a62d1c9389966552942c70743aa0`, 62,248,493 bytes;
+- P16 run `34525040954`: release package `GSIP-0.1.2-win-x64.zip` SHA-256 `d19f7adbc3d3388daebca81df40eddbef8d032b901f8383e2a6976bd3f99350b`; installer `GSIP-0.1.2-Setup-x64.exe` SHA-256 `32aea16cd60d6b006fdcb873bc6bd748fbec3c9e4c4af59fdd88fa7d5419e2d3`; release artifact `10171336671`, digest `sha256:dc3a994c9ea26af0de28bf67e9e7214fad6e05ada37fba9cdb80597061736d28`, 62,249,137 bytes; runtime/UI artifact `10171433048`, digest `sha256:7816db30ee723129a4792a0b5ea2f7683683be317f8892a5fb1e7060ad15cfdc`, 3,482,444 bytes;
+- P17 run `34525041117`: artifact `10171310053`, digest `sha256:0f6809c018fb4083e20f3b949d65bf61d2c062f39d5ca1ddf0289dccd717c0a2`, 341 bytes.
+
+`cbbcd4eaadb98d61b65e040c048e57b2c0f50e47` is the latest fully verified exact-main predecessor recorded by this recovery. The merge SHA produced by this evidence-only reconciliation is intentionally not self-encoded in the ledger. Live repository state and issue #1 post-merge evidence are authoritative for any resulting newer main, and that newer main must complete its own exact-main workflow and artifact gates before a clean sweep can count.
 
 ## Branch reconciliation after formal closure
 
@@ -65,7 +77,7 @@ After every formal closure or evidence reconciliation merge, repeat a complete L
 
 Final cloud convergence requires **two consecutive full LIVE-state sweeps with zero cloud-actionable gaps** while exact-main governed CI remains terminal green. Required census includes open PRs/issues, active/stale claims, branches with unique legitimate commits, recent merges, workflow outcomes, required-test skips, production TODO/FIXME/stubs, canonical evidence, release/version/artifact SHA-256 identity, owner/deferred classifications and `UNPUSHED_WORK`.
 
-The first terminal-green sweep after PR #94 found stale tracker/canonical governance text, so it did **not** count as a clean sweep. That gap is the reason for this evidence reconciliation line. Any main produced by this reconciliation must receive new same-SHA validation before the clean-sweep count can restart.
+The first terminal-green sweep after PR #94 found stale tracker/canonical governance text, so it did **not** count as a clean sweep. PR #95 repaired that evidence drift but its resulting exact main `cbbcd4ea...` must itself be the evidence basis for any later sweep. This recovery line records that predecessor evidence without creating a recursive requirement to encode its own future merge SHA.
 
 ## OWNER_LAST / deferred external — NOT PASS
 
