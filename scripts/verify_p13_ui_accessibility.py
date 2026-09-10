@@ -49,7 +49,10 @@ require(".nav-item:nth-child(n+5){display:flex}" in p13_css, "Mobile navigation 
 require("overflow-x:auto" in p13_css and "min-width:max-content" in p13_css, "Mobile navigation is not horizontally reachable on narrow screens.")
 require('data-testid="p13-home-dashboard"' in home and 'data-phase="@Model.Phase"' in home, "P13 Home runtime marker is missing.")
 require('role="search"' in home and 'for="dashboard-entity"' in home and 'for="dashboard-search"' in home, "Home catalogue filters do not have semantic search/labels.")
-require('<th scope="col">' in home and '<caption class="visually-hidden">' in home, "Home catalogue table lacks accessible headers/caption.")
+require('data-testid="dashboard-entity-card"' in home and 'class="dashboard-entity-grid"' in home, "Home no longer preserves the reference entity-card hierarchy.")
+require('data-testid="dashboard-service-card"' in home and 'class="dashboard-service-grid"' in home, "Home no longer preserves the reference service-card hierarchy.")
+require('class="dashboard-service-meta"' in home and '<dl' in home and '<dt>' in home and '<dd' in home, "Home service cards lack semantic metadata structure.")
+require('class="dashboard-service-table"' not in home, "Generic services table reintroduced a material drift from the Home reference cards.")
 require('dir="ltr">@service.EntityCode' in home and 'dir="ltr">@service.ServiceCode' in home, "Home technical identifiers do not preserve LTR direction.")
 require("Future phase" not in home and "Available after setup" not in home and "disabled" not in home, "Stale P01 disabled preview remains on Home.")
 require("IMetadataCatalogService metadataCatalog" in controller, "Home is not wired to the canonical metadata catalogue.")
@@ -84,5 +87,6 @@ require("screenshot" in p11_script.lower(), "Audit browser acceptance no longer 
 require("OPEN-PHASE CANDIDATE" in evidence and "NOT P13 CLOSURE" in evidence, "P13 evidence must remain explicitly non-closure before exact-main acceptance.")
 require("DEFERRED_EXTERNAL_NOT_PASS" in evidence and "PRODUCTION_DEFERRED_EXTERNAL_NOT_PASS" in evidence, "P13 evidence incorrectly loses external NOT-PASS classifications.")
 require("least-privilege" in decisions.lower() and "P13" in decisions, "P13 least-privilege design deviation is not documented.")
+require("entity summary cards" in decisions.lower() and "service cards" in decisions.lower(), "P13 Home reference card hierarchy is not documented as retained.")
 
 print(f"P13_UI_ACCESSIBILITY_STATIC_ACCEPTANCE=PASS checks={checks}")

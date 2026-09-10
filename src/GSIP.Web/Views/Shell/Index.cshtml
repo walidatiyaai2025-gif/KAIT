@@ -4,6 +4,9 @@
     var isArabic = CultureInfo.CurrentUICulture.TextInfo.IsRightToLeft;
     Func<string, string, string> t = (en, ar) => isArabic ? ar : en;
     ViewData["Title"] = t("Government Services Dashboard", "لوحة الخدمات الحكومية");
+    var visibleEntities = string.IsNullOrWhiteSpace(Model.SelectedEntityCode)
+        ? Model.Entities.Take(4).ToArray()
+        : Model.Entities.Where(entity => string.Equals(entity.Code, Model.SelectedEntityCode, StringComparison.OrdinalIgnoreCase)).ToArray();
 }
 <section class="hero-row p13-dashboard-hero" data-testid="p13-home-dashboard" data-phase="@Model.Phase">
     <div>
@@ -43,6 +46,41 @@
     }
 </form>
 
+<section class="dashboard-entities" aria-labelledby="active-entities-title">
+    <div class="section-heading">
+        <div>
+            <h2 id="active-entities-title">@t("Government Entities", "الجهات الحكومية")</h2>
+            <p>@t("Active catalogue owners represented in the current governed service workspace.", "الجهات النشطة المالكة للخدمات في مساحة العمل المحكومة الحالية.")</p>
+        </div>
+        <span class="preview-chip">@visibleEntities.Length @t("shown", "معروضة")</span>
+    </div>
+    @if (visibleEntities.Length == 0)
+    {
+        <div class="dashboard-empty" role="status">@t("No active entity matches the current filter.", "لا توجد جهة نشطة تطابق المرشح الحالي.")</div>
+    }
+    else
+    {
+        <div class="dashboard-entity-grid">
+            @foreach (var entity in visibleEntities)
+            {
+                var visibleServiceCount = Model.Services.Count(service => service.EntityId == entity.Id);
+                <article class="dashboard-entity-card" data-testid="dashboard-entity-card">
+                    <div class="dashboard-entity-mark" aria-hidden="true">◇</div>
+                    <div class="dashboard-entity-copy">
+                        <span class="status-badge"><i></i>@t("Active entity", "جهة نشطة")</span>
+                        <h3>@(isArabic ? entity.NameAr : entity.NameEn)</h3>
+                        <code dir="ltr">@entity.Code</code>
+                    </div>
+                    <div class="dashboard-entity-meta">
+                        <span>@t("Visible services", "الخدمات المعروضة")</span>
+                        <strong>@visibleServiceCount</strong>
+                    </div>
+                </article>
+            }
+        </div>
+    }
+</section>
+
 <section class="dashboard-services" aria-labelledby="available-services-title">
     <div class="section-heading">
         <div>
@@ -58,33 +96,28 @@
     }
     else
     {
-        <div class="dashboard-table-wrap">
-            <table class="dashboard-service-table">
-                <caption class="visually-hidden">@t("Active government service catalogue", "كتالوج الخدمات الحكومية النشطة")</caption>
-                <thead>
-                    <tr>
-                        <th scope="col">@t("Entity", "الجهة")</th>
-                        <th scope="col">@t("Service", "الخدمة")</th>
-                        <th scope="col">@t("Version", "الإصدار")</th>
-                        <th scope="col">@t("Environments", "البيئات")</th>
-                        <th scope="col">@t("Status", "الحالة")</th>
-                        <th scope="col">@t("Action", "الإجراء")</th>
-                    </tr>
-                </thead>
-                <tbody>
-                @foreach (var service in Model.Services)
-                {
-                    <tr data-testid="dashboard-service-row" data-entity-code="@service.EntityCode" data-service-code="@service.ServiceCode">
-                        <td><strong>@(isArabic ? service.EntityNameAr : service.EntityNameEn)</strong><small dir="ltr">@service.EntityCode</small></td>
-                        <td><strong>@(isArabic ? service.ServiceNameAr : service.ServiceNameEn)</strong><small>@(isArabic ? service.DescriptionAr : service.DescriptionEn)</small><code dir="ltr">@service.ServiceCode</code></td>
-                        <td dir="ltr">v@service.Version</td>
-                        <td>@service.ActiveEnvironmentCount</td>
-                        <td><span class="status-badge"><i></i>@t("Active", "نشطة")</span></td>
-                        <td><a class="dashboard-service-link" href="/execute?entityId=@service.EntityId&serviceId=@service.ServiceId&culture=@CultureInfo.CurrentUICulture.Name">@t("Open", "فتح")</a></td>
-                    </tr>
-                }
-                </tbody>
-            </table>
+        <div class="dashboard-service-grid">
+            @foreach (var service in Model.Services)
+            {
+                <article class="dashboard-service-card" data-testid="dashboard-service-card" data-entity-code="@service.EntityCode" data-service-code="@service.ServiceCode">
+                    <header>
+                        <div class="dashboard-service-icon" aria-hidden="true">▦</div>
+                        <span class="status-badge"><i></i>@t("Active", "نشطة")</span>
+                    </header>
+                    <div class="dashboard-service-copy">
+                        <span class="dashboard-service-entity">@(isArabic ? service.EntityNameAr : service.EntityNameEn)</span>
+                        <h3>@(isArabic ? service.ServiceNameAr : service.ServiceNameEn)</h3>
+                        <p>@(isArabic ? service.DescriptionAr : service.DescriptionEn)</p>
+                    </div>
+                    <dl class="dashboard-service-meta">
+                        <div><dt>@t("Entity", "الجهة")</dt><dd dir="ltr">@service.EntityCode</dd></div>
+                        <div><dt>@t("Service code", "رمز الخدمة")</dt><dd dir="ltr">@service.ServiceCode</dd></div>
+                        <div><dt>@t("Version", "الإصدار")</dt><dd dir="ltr">v@service.Version</dd></div>
+                        <div><dt>@t("Environments", "البيئات")</dt><dd>@service.ActiveEnvironmentCount</dd></div>
+                    </dl>
+                    <a class="dashboard-service-link" href="/execute?entityId=@service.EntityId&serviceId=@service.ServiceId&culture=@CultureInfo.CurrentUICulture.Name">@t("Open Service", "فتح الخدمة")</a>
+                </article>
+            }
         </div>
     }
 </section>
