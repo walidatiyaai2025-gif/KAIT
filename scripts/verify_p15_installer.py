@@ -45,7 +45,7 @@ require("Get-FileHash" in build and "SHA256" in build and ".sha256" in build, "S
 require("completed.protected" in build and "App_Data" in build and "forbiddenExtensions" in build, "package secret/state exclusion gate is missing")
 require("CANDIDATE_SHA" in workflow and "ref: ${{ env.CANDIDATE_SHA }}" in workflow and "git rev-parse HEAD" in workflow, "P15 workflow is not bound to exact candidate SHA")
 require("install --skip-iis" in workflow and "repair --skip-iis" in workflow and "uninstall --skip-iis" in workflow, "isolated install/repair/uninstall lifecycle acceptance is incomplete")
-require("completed.protected" in workflow and "App_Data\\keys" in workflow, "lifecycle acceptance does not prove setup state and Data Protection key preservation")
+require("completed.protected" in workflow and "App_Data/keys" in workflow, "lifecycle acceptance does not prove setup state and Data Protection key preservation")
 require("--purge-state" in workflow, "explicit destructive purge path is not acceptance-tested")
 require("P14" in phase and "CLOSED" in phase.upper() and "P15" in phase, "canonical phase authority does not preserve P14 closure and identify P15")
 require(re.search(r"<VersionPrefix>0\.1\.0</VersionPrefix>", props) is not None, "initial executable version drifted from 0.1.0")
