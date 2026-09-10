@@ -29,9 +29,21 @@ The exact implementation candidate includes all recovered lawful cloud-actionabl
 7. P10 print export uses CSP-compatible same-origin static script behavior.
 8. P04 administration rejects removal of the final effective `Roles.Manage` grant/assignment.
 9. P15 package provenance is derived from actual checked-out Git HEAD and checked against candidate identity.
-10. P16 full acceptance and release evidence are compatible with lawful P17 OPEN/CLOSED candidates and execute on later final candidates.
+10. P16 full acceptance and release evidence are compatible with lawful P17 OPEN/CLOSURE-TRANSITION-CANDIDATE/CLOSED authority and execute on later final candidates.
 11. P17 OfficialAgency/MOE idempotency checks compare one in-memory .NET Guid ordering while preserving row-count and exact-ID equality.
 12. P17 Official Agency Contracts runs on every PR and main push, preventing a governance-only closure candidate from bypassing P17 acceptance.
+
+## Closure-transition regression recovery
+
+The P17 closure line deliberately runs every governed prior-phase gate so governance edits cannot erase accepted phase evidence.
+
+- Initial closure head `6914ac2a7e3bb2dea526c56dfaa54512a7d707fa` exposed lossy P13/P15 provenance consolidation. No runtime defect was hidden; the affected static gates failed.
+- Recovery head `36a825d902b6c2eeb69c4f65168043cba173ef9b` restored exact P13/P14/P15 provenance. P15 package/lifecycle acceptance became fully green, while P12 static acceptance then exposed missing verified-later-phase authority semantics; the P12 protected runtime/browser acceptance remained healthy.
+- Recovery head `40005148c10e75d1ec010438490b68a34d7bae92` restored `CLOSURE TRANSITION CANDIDATE`, `IMPLEMENTATION LOCKED`, normal-integration and exact-new-main semantics, but a stale P12 SHA pair in `PROJECT_CONTROL.md` still prevented exact P12 closure verification.
+- The authoritative P12 verifier/evidence identities are final implementation head `f367ca78fca217e9d5c7da0a1328dca047940390` and integrated main `1ed40707552f62058980b44d6cb1e7251dbeb2d4`, with **35/35 exact-head workflows SUCCESS** and **31/31 push workflows SUCCESS**. Those exact values are now preserved in project control.
+- P16 acceptance previously recognized P17 only as OPEN or CLOSED, creating an impossible pre-merge combination with P12's strict closure-transition semantics. The verifier now has an explicit, fail-closed P17 closure-transition authority path. It requires P17 phase identity, exact `CLOSURE TRANSITION CANDIDATE` status, P16 formally CLOSED, `IMPLEMENTATION LOCKED`, normal-integration and exact-new-main semantics, exact P16/P17 ledger states, and matching project-control state. OPEN and CLOSED paths remain unchanged; no runtime/security/release assertion was removed.
+
+Any superseded closure-head green evidence is provenance only. The current exact closure head must independently pass the complete governed matrix before merge.
 
 ## Security / quality sweep on implementation main
 
@@ -42,13 +54,14 @@ From exact main `2723e85e9d63182b1384615400a20ecc8babfe83`:
 - issue #1 was reconciled to the merged implementation state;
 - code searches found no actionable production `TODO`, `FIXME`, `NotImplementedException`, `Assert.Inconclusive`, explicit `Skip =`, or `Assert.Ignore` result in the inspected default-main scope;
 - historical P17 placeholder-removal branch remains intentionally superseded because merging it would delete legitimate later owner-supplied MOH evidence;
-- P17 idempotency staging branch is older than the canonical integrated line and contains no newer claimed work;
-- earlier worker/hotfix branches are historical closed-phase/integrated/superseded lines with no open PR or current legitimate claim requiring replay;
+- P17 idempotency staging branch is an ancestor of the canonical integrated line and contains no newer unique work;
+- the canonical P17 implementation branch is an ancestor of exact implementation main;
+- sampled recent recovery/feature branches were either ancestors of implementation main or documented superseded divergence, with no current open PR/claim requiring replay;
 - GitHub releases: none;
 - Git tag refs: none;
 - no final-criteria rule requires inventing a release/tag when exact Actions artifact location, size and SHA-256 evidence exists.
 
-This sweep found one cloud-actionable gap: canonical P17 governance remained OPEN. This closure transition repairs that gap, so the sweep does not count toward the required two final zero-gap sweeps.
+This sweep found the cloud-actionable P17 closure-governance gap, so it does not count toward the required two final zero-gap sweeps.
 
 ## Exact implementation-candidate release evidence
 
@@ -81,14 +94,18 @@ Package evidence:
 
 The P16 package workflow on that exact SHA reported build success with 0 warnings/0 errors and emitted both package hashes above. It also preserved P15 installer static acceptance, version baseline `0.1.2`, exact source identity, and installer log redaction acceptance.
 
+These implementation artifacts are provenance only once closure-source changes exist. Fresh P15/P16/P17 artifacts and internal package/installer SHA-256 values must be read back from the exact closure candidate and resulting exact final main.
+
 ## Closure candidate gates
 
 This document is part of `worker/p17-closure-reconciliation`, based exactly on implementation main `2723e85e9d63182b1384615400a20ecc8babfe83` after its 38/38 terminal-green push matrix.
 
-The closure branch is not final merely because these documents say CLOSED. Before merge it must satisfy all of the following:
+The closure branch is not final merely because its ledger marks P17 as a closure candidate. Before merge it must satisfy all of the following:
 
 - exact closure head known and unchanged;
 - complete governed PR workflow matrix terminal SUCCESS;
+- P12 admin operations static/runtime acceptance reruns successfully;
+- P13 bilingual UI/accessibility acceptance reruns successfully;
 - P15 package lifecycle acceptance reruns on that exact head;
 - P16 full automated acceptance/release candidate reruns on that exact head;
 - P17 Official Agency Contracts reruns on that exact head;
@@ -101,7 +118,7 @@ After merge, resulting exact-new-main must run the complete governed push matrix
 
 ## Post-closure two-sweep gate
 
-After exact closure main is terminal green, perform a complete LIVE-state project sweep covering at least:
+After exact closure main is terminal green and canonical P17 status is CLOSED, perform a complete LIVE-state project sweep covering at least:
 
 - exact repo/main identity and main CI;
 - open PRs/issues;
