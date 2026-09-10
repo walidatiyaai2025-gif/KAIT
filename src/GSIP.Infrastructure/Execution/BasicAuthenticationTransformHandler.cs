@@ -37,7 +37,11 @@ public sealed class BasicAuthenticationTransformHandler : DelegatingHandler
         request.Headers.Remove(UsernameHeader);
         request.Headers.Remove(PasswordHeader);
 
-        if ((markerPresent && !markerValid)
+        // Protected credential carriers are scoped capabilities, not generic outbound headers.
+        // A pair must be explicitly marked for Basic transformation or target the exact known
+        // MOE UAT Student API boundary; otherwise reject rather than forwarding credentials.
+        if (!basicRequired
+            || (markerPresent && !markerValid)
             || !hasUsername
             || !hasPassword
             || request.Headers.Authorization is not null
