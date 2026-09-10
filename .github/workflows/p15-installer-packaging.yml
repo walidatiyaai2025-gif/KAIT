@@ -44,17 +44,19 @@ jobs:
       - name: Build versioned package and setup executable
         shell: pwsh
         run: ./scripts/build-p15-package.ps1
-      - name: Verify isolated install repair uninstall lifecycle
+      - name: Verify clean install explicit upgrade repair uninstall lifecycle
         shell: pwsh
         run: |
           [xml]$props = Get-Content ./Directory.Build.props
           $version = [string]$props.Project.PropertyGroup.VersionPrefix
           $setup = Join-Path $PWD "artifacts/p15/GSIP-$version-Setup-x64.exe"
           $testRoot = Join-Path $env:RUNNER_TEMP 'GSIP-P15-Lifecycle'
+          $installLog = Join-Path $env:RUNNER_TEMP 'GSIP-P15-install.log'
           Remove-Item $testRoot -Recurse -Force -ErrorAction SilentlyContinue
+          Remove-Item $installLog -Force -ErrorAction SilentlyContinue
 
-          & $setup install --skip-iis --install-root $testRoot
-          if ($LASTEXITCODE -ne 0) { throw 'Install lifecycle step failed.' }
+          & $setup install --skip-iis --install-root $testRoot --log-path $installLog
+          if ($LASTEXITCODE -ne 0) { throw 'Clean install lifecycle step failed.' }
           if (-not (Test-Path (Join-Path $testRoot 'app/GSIP.Web.dll'))) { throw 'Installed payload is missing.' }
 
           $keys = Join-Path $testRoot 'app/App_Data/keys'
@@ -63,26 +65,52 @@ jobs:
           'synthetic-dp-key-marker' | Set-Content (Join-Path $keys 'synthetic-key.xml') -Encoding ascii
           'synthetic-protected-setup-marker' | Set-Content (Join-Path $setupState 'completed.protected') -Encoding ascii
 
-          & $setup repair --skip-iis --install-root $testRoot
+          # Represent a previous installed version and one replaceable legacy binary, then run the
+          # new installer through the real install/upgrade path.
+          $legacyFile = Join-Path $testRoot 'app/legacy-only.txt'
+          'legacy-binary-marker' | Set-Content $legacyFile -Encoding ascii
+          $manifestPath = Join-Path $testRoot 'install-manifest.json'
+          $previousManifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
+          $previousManifest.Version = '0.0.9'
+          $previousManifest | ConvertTo-Json -Depth 8 | Set-Content $manifestPath -Encoding utf8
+
+          & $setup install --skip-iis --install-root $testRoot --log-path $installLog
+          if ($LASTEXITCODE -ne 0) { throw 'Explicit previous-version upgrade step failed.' }
+          if (Test-Path $legacyFile) { throw 'Upgrade retained a replaceable legacy file.' }
+          if ((Get-Content (Join-Path $keys 'synthetic-key.xml') -Raw).Trim() -ne 'synthetic-dp-key-marker') { throw 'Upgrade did not preserve Data Protection key state.' }
+          if ((Get-Content (Join-Path $setupState 'completed.protected') -Raw).Trim() -ne 'synthetic-protected-setup-marker') { throw 'Upgrade did not preserve protected setup state.' }
+          $upgradedManifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
+          if ([string]$upgradedManifest.Version -ne $version) { throw "Upgrade manifest version mismatch: $($upgradedManifest.Version)" }
+          'P15_EXPLICIT_UPGRADE_FROM_PREVIOUS_VERSION=PASS' | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+
+          & $setup repair --skip-iis --install-root $testRoot --log-path $installLog
           if ($LASTEXITCODE -ne 0) { throw 'Repair lifecycle step failed.' }
           if ((Get-Content (Join-Path $keys 'synthetic-key.xml') -Raw).Trim() -ne 'synthetic-dp-key-marker') { throw 'Data Protection key state was not preserved by repair.' }
           if ((Get-Content (Join-Path $setupState 'completed.protected') -Raw).Trim() -ne 'synthetic-protected-setup-marker') { throw 'Protected setup state was not preserved by repair.' }
 
-          & $setup uninstall --skip-iis --install-root $testRoot
+          & $setup uninstall --skip-iis --install-root $testRoot --log-path $installLog
           if ($LASTEXITCODE -ne 0) { throw 'Uninstall lifecycle step failed.' }
           if (Test-Path (Join-Path $testRoot 'app/GSIP.Web.dll')) { throw 'Replaceable application binary remained after uninstall.' }
           if (-not (Test-Path (Join-Path $keys 'synthetic-key.xml'))) { throw 'Default uninstall deleted Data Protection state.' }
           if (-not (Test-Path (Join-Path $setupState 'completed.protected'))) { throw 'Default uninstall deleted protected setup state.' }
 
-          & $setup install --skip-iis --install-root $testRoot
+          & $setup install --skip-iis --install-root $testRoot --log-path $installLog
           if ($LASTEXITCODE -ne 0) { throw 'Reinstall lifecycle step failed.' }
           if (-not (Test-Path (Join-Path $keys 'synthetic-key.xml'))) { throw 'Reinstall did not rediscover preserved Data Protection state.' }
           if (-not (Test-Path (Join-Path $setupState 'completed.protected'))) { throw 'Reinstall did not rediscover preserved setup state.' }
 
-          & $setup uninstall --skip-iis --purge-state --install-root $testRoot
+          if (-not (Test-Path $installLog)) { throw 'Sanitized installer log was not created.' }
+          $logText = Get-Content $installLog -Raw
+          if ($logText -notmatch '\[SUCCESS\]') { throw 'Sanitized installer log does not contain a success record.' }
+          if ($logText -match '(?i)\b(password|pwd|secret|token|authorization|x-api-key|api[-_]?key)\b\s*[:=]\s*(?!\[REDACTED\])\S+') {
+            throw 'Installer log contains an unredacted sensitive assignment.'
+          }
+          'P15_SANITIZED_INSTALL_LOG=PASS' | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+
+          & $setup uninstall --skip-iis --purge-state --install-root $testRoot --log-path $installLog
           if ($LASTEXITCODE -ne 0) { throw 'Explicit purge lifecycle step failed.' }
           if (Test-Path $testRoot) { throw 'Explicit purge did not remove installation root.' }
-          'P15_INSTALL_REPAIR_UNINSTALL_REINSTALL=PASS' | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          'P15_INSTALL_UPGRADE_REPAIR_UNINSTALL_REINSTALL=PASS' | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
       - name: Preserve execution-plan integrity
         run: python scripts/validate_execution_plan.py
       - name: Verify package hashes
