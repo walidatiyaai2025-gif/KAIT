@@ -1,0 +1,178 @@
+name: P16 Full Automated Acceptance
+
+on:
+  push:
+    branches:
+      - main
+      - 'worker/p16-full-acceptance-continuation'
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: p16-acceptance-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          fetch-depth: 0
+      - name: Assert exact candidate SHA
+        shell: bash
+        run: |
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          echo "EXACT_CANDIDATE_SHA=$CANDIDATE_SHA"
+      - name: Setup pinned .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Restore and build exact candidate
+        run: |
+          dotnet restore GSIP.sln
+          dotnet build GSIP.sln -c Release --no-restore
+      - name: Verify P16 acceptance contract
+        run: python scripts/verify_p16_acceptance_contract.py
+      - name: Preserve execution-plan integrity
+        run: python scripts/validate_execution_plan.py
+      - name: Preserve P14 outbound security boundary
+        run: python scripts/verify_p14_outbound_http_security.py
+      - name: Preserve P15 installer source contract
+        run: python scripts/verify_p15_installer.py
+
+  runtime-ui-recovery:
+    runs-on: windows-latest
+    timeout-minutes: 75
+    env:
+      CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          fetch-depth: 0
+      - name: Assert exact candidate SHA
+        shell: pwsh
+        run: |
+          $actual = (git rev-parse HEAD).Trim()
+          if ($actual -ne $env:CANDIDATE_SHA) { throw "Exact candidate mismatch: expected=$env:CANDIDATE_SHA actual=$actual" }
+          "EXACT_CANDIDATE_SHA=$actual" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+      - name: Setup pinned .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Restore and build exact candidate
+        shell: pwsh
+        run: |
+          dotnet restore GSIP.sln
+          dotnet build GSIP.sln -c Release --no-restore
+      - name: Start SQL Server LocalDB
+        shell: pwsh
+        run: |
+          sqllocaldb start MSSQLLocalDB
+          sqllocaldb info MSSQLLocalDB
+      - name: Run Permissions exact-candidate browser acceptance
+        shell: pwsh
+        run: ./scripts/verify-p04-permissions-ui.ps1
+      - name: Run Service Execution exact-candidate browser acceptance
+        shell: pwsh
+        run: ./scripts/verify-p07-execution-ui.ps1
+      - name: Run Audit exact-candidate browser acceptance
+        shell: pwsh
+        run: ./scripts/verify-p11-audit-runtime-ui.ps1
+      - name: Run Dashboard exact-candidate browser acceptance
+        shell: pwsh
+        run: ./scripts/verify-p13-home-ui.ps1
+      - name: Run SQL and protected-state backup restore rehearsal
+        shell: pwsh
+        run: ./scripts/verify-p16-backup-restore.ps1
+      - name: Run bounded local performance baseline
+        shell: pwsh
+        run: ./scripts/verify-p16-performance.ps1
+      - name: Consolidate four-screen bilingual UI parity evidence
+        shell: pwsh
+        run: python scripts/verify_p16_ui_parity.py
+      - name: Preserve execution-plan integrity
+        run: python scripts/validate_execution_plan.py
+      - name: Upload P16 runtime and UI evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: P16-Runtime-UI-Recovery-${{ env.CANDIDATE_SHA }}
+          path: |
+            artifacts/p16-full-acceptance/
+            artifacts/p04-permissions-ui/*.png
+            artifacts/p04-permissions-ui/screenshot-manifest.json
+            artifacts/p07-execution-ui-evidence/*.png
+            artifacts/p07-execution-ui-evidence/*manifest*.json
+            artifacts/p11-audit-runtime-ui/*.png
+            artifacts/p11-audit-runtime-ui/*manifest*.json
+            artifacts/p13-home-ui/*.png
+            artifacts/p13-home-ui/*manifest*.json
+          if-no-files-found: error
+          retention-days: 30
+
+  release-candidate-package:
+    runs-on: windows-latest
+    timeout-minutes: 50
+    env:
+      CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          fetch-depth: 0
+      - name: Assert exact candidate SHA
+        shell: pwsh
+        run: |
+          $actual = (git rev-parse HEAD).Trim()
+          if ($actual -ne $env:CANDIDATE_SHA) { throw "Exact candidate mismatch: expected=$env:CANDIDATE_SHA actual=$actual" }
+      - name: Setup pinned .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Verify and build exact release-candidate artifacts
+        shell: pwsh
+        run: ./scripts/build-p16-release-candidate.ps1
+      - name: Upload P16 release-candidate artifacts
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: P16-Release-Candidate-${{ env.CANDIDATE_SHA }}
+          path: |
+            artifacts/p16-release-candidate/GSIP-*-win-x64.zip
+            artifacts/p16-release-candidate/GSIP-*-win-x64.zip.sha256
+            artifacts/p16-release-candidate/GSIP-*-Setup-x64.exe
+            artifacts/p16-release-candidate/GSIP-*-Setup-x64.exe.sha256
+            artifacts/p16-release-candidate/manifest.json
+            artifacts/p16-release-candidate/p16-release-manifest.json
+          if-no-files-found: error
+          retention-days: 30
+
+  p16-gate:
+    if: ${{ always() }}
+    needs:
+      - static-contract
+      - runtime-ui-recovery
+      - release-candidate-package
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every P16 acceptance leg
+        shell: bash
+        run: |
+          test "${{ needs.static-contract.result }}" = "success"
+          test "${{ needs.runtime-ui-recovery.result }}" = "success"
+          test "${{ needs.release-candidate-package.result }}" = "success"
+          echo "P16_FULL_AUTOMATED_ACCEPTANCE=PASS"
