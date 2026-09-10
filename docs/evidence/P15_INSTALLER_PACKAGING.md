@@ -1,10 +1,10 @@
 # P15 — Windows / IIS Installer and Packaging Evidence
 
-Status: **OPEN / ACTIVE implementation candidate — not closure evidence**
+Status: **CLOSED FROM EXACT IMPLEMENTATION EVIDENCE / CLOSURE TRANSITION PENDING**
 
 ## Authority and phase entry
 
-P14 was formally closed only after closure PR #74 was normally integrated and exact resulting `main` `f5dd87de7aa3f8e709d04cf8804f53c10c938633` completed **33/33 push workflows SUCCESS**. P15 implementation started from that exact main under tracker Issue #1 lease `P15::installer-packaging-convergence` on `worker/p15-installer-packaging`, with canonical implementation PR #75. PR #75 later recovered post-closure P14 security repair PR #76 and is based on exact current main `78cfe0433bdb02367ddd1365df57d118fea9257a` without duplicating or reverting that work.
+P14 was formally closed after closure PR #74 integrated and exact resulting `main` `f5dd87de7aa3f8e709d04cf8804f53c10c938633` completed **33/33 push workflows SUCCESS**. P15 then became canonical under tracker Issue #1 unit `P15::installer-packaging-convergence` on `worker/p15-installer-packaging`, PR #75. The line later recovered legitimate P14 outbound-security repair PR #76 from exact `main` `78cfe0433bdb02367ddd1365df57d118fea9257a` without duplicating or reverting it.
 
 Historical `DEFERRED_EXTERNAL_NOT_PASS`, `PRODUCTION_DEFERRED_EXTERNAL_NOT_PASS`, and repository-administration `OWNER_LAST / NOT PASS` classifications remain unchanged.
 
@@ -13,85 +13,114 @@ Historical `DEFERRED_EXTERNAL_NOT_PASS`, `PRODUCTION_DEFERRED_EXTERNAL_NOT_PASS`
 P15 adds a deterministic Windows Server/IIS deployment layer over the existing GSIP runtime:
 
 - `installer/GSIP.Setup/GSIP.Setup.csproj` builds a .NET 10 Windows x64 self-contained single-file GUI setup executable;
-- `installer/GSIP.Setup/WizardEntryPoint.cs` and `InstallerWizard.cs` provide the production wizard flow with Welcome, Prerequisites, Installation, Binding, Review and Finish pages plus Next/Back/Finish navigation;
-- `installer/GSIP.Setup/IisBindingConfigurator.cs` provides explicit HTTP/HTTPS binding configuration, eligible Local Computer certificate discovery/selection, and deterministic SNI (`sslFlags=1`) for host-specific HTTPS without packaging private keys;
-- `installer/GSIP.Setup/Program.cs` is the shared maintenance engine for install, explicit previous-version upgrade, repair, uninstall and explicit `--purge-state`, with a fail-closed GSIP ownership manifest boundary around filesystem/IIS takeover and destructive removal;
-- ownership-manifest writes use temporary-file replacement, and failed upgrade/repair restores the exact previous manifest together with rolled-back binaries so installed-version evidence cannot advance when deployment fails;
-- `installer/GSIP.Setup/SanitizedInstallLog.cs` provides a sanitized installer log without exposing credential/token/API-key assignments;
-- successful wizard deployment can launch the protected First-Run Setup endpoint at `/setup`;
-- `scripts/build-p15-package.ps1` builds the application, publishes the IIS payload, excludes mutable state and dangerous deployment material, and emits versioned ZIP/EXE artifacts with SHA-256 sidecars;
-- `scripts/verify_p15_installer.py` provides executable static contract acceptance including ownership/destructive isolation, atomic manifest rollback, wizard, HTTPS/SNI, logging and lifecycle contracts;
-- `.github/workflows/p15-installer-packaging.yml` binds CI to the exact candidate SHA and executes package/lifecycle acceptance on `windows-latest`, including negative unowned-root and forged-ownership tests;
-- `docs/P15_INSTALLER_RUNBOOK.md` documents prerequisites, lifecycle, ownership, rollback, state preservation, HTTPS/SNI selection and owner/external boundaries.
+- `installer/GSIP.Setup/WizardEntryPoint.cs` and `InstallerWizard.cs` provide Welcome, Prerequisites, Installation, Binding, Review and Finish pages with Next/Back/Finish navigation;
+- `installer/GSIP.Setup/IisBindingConfigurator.cs` provides explicit HTTP/HTTPS binding, eligible Local Computer certificate discovery/selection, and deterministic SNI (`sslFlags=1`) for host-specific HTTPS without packaging private keys;
+- `installer/GSIP.Setup/Program.cs` provides install, explicit previous-version upgrade, repair, uninstall and owner-scoped `--purge-state` behind a fail-closed filesystem/IIS ownership manifest;
+- ownership-manifest writes use temporary-file atomic replacement and failed existing-install upgrade/repair restores the exact previous manifest with rolled-back binaries;
+- `installer/GSIP.Setup/SanitizedInstallLog.cs` prevents credential/token/API-key assignments from being exposed by normal installer logging;
+- successful wizard deployment can launch protected First-Run Setup at `/setup`;
+- `scripts/build-p15-package.ps1` excludes mutable state and dangerous deployment material and emits versioned ZIP/EXE artifacts with SHA-256 sidecars;
+- `scripts/verify_p15_installer.py` statically gates ownership/destructive isolation, atomic rollback, wizard, HTTPS/SNI, logging and lifecycle contracts;
+- `.github/workflows/p15-installer-packaging.yml` executes exact-candidate package/lifecycle acceptance on Windows, including unowned-root and forged-ownership negative tests;
+- `docs/P15_INSTALLER_RUNBOOK.md` documents prerequisites, lifecycle, ownership, rollback, state preservation, HTTPS/SNI and external evidence boundaries.
 
-## Ownership/destructive safety repair discovered during convergence
+## Convergence repairs retained in the final implementation
 
-A post-reconciliation code audit found a real P15 blocker before merge: the earlier candidate could retarget a pre-existing IIS site/application pool that was not proven to belong to GSIP, uninstall could delete named IIS resources without installation ownership proof, and `--purge-state` could recursively delete an arbitrary non-drive-root supplied by the caller. This was not accepted as an external limitation and was repaired in the canonical PR #75 line.
+A post-reconciliation audit found a real destructive-operation blocker: the earlier candidate could retarget a pre-existing IIS site/application pool without GSIP ownership proof, uninstall could delete named IIS resources without installation ownership proof, and `--purge-state` could recursively delete an arbitrary non-drive-root path. The canonical PR #75 line repaired this instead of waiving it. Repair/uninstall/purge require a valid `install-manifest.json`; non-empty unowned roots and first-install IIS collisions fail closed; forged site/application-pool identities are rejected; default uninstall preserves the ownership marker; and recursive purge requires matching ownership.
 
-The repaired boundary requires a valid `install-manifest.json` product/architecture/site/application-pool ownership marker for repair, uninstall and purge; rejects a non-empty unowned installation directory; rejects first-install collision with an existing IIS site or application pool; rejects forged site/application-pool identities against an owned installation; preserves the ownership marker on default uninstall; and allows recursive purge only after marker and identity validation. CI now carries executable negative cases proving foreign sentinel content survives rejected install/purge attempts.
+A subsequent rollback audit found that an existing upgrade could leave a newly advanced manifest if a later IIS step failed after binaries were rolled back. The final maintenance path snapshots the exact previous manifest, writes through atomic temporary-file replacement, and restores the old manifest whenever an existing install/repair rolls back.
 
-A subsequent rollback audit found that updating the manifest before IIS mutation was necessary to attribute a partially created first installation, but could leave an existing upgrade with a new manifest version if a later IIS step failed after binaries had been rolled back. The maintenance path now snapshots the exact previous manifest, writes replacement manifests through temporary-file atomic replacement, and restores the prior manifest whenever an existing install/repair rolls back. A brand-new install that has already reached IIS mutation intentionally retains its GSIP marker so the partial footprint remains attributable and recoverable. This repair is gated statically and requires fresh exact-head CI; it is not asserted as PASS from documentation alone.
-
-The same audit identified host-specific HTTPS SNI drift: the earlier code created a hostname HTTPS binding but did not explicitly set the IIS SNI flag. The canonical line now sets `sslFlags=1` for hostname HTTPS and `sslFlags=0` for hostname-free HTTPS before binding the certificate through HTTP.sys. These repairs require fresh exact-head CI and are **not** promoted to PASS merely by this document.
+The same audit identified hostname HTTPS SNI drift. The final code explicitly sets IIS `sslFlags=1` for hostname HTTPS and `sslFlags=0` for hostname-free HTTPS before the matching HTTP.sys certificate binding.
 
 ## State preservation contract
 
-The application uses ASP.NET Core Data Protection persisted under `App_Data/keys` and DPAPI-protected on Windows. The protected first-run database binding is stored at `App_Data/setup/completed.protected`. Secret Vault payloads also depend on Data Protection.
+ASP.NET Core Data Protection state is persisted under `App_Data/keys`; the protected first-run database binding is under `App_Data/setup/completed.protected`; Secret Vault payloads depend on Data Protection. Install/upgrade/repair/default uninstall therefore preserve the runtime-owned `App_Data` subtree. Default uninstall also preserves the validated ownership manifest. Explicit `--purge-state` is the only installer path that intentionally removes preserved state and is rejected without matching ownership.
 
-Therefore install/upgrade/repair/default uninstall preserve the complete runtime-owned `App_Data` subtree. Replaceable application binaries are staged and backed up separately. Default uninstall also preserves the validated ownership manifest so reinstall or later explicit purge remains owner-scoped. An explicit uninstall `--purge-state` is the only installer path that intentionally removes preserved state, and it is rejected without matching GSIP ownership.
-
-The package itself rejects embedded `App_Data`, private-key file extensions, protected setup state and environment-specific appsettings that could smuggle credentials or target assumptions into the installer.
+The package rejects embedded `App_Data`, private-key file extensions, protected setup state and environment-specific deployment material that could smuggle credentials or target assumptions.
 
 ## IIS / HTTPS contract
 
-Normal target installation requires administrative elevation, IIS `appcmd.exe`, and the supported ASP.NET Core Hosting Bundle / `AspNetCoreModuleV2`. The setup refuses unowned IIS site/application-pool collisions, creates or repairs only owner-scoped resources using `ApplicationPoolIdentity`, no CLR managed runtime and `AlwaysRunning`, assigns the application pool, and grants that exact app-pool identity Modify access to `App_Data`.
+Normal target installation requires administrator elevation, IIS `appcmd.exe`, and the supported ASP.NET Core Hosting Bundle / `AspNetCoreModuleV2`. The setup refuses unowned IIS site/application-pool collisions, uses `ApplicationPoolIdentity`, no CLR managed runtime and `AlwaysRunning`, and grants the selected app-pool identity Modify access to `App_Data`.
 
-The wizard allows the operator to choose HTTP or HTTPS, port and optional host name. For HTTPS it enumerates currently valid eligible certificates from Local Computer / Personal, requires explicit certificate selection, configures `sslFlags=1` for host-specific SNI, and configures the requested certificate binding. The installer does not embed, export or invent production TLS certificate/private-key material.
+The wizard allows HTTP/HTTPS, port and optional host name. HTTPS enumerates currently valid eligible certificates from Local Computer / Personal and requires explicit certificate selection. Host-specific HTTPS uses SNI. No TLS private key or production certificate is embedded or invented.
 
-Cloud CI proves the implementation contract and isolated Setup EXE lifecycle. Installation against the owner’s actual Windows Server/IIS target, approved production certificate selection, DNS/network/proxy/firewall behavior and any code/release signing remain authorized external/owner evidence and are not fabricated as PASS.
+## Final exact-head acceptance before merge
 
-## Historical validated implementation candidate evidence
+Final implementation head: `1c1af59fac0489d645e5323a9c6c97f8a76bc5a7`.
 
-Validated implementation candidate before the ownership/SNI convergence repair: `4e811f17d707f2e1539c5dab9b40c64b6f498cc1`.
+- full governed PR matrix: **37/37 terminal SUCCESS**, failure=0;
+- P15 Installer and Packaging PR run `34438884799`: **SUCCESS**;
+- P15 Installer and Packaging exact-head push run `34438881903`: **SUCCESS**;
+- static acceptance: `P15_INSTALLER_STATIC_ACCEPTANCE=PASS checks=45`;
+- solution/package build: **PASS**, 0 warnings / 0 errors;
+- unowned-root install and ownerless purge rejection: **PASS**;
+- forged site/application-pool identity rejection: **PASS**;
+- clean install -> synthetic `0.0.9` upgrade -> repair -> default uninstall -> reinstall -> explicit owner-scoped purge: **PASS**;
+- Data Protection/setup-state/ownership-marker preservation: **PASS**;
+- sanitized log acceptance, execution-plan integrity and SHA-256 verification: **PASS**.
 
-- P15 Installer and Packaging PR run `34436171235`: **SUCCESS**.
-- Exact candidate checkout/assertion: **PASS**.
-- Static P15 installer acceptance: `P15_INSTALLER_STATIC_ACCEPTANCE=PASS checks=36`.
-- Solution/package build: `P15_PACKAGE_BUILD=PASS`, 0 warnings / 0 errors.
-- Real Setup EXE clean install: **PASS**.
-- Explicit previous-version upgrade from synthetic installed version `0.0.9` to `0.1.0`: **PASS**.
-- Replaceable legacy binary removal during upgrade: **PASS**.
-- Data Protection key state preservation across upgrade/repair/default uninstall/reinstall: **PASS**.
-- Protected first-run setup/database-binding state preservation across upgrade/repair/default uninstall/reinstall: **PASS**.
-- Repair: **PASS**.
-- Default uninstall with protected mutable-state preservation: **PASS**.
-- Reinstall/rediscovery of protected state: **PASS**.
-- Explicit destructive purge: **PASS**.
-- Sanitized installer log acceptance: **PASS**.
-- Execution plan integrity: **PASS**.
-- Artifact SHA-256 verification: **PASS**.
-- `GSIP-0.1.0-win-x64.zip` SHA-256: `def9054f7a7746c04a5790f127836c17cadc35cabeb3922487fe9c8d65f69fa9`.
-- `GSIP-0.1.0-Setup-x64.exe` SHA-256: `c9465545ade663a31fe7d83002e8a88001eb60dedcdc376f81bb60ac1db94d03`.
-- Exact-candidate Actions artifact ID `10136339172`; artifact archive digest `sha256:e7ddce03120177943bbfe4949fedac13462949c14858125068f38a1d6ff47867`; size 62,160,131 bytes.
+These exact-head results were used only as the pre-merge gate; they were not promoted to exact-main closure evidence.
 
-This historical evidence demonstrates the pre-repair packaging/lifecycle baseline only. It cannot close the newer ownership/SNI/rollback candidate.
+## Exact integrated-main acceptance
+
+PR #75 was normally merged with expected head `1c1af59fac0489d645e5323a9c6c97f8a76bc5a7`. Exact integrated implementation `main` is:
+
+`d60318da5b19d06df20864083f5a4a78b9792e88`
+
+The resulting exact-main push matrix completed **34/34 terminal SUCCESS**, failure=0, queued=0 and in-progress=0.
+
+Exact-main P15 Installer and Packaging run `34440072557` completed **SUCCESS** on that same source SHA and produced:
+
+- `P15_INSTALLER_STATIC_ACCEPTANCE=PASS checks=45`;
+- solution/package build **PASS**, 0 warnings / 0 errors;
+- unowned-root and ownerless-purge negative protection **PASS**;
+- forged site/application-pool ownership isolation **PASS**;
+- install -> synthetic `0.0.9` upgrade -> repair -> default uninstall -> reinstall -> explicit owner-scoped purge **PASS**;
+- `App_Data/keys`, `App_Data/setup/completed.protected` and default-uninstall ownership marker preservation **PASS**;
+- sanitized installer logging **PASS**;
+- execution-plan integrity **PASS**;
+- artifact SHA-256 verification **PASS**.
+
+Exact integrated artifacts:
+
+- `GSIP-0.1.0-win-x64.zip` — SHA-256 `5c25b2df2970d2a52ce570ae1419630b8b22c244b092cea38516975e2ec86e4b`;
+- `GSIP-0.1.0-Setup-x64.exe` — SHA-256 `971dfe4a50ce7c8a834bc20ec18c5ed490881808a4a5b9e037cf38fb1e044c03`;
+- Actions artifact ID `10137632143` — archive digest `sha256:20aea809e37f4ca716ebe6b6b0c587cbbf80f5224e93d890ec18835c1d6a6846`, size 62,159,500 bytes.
+
+This is the authoritative P15 implementation closure evidence. Historical pre-repair artifacts remain provenance only.
+
+## Historical implementation provenance
+
+Earlier candidate `4e811f17d707f2e1539c5dab9b40c64b6f498cc1` passed P15 run `34436171235` with 36 static checks, a 0-warning/0-error build, lifecycle/state-preservation/log/hash acceptance and artifacts:
+
+- ZIP SHA-256 `def9054f7a7746c04a5790f127836c17cadc35cabeb3922487fe9c8d65f69fa9`;
+- Setup EXE SHA-256 `c9465545ade663a31fe7d83002e8a88001eb60dedcdc376f81bb60ac1db94d03`;
+- artifact `10136339172`, digest `sha256:e7ddce03120177943bbfe4949fedac13462949c14858125068f38a1d6ff47867`, size 62,160,131 bytes.
+
+That evidence does not supersede the exact integrated-main values above.
 
 ## Superseded CI failures and reconciliation history
 
-The implementation history contains real CI failures that were repaired rather than waived. Candidate `18023650aeadbc23e3c476246316f5e1442ccd5f` failed Setup publish because nullable warnings-as-errors flagged system-font dereferences; the implementation was fixed without weakening any gate. Candidate `1bd81efc7270ed056c058fe4f550b2aff19f6ac2` then built successfully, but PowerShell did not synchronously wait for the GUI-subsystem `WinExe` before reading `$LASTEXITCODE`; the acceptance harness was corrected to start the same Setup EXE through `System.Diagnostics.Process`, wait for exit and validate the actual exit code. A later P15 head was stale after PR #76 added the P14 outbound-security verifier; the canonical branch recovered exact current main instead of deleting or bypassing the new P14 gate.
+Candidate `18023650aeadbc23e3c476246316f5e1442ccd5f` failed Setup publish because nullable warnings-as-errors flagged system-font dereferences; the implementation was fixed without weakening a gate. Candidate `1bd81efc7270ed056c058fe4f550b2aff19f6ac2` built successfully, but the PowerShell harness did not synchronously wait for the GUI-subsystem `WinExe`; the harness was corrected to execute the same Setup EXE through `System.Diagnostics.Process`, wait for exit and validate the actual exit code. A later stale P15 candidate recovered exact main after P14 outbound-security repair PR #76 instead of deleting or bypassing the stronger P14 verifier.
 
 ## Not proven by cloud CI
 
-The following remain outside this candidate’s cloud proof and must not be called PASS without authorized target evidence:
+The following remain outside cloud proof and are **NOT PASS** where authorized target evidence is unavailable:
 
 - installation on the owner’s actual Windows Server/IIS target;
 - selection/binding of the owner-approved production HTTPS certificate on that target;
 - production DNS/network/proxy/firewall behavior;
-- code signing / release signing when owner-controlled certificate material is required;
+- code/release signing when owner-controlled certificate material is required;
 - live MOJ UAT/Production evidence already classified in earlier phases.
 
-`--skip-iis` is intentionally an isolated CI mode used to execute the exact Setup EXE lifecycle without claiming target IIS deployment evidence. It bypasses only IIS mutation; ownership/destructive-operation checks remain active. The production wizard/IIS/HTTPS code path remains fail-closed on missing prerequisites, unowned collisions or certificate selection.
+`--skip-iis` is an isolated CI mode for exercising the exact Setup EXE lifecycle without pretending to prove the owner’s IIS server. It bypasses only IIS mutation; ownership/destructive checks remain active. The production IIS/HTTPS path remains fail-closed on missing prerequisites, unowned collisions or missing certificate selection.
 
-## Remaining P15 gate
+## Closure-transition gate
 
-This document is not P15 closure. The ownership/SNI/rollback repair head supersedes all prior candidates as the PR merge candidate. P15 remains OPEN / ACTIVE until that exact final PR head passes every governed workflow, PR #75 is normally integrated from current exact `main`, every governed workflow on the resulting exact-new-main SHA is terminal SUCCESS, package/installer/hash identity is reconciled to exact post-merge evidence, and canonical closure governance is recorded. P16 remains locked until that gate is satisfied.
+P15 cloud-actionable implementation is terminal and exact integrated-main evidence is green. Formal phase closure still requires the governance/evidence-only transition carrying this reconciliation to:
+
+1. pass every governed workflow on its exact transition head;
+2. be normally integrated while based on current exact `main`;
+3. pass every governed workflow on the resulting exact-new-main SHA.
+
+Only after those three transition conditions are true is P15 formally **CLOSED** and P16 implementation legally authorized. No owner/external NOT PASS item is converted to PASS by this transition.
