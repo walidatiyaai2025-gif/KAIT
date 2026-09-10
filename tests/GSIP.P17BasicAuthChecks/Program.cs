@@ -9,6 +9,7 @@ const string Password = "SYNTHETIC_MOE_PASSWORD";
 await ConvertsProtectedPairToBasicAsync();
 await MarkerRequiresProtectedPairAsync();
 await KnownMoeEndpointRequiresProtectedPairAsync();
+await UndocumentedMoeEndpointDoesNotAuthorizePairAsync();
 await UnscopedProtectedPairFailsClosedAsync();
 await MissingCredentialFailsClosedAsync();
 await ExistingAuthorizationFailsClosedAsync();
@@ -68,6 +69,23 @@ async Task KnownMoeEndpointRequiresProtectedPairAsync()
     Check(response.StatusCode == HttpStatusCode.Unauthorized,
         "Known MOE Student UAT endpoint without protected Basic credentials did not fail closed.");
     Check(inner.Calls == 0, "Known MOE Student UAT endpoint without credentials reached network transport.");
+}
+
+async Task UndocumentedMoeEndpointDoesNotAuthorizePairAsync()
+{
+    var inner = new RecordingHandler();
+    using var client = Client(inner);
+    using var request = new HttpRequestMessage(
+        HttpMethod.Get,
+        "https://moe-uat.api-non-prod.cait.gov.kw/Student-API/v1/studentdata/not-documented");
+    request.Headers.TryAddWithoutValidation(BasicAuthenticationTransformHandler.UsernameHeader, Username);
+    request.Headers.TryAddWithoutValidation(BasicAuthenticationTransformHandler.PasswordHeader, Password);
+
+    using var response = await client.SendAsync(request);
+
+    Check(response.StatusCode == HttpStatusCode.Unauthorized,
+        "Undocumented MOE Student path incorrectly authorized protected Basic credentials.");
+    Check(inner.Calls == 0, "Undocumented MOE Student path reached outbound transport with protected credentials.");
 }
 
 async Task UnscopedProtectedPairFailsClosedAsync()
