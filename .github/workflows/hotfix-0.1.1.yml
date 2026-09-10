@@ -1,0 +1,43 @@
+name: Hotfix 0.1.1 UAT Configuration
+
+on:
+  push:
+    branches:
+      - main
+      - 'hotfix/0.1.1-auth-uat-demo-main'
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  verify-hotfix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          fetch-depth: 0
+      - name: Assert exact candidate SHA
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+      - name: Setup pinned .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Restore
+        run: dotnet restore GSIP.sln
+      - name: Build
+        run: dotnet build GSIP.sln -c Release --no-restore
+      - name: Verify hotfix security and routing contracts
+        run: python scripts/verify_hotfix_0_1_1.py
+      - name: Preserve P15 packaging contract
+        run: python scripts/verify_p15_installer.py
+      - name: Preserve P16 same-candidate contract
+        run: python scripts/verify_p16_acceptance_contract.py
