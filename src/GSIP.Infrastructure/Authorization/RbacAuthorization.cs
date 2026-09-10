@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using GSIP.Application.Authorization;
+using GSIP.Application.Identity;
 using GSIP.Infrastructure.Setup;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
@@ -30,7 +31,9 @@ public sealed class GsipPermissionEvaluator(GsipDbContext dbContext) : IGsipPerm
         string permission,
         CancellationToken cancellationToken = default)
     {
-        if (!GsipPermissions.IsKnown(permission) || !TryGetUserId(principal, out var userId))
+        if (GsipSessionRestrictions.IsRestricted(principal)
+            || !GsipPermissions.IsKnown(permission)
+            || !TryGetUserId(principal, out var userId))
         {
             return false;
         }
@@ -56,7 +59,8 @@ public sealed class GsipPermissionEvaluator(GsipDbContext dbContext) : IGsipPerm
         string permission,
         CancellationToken cancellationToken = default)
     {
-        if (!GsipPermissions.ServiceScoped.Contains(permission)
+        if (GsipSessionRestrictions.IsRestricted(principal)
+            || !GsipPermissions.ServiceScoped.Contains(permission)
             || string.IsNullOrWhiteSpace(serviceCode)
             || !TryGetUserId(principal, out var userId))
         {
