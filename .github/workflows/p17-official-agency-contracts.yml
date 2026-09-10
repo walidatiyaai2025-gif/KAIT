@@ -16,6 +16,7 @@ on:
       - 'scripts/verify_p17_moe_contracts.py'
       - 'tests/GSIP.P17OfficialAgencyContractChecks/**'
       - 'tests/GSIP.P17BasicAuthChecks/**'
+      - 'tests/GSIP.P17MoeContractChecks/**'
       - '.github/workflows/p17-official-agency-contracts.yml'
   push:
     branches: [ main ]
@@ -33,6 +34,7 @@ on:
       - 'scripts/verify_p17_moe_contracts.py'
       - 'tests/GSIP.P17OfficialAgencyContractChecks/**'
       - 'tests/GSIP.P17BasicAuthChecks/**'
+      - 'tests/GSIP.P17MoeContractChecks/**'
       - '.github/workflows/p17-official-agency-contracts.yml'
 
 permissions:
@@ -61,12 +63,16 @@ jobs:
         run: dotnet restore tests/GSIP.P17OfficialAgencyContractChecks/GSIP.P17OfficialAgencyContractChecks.csproj
       - name: Restore P17 Basic auth checks
         run: dotnet restore tests/GSIP.P17BasicAuthChecks/GSIP.P17BasicAuthChecks.csproj
+      - name: Restore P17 MOE metadata checks
+        run: dotnet restore tests/GSIP.P17MoeContractChecks/GSIP.P17MoeContractChecks.csproj
       - name: Build solution Release
         run: dotnet build GSIP.sln -c Release --no-restore
       - name: Build P17 contract checks Release
         run: dotnet build tests/GSIP.P17OfficialAgencyContractChecks/GSIP.P17OfficialAgencyContractChecks.csproj -c Release --no-restore
       - name: Build P17 Basic auth checks Release
         run: dotnet build tests/GSIP.P17BasicAuthChecks/GSIP.P17BasicAuthChecks.csproj -c Release --no-restore
+      - name: Build P17 MOE metadata checks Release
+        run: dotnet build tests/GSIP.P17MoeContractChecks/GSIP.P17MoeContractChecks.csproj -c Release --no-restore
       - name: Run P17 Basic auth transport acceptance
         run: dotnet run --project tests/GSIP.P17BasicAuthChecks/GSIP.P17BasicAuthChecks.csproj -c Release --no-build
       - name: Start SQL Server LocalDB
@@ -76,3 +82,5 @@ jobs:
           sqllocaldb info MSSQLLocalDB
       - name: Run P17 official agency contract acceptance
         run: dotnet run --project tests/GSIP.P17OfficialAgencyContractChecks/GSIP.P17OfficialAgencyContractChecks.csproj -c Release --no-build
+      - name: Run P17 MOE metadata acceptance
+        run: dotnet run --project tests/GSIP.P17MoeContractChecks/GSIP.P17MoeContractChecks.csproj -c Release --no-build
