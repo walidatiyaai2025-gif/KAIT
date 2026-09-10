@@ -1,9 +1,11 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json.Nodes;
+using GSIP.Application.Authorization;
 using GSIP.Application.Secrets;
 using GSIP.Application.Setup;
 using GSIP.Domain.Secrets;
+using GSIP.Infrastructure.Authorization;
 using GSIP.Infrastructure.Execution;
 using GSIP.Infrastructure.Secrets;
 using GSIP.Infrastructure.Setup;
@@ -40,6 +42,8 @@ internal sealed class MojTokenFlowConvergenceService(IServiceScopeFactory scopeF
             .Include(service => service.EnvironmentConfigs)
             .Where(service => service.IsCurrent && serviceCodes.Contains(service.Code))
             .ToListAsync(cancellationToken);
+
+        await EnsureSystemAdministratorExecutionPermissionsAsync(db, services.Select(service => service.Code), cancellationToken);
 
         foreach (var service in services)
         {
@@ -142,6 +146,64 @@ internal sealed class MojTokenFlowConvergenceService(IServiceScopeFactory scopeF
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+    private static async Task EnsureSystemAdministratorExecutionPermissionsAsync(
+        GsipDbContext db,
+        IEnumerable<string> serviceCodes,
+        CancellationToken cancellationToken)
+    {
+        var roleId = Guid.Parse(GsipRoles.SystemAdministratorId);
+        if (!await db.Roles.AsNoTracking().AnyAsync(role => role.Id == roleId, cancellationToken))
+            return;
+
+        var now = DateTimeOffset.UtcNow;
+        var global = await db.RolePermissions.SingleOrDefaultAsync(
+            item => item.RoleId == roleId && item.PermissionKey == GsipPermissions.ServicesExecute,
+            cancellationToken);
+        if (global is null)
+        {
+            db.RolePermissions.Add(new RolePermission
+            {
+                RoleId = roleId,
+                PermissionKey = GsipPermissions.ServicesExecute,
+                IsAllowed = true,
+                UpdatedAtUtc = now
+            });
+        }
+        else
+        {
+            global.IsAllowed = true;
+            global.UpdatedAtUtc = now;
+        }
+
+        foreach (var serviceCode in serviceCodes.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            var normalizedCode = serviceCode.Trim().ToUpperInvariant();
+            var scoped = await db.RoleServicePermissions.SingleOrDefaultAsync(
+                item => item.RoleId == roleId
+                    && item.ServiceCode == normalizedCode
+                    && item.PermissionKey == GsipPermissions.ServicesExecute,
+                cancellationToken);
+            if (scoped is null)
+            {
+                db.RoleServicePermissions.Add(new RoleServicePermission
+                {
+                    RoleId = roleId,
+                    ServiceCode = normalizedCode,
+                    PermissionKey = GsipPermissions.ServicesExecute,
+                    IsAllowed = true,
+                    UpdatedAtUtc = now
+                });
+            }
+            else
+            {
+                scoped.IsAllowed = true;
+                scoped.UpdatedAtUtc = now;
+            }
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+    }
 
     private static async Task<AuthProfileDescriptor> EnsureEmptyCredentialAsync(
         ISecretVault secretVault,
