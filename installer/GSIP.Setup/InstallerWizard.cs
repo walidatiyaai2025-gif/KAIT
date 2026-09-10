@@ -19,7 +19,7 @@ internal sealed class InstallerWizard : Form
     {
         Dock = DockStyle.Top,
         Height = 62,
-        Font = new Font(SystemFonts.MessageBoxFont.FontFamily, 18, FontStyle.Bold),
+        Font = new Font("Segoe UI", 18, FontStyle.Bold),
         Padding = new Padding(28, 18, 28, 4)
     };
     private readonly Label _step = new()
@@ -447,7 +447,7 @@ internal sealed class InstallerWizard : Form
         Dock = DockStyle.Top,
         AutoSize = true,
         MaximumSize = new Size(760, 0),
-        Font = new Font(SystemFonts.MessageBoxFont.FontFamily, 10),
+        Font = new Font("Segoe UI", 10),
         Padding = new Padding(0, 8, 0, 8)
     };
 
