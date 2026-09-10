@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Security.Claims;
 using System.Threading.RateLimiting;
 using GSIP.Application.Configuration;
-using GSIP.Application.Identity;
 using GSIP.Application.Setup;
 using GSIP.Infrastructure;
 using GSIP.Integrations;
@@ -68,7 +67,7 @@ builder.Services.AddRateLimiter(options =>
             return RateLimitPartition.GetNoLimiter("non-challenge");
         }
 
-        var userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userId = context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         var partitionKey = !string.IsNullOrWhiteSpace(userId)
             ? $"user:{userId}"
             : $"ip:{context.Connection.RemoteIpAddress?.ToString() ?? "unknown"}";

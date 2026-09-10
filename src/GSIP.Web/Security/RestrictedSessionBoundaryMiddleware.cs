@@ -1,5 +1,5 @@
-using System.Security.Claims;
 using GSIP.Application.Identity;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 
 namespace GSIP.Web.Security;
@@ -23,7 +23,7 @@ public sealed class RestrictedSessionBoundaryMiddleware(RequestDelegate next)
             return;
         }
 
-        var restriction = context.User.FindFirstValue(GsipIdentityClaims.SessionRestriction);
+        var restriction = context.User.FindFirst(GsipIdentityClaims.SessionRestriction)?.Value;
         if (string.IsNullOrWhiteSpace(restriction))
         {
             await _next(context);

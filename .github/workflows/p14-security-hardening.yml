@@ -29,6 +29,11 @@ jobs:
         run: |
           test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
           echo "EXACT_CANDIDATE_SHA=$CANDIDATE_SHA"
+      - name: Initialize P14 evidence
+        shell: bash
+        run: |
+          mkdir -p artifacts/p14-security
+          printf 'CandidateSha=%s\nUnit=P14::security-hardening-resilience-convergence\nState=OPEN_PHASE_CANDIDATE_NOT_CLOSURE\n' "$CANDIDATE_SHA" > artifacts/p14-security/manifest.txt
       - name: Setup pinned .NET SDK
         uses: actions/setup-dotnet@v4
         with:
@@ -44,14 +49,13 @@ jobs:
       - name: Run P14 authentication boundary and resilience acceptance
         shell: bash
         run: |
-          mkdir -p artifacts/p14-security
           dotnet run --project tests/GSIP.P14SecurityChecks/GSIP.P14SecurityChecks.csproj -c Release --no-build | tee artifacts/p14-security/security-boundary.txt
       - name: Preserve planning integrity
         run: python scripts/validate_execution_plan.py
-      - name: Build P14 security manifest
+      - name: Finalize P14 security manifest
         shell: bash
         run: |
-          printf 'CandidateSha=%s\nUnit=P14::security-hardening-resilience-convergence\nState=OPEN_PHASE_CANDIDATE_NOT_CLOSURE\nRestrictedSessionBoundary=ENFORCED\nChallengeRateLimit=ENFORCED\n' "$CANDIDATE_SHA" > artifacts/p14-security/manifest.txt
+          printf 'RestrictedSessionBoundary=ENFORCED\nChallengeRateLimit=ENFORCED\nAcceptance=PASS\n' >> artifacts/p14-security/manifest.txt
       - name: Upload P14 security evidence
         if: ${{ always() }}
         uses: actions/upload-artifact@v4

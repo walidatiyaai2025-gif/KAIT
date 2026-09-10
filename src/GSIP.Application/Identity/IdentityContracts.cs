@@ -17,7 +17,7 @@ public static class GsipSessionRestrictions
     public static bool IsRestricted(ClaimsPrincipal principal)
     {
         ArgumentNullException.ThrowIfNull(principal);
-        return !string.IsNullOrWhiteSpace(principal.FindFirstValue(GsipIdentityClaims.SessionRestriction));
+        return !string.IsNullOrWhiteSpace(principal.FindFirst(GsipIdentityClaims.SessionRestriction)?.Value);
     }
 
     public static bool IsKnown(string? value) =>
