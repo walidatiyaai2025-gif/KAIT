@@ -4,11 +4,11 @@
 
 **P17 — Final convergence and release closure**
 
-Status: **CLOSED — CLOSURE CANDIDATE**
+Status: **CLOSURE TRANSITION CANDIDATE**
 
-This is the P17 closure candidate only. It becomes canonical P17 closure after this exact branch head passes the complete governed pull-request matrix, merges normally with expected-head protection, and the resulting exact `main` passes the complete governed push matrix. P17 closure does not terminate project-wide convergence: any later cloud-actionable gap anywhere in the project must still be repaired, and final cloud convergence requires two consecutive full LIVE-state zero-gap sweeps on terminal-green exact `main`.
+The already accepted P17 product implementation is normally integrated on exact implementation main `2723e85e9d63182b1384615400a20ecc8babfe83`; **IMPLEMENTATION LOCKED** applies on this branch. This branch is governance/evidence reconciliation only. It becomes canonical P17 closure only after this exact branch head passes the complete governed pull-request matrix, merges normally with expected-head protection, and the resulting exact-new-main passes the complete governed push matrix. P17 closure does not terminate project-wide convergence: any later cloud-actionable gap anywhere in the project must still be repaired, and final cloud convergence requires two consecutive full LIVE-state zero-gap sweeps on terminal-green exact `main`.
 
-P00-P16 are formally **CLOSED** from preserved exact integrated evidence. This closure candidate does **not** convert any owner-only or external evidence to PASS.
+P00-P16 are formally **CLOSED** from preserved exact integrated evidence. This closure transition candidate does **not** convert any owner-only or external evidence to PASS.
 
 ## Preserved P13 closed baseline provenance
 
@@ -83,7 +83,7 @@ Final evidence must satisfy `docs/FINAL_ACCEPTANCE_CRITERIA.md` on one exact fin
 
 ## P17 exit condition and post-closure convergence
 
-This P17 closure candidate may merge only when every governed workflow required by repository policy is terminal green on the exact closure PR head, fresh P15/P16/P17 candidate-bound artifacts and hashes are available, exact `main` and claims/reviews remain lawful, and expected-head protection is used for normal merge. The resulting exact closure main must then complete the governed push matrix terminal green with fresh same-SHA final-main artifact/hash evidence.
+This P17 closure transition candidate may merge only when every governed workflow required by repository policy is terminal green on the exact closure PR head, fresh P15/P16/P17 candidate-bound artifacts and hashes are available, exact `main` and claims/reviews remain lawful, and expected-head protection is used for normal merge. The resulting exact closure main must then complete the governed push matrix terminal green with fresh same-SHA final-main artifact/hash evidence.
 
 P17 being **CLOSED** does not authorize execution to stop. After closure integration, run a complete LIVE project-wide sweep. If ANY cloud-actionable gap exists anywhere in P00-P17 or shared infrastructure, repair the highest-priority gap immediately, merge lawfully, verify exact-main CI, and restart the clean-sweep count. Final cloud convergence requires **two consecutive full LIVE-state sweeps** with zero cloud-actionable gaps while exact-main CI remains terminal green.
 
