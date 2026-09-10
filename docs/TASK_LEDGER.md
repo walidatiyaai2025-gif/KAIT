@@ -21,7 +21,7 @@ This ledger is evidence-driven. `DEFERRED_EXTERNAL` and `OWNER_LAST` are never e
 | P14 | CLOSED | Security/resilience hardening, IDOR/CSRF/XSS/rate-limit/timeout/retry/concurrency/dependency review preserved. |
 | P15 | CLOSED | Windows/IIS installer/package lifecycle, upgrade/repair/uninstall, state preservation, redaction and package hashing preserved. |
 | P16 | CLOSED | Full automated acceptance, backup/restore rehearsal, multi-screen bilingual UI, security/runtime and same-candidate release packaging preserved. |
-| P17 | CLOSED | Implementation PR #92 head `18bedd6891bfa7812c1da7715f504e7cc233e752` passed **43/43** and integrated as `2723e85e9d63182b1384615400a20ecc8babfe83` with **38/38** push SUCCESS. Closure-transition PR #93 head `7e4fb7264c346f4f5310ad4b44c07fe51a07c151` passed **41/41** and normally merged as `72d1ea92e14978b08a1b0ed1727716001ebf1390`, which passed **37/37** governed push workflows. Formal closure reconciliation must itself pass exact-head CI, merge normally and produce terminal-green exact-new-main CI before this CLOSED state is canonical on `main`. |
+| P17 | CLOSED | Implementation PR #92 head `18bedd6891bfa7812c1da7715f504e7cc233e752` passed **43/43** and integrated as `2723e85e9d63182b1384615400a20ecc8babfe83` with **38/38** push SUCCESS. Closure-transition PR #93 head `7e4fb7264c346f4f5310ad4b44c07fe51a07c151` passed **41/41** and integrated as `72d1ea92e14978b08a1b0ed1727716001ebf1390` with **37/37** push SUCCESS. Formal-closure PR #94 head `6d3aa3008f08b4d8a534bff2a1bd5e81cde8ad1f` passed **41/41**, merged normally with expected-head protection, and produced `4d7e5371a28d37237b32cfc382e748582af01b46`, which passed **37/37** governed push workflows with fresh same-SHA P15/P16/P17 artifacts. |
 
 ## P17 implementation/convergence record
 
@@ -39,17 +39,33 @@ Exact `72d1ea92...` evidence includes:
 - P16 release ZIP SHA-256 `1761ac167bc40c36a08051ddf07e53f73512b1293531ffb8cc10ca029d637bb0`; Setup SHA-256 `ce39d65319b1c977cf3797789686d6c6b45fb338ec5fb6b4272fcf68641349b1`; release artifact `10167858384`, digest `sha256:746c7805303c8692b9b31d45fab943c8a869d34ea30e4771a6d240850051335d`, 62,247,913 bytes; runtime/UI artifact `10168083331`, digest `sha256:b549a04e6aaa4465355af0eeb32595d6aab0156f088edc0b2b9cb3bf03d22d4c`, 3,482,563 bytes;
 - P17 artifact `10167841257`, digest `sha256:552b5935cdcca7de3198291529807f3227cf4f41367942243108a992850fe3d4`, 342 bytes.
 
-These are closure-transition provenance only after formal-closure source changes. The exact formal-closure head and resulting exact final main must emit fresh same-SHA evidence.
+These remain closure-transition provenance only after formal-closure source changes.
 
-## First post-implementation project-wide sweep
+## P17 formal-closure record
 
-The sweep from implementation main `2723e85e9d63182b1384615400a20ecc8babfe83` found the P17 closure-governance gap and therefore does not count toward the two required final zero-gap sweeps. It found no actionable `TODO`, `FIXME`, `NotImplementedException`, `Assert.Inconclusive`, explicit `Skip =`, or `Assert.Ignore`; historical branches were integrated/superseded except the canonical closure line; releases/tags were absent and are not fabricated.
+Canonical formal-closure PR #94 exact head `6d3aa3008f08b4d8a534bff2a1bd5e81cde8ad1f` completed **41/41 governed PR workflows SUCCESS**, with failure=0, queued=0 and in-progress=0. Same-head P15/P16/P17 artifacts and archive SHA-256 digests were read back before merge. Reviews and review threads were empty, no conflicting tracker claim displaced the line, and exact base main remained `72d1ea92e14978b08a1b0ed1727716001ebf1390` through the immediate pre-merge gate.
+
+PR #94 merged normally using expected-head protection, producing exact formal-closure integration main `4d7e5371a28d37237b32cfc382e748582af01b46`. That exact main completed **37/37 governed push workflows SUCCESS**, with failure=0, queued=0 and in-progress=0. Exact-main P16 run `34520888811` completed all four jobs including aggregate `p16-gate` SUCCESS.
+
+Fresh exact `4d7e5371...` evidence includes:
+
+- P15 run `34520888888`: package `GSIP-0.1.2-win-x64.zip` SHA-256 `f5bd784d97bae7fef7caa81fa417cc9558ceb667fb735cc7f02a19d8b59755a9`; installer `GSIP-0.1.2-Setup-x64.exe` SHA-256 `995436e25567447a27d4dd079186959b0c337b9e3c5e675d23537a4760873fe4`; artifact `10169748209`, digest `sha256:85829cf800762407d7cfb8f5247ea1f5cdb92e0d5a411ecb09d9c15eafea696d`, 62,248,637 bytes;
+- P16 run `34520888811`: release package SHA-256 `163ca0280d63198b974906a001670e09dd47872229d6debac61deb5d634b8f75`; installer SHA-256 `2cbd9c38af344fee1ec61579a2cf08273da8aa7ffba2aed6e45f8a493f201c5f`; release artifact `10169728697`, digest `sha256:dc71cde929e91a51eecd7e2a242ab370198063714450c057bb4ee47bae7cc73d`, 62,248,706 bytes; runtime/UI artifact `10169865209`, digest `sha256:6a5bd3f2073881c806c1a7ee298b98783f3aa1788b7582a115eca96c6337cf1f`, 3,482,090 bytes;
+- P17 run `34520888987`: artifact `10169702431`, digest `sha256:7f1f91ec8d741f34c8bb3b46805b718205a89a1711300b1344df188eb3aae100`, 342 bytes.
+
+Both downloaded P15/P16 manifests bind source identity to exact `4d7e5371a28d37237b32cfc382e748582af01b46`. This evidence may not be reused after any later main movement; any governance/evidence reconciliation merge must be validated on its own resulting exact main.
+
+## Branch reconciliation after formal closure
+
+The full branch census covered all returned branch pages. Against exact `4d7e5371...`, the P17 formal-closure, closure-reconciliation, idempotency staging, MOH contract and green-catalog branches all had `ahead_by=0`. The only divergent P17 hotfix was `hotfix/p17-remove-stray-moh-placeholder`; its PR #91 is explicitly **SUPERSEDED — DO NOT MERGE** because replay would remove legitimate newer MOH contract evidence. No lawful unique P17 implementation commit remained outside main.
 
 ## Required post-closure convergence
 
-After formal P17 closure is integrated and exact-new-main CI is terminal green, repeat a complete LIVE project sweep. If any cloud-actionable gap exists anywhere in P00-P17 or cross-phase infrastructure, repair it immediately and restart the sweep count.
+After every formal closure or evidence reconciliation merge, repeat a complete LIVE project sweep. If any cloud-actionable gap exists anywhere in P00-P17 or cross-phase infrastructure, repair it immediately and restart the sweep count.
 
 Final cloud convergence requires **two consecutive full LIVE-state sweeps with zero cloud-actionable gaps** while exact-main governed CI remains terminal green. Required census includes open PRs/issues, active/stale claims, branches with unique legitimate commits, recent merges, workflow outcomes, required-test skips, production TODO/FIXME/stubs, canonical evidence, release/version/artifact SHA-256 identity, owner/deferred classifications and `UNPUSHED_WORK`.
+
+The first terminal-green sweep after PR #94 found stale tracker/canonical governance text, so it did **not** count as a clean sweep. That gap is the reason for this evidence reconciliation line. Any main produced by this reconciliation must receive new same-SHA validation before the clean-sweep count can restart.
 
 ## OWNER_LAST / deferred external — NOT PASS
 
