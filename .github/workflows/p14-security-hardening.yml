@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - 'worker/p14-security-hardening-resilience'
+      - 'worker/p14-post-closure-redirect-hardening'
   pull_request:
     branches:
       - main
@@ -50,12 +51,16 @@ jobs:
         shell: bash
         run: |
           dotnet run --project tests/GSIP.P14SecurityChecks/GSIP.P14SecurityChecks.csproj -c Release --no-build | tee artifacts/p14-security/security-boundary.txt
+      - name: Verify outbound redirect cookie and TLS boundary
+        shell: bash
+        run: |
+          python scripts/verify_p14_outbound_http_security.py | tee artifacts/p14-security/outbound-http-security.txt
       - name: Preserve planning integrity
         run: python scripts/validate_execution_plan.py
       - name: Finalize P14 security manifest
         shell: bash
         run: |
-          printf 'RestrictedSessionBoundary=ENFORCED\nChallengeRateLimit=ENFORCED\nSessionFixation=CHECKED\nBruteForce=CHECKED\nAuthorizationIdor=CHECKED\nCsrfEncoding=CHECKED\nSecretLogLeakage=CHECKED\nExternalOutage=CHECKED\nDynamicInputFuzzing=CHECKED\nUploadSurface=ABSENT_LOGO_METADATA_BOUNDED\nAcceptance=PASS\n' >> artifacts/p14-security/manifest.txt
+          printf 'RestrictedSessionBoundary=ENFORCED\nChallengeRateLimit=ENFORCED\nSessionFixation=CHECKED\nBruteForce=CHECKED\nAuthorizationIdor=CHECKED\nCsrfEncoding=CHECKED\nSecretLogLeakage=CHECKED\nExternalOutage=CHECKED\nDynamicInputFuzzing=CHECKED\nUploadSurface=ABSENT_LOGO_METADATA_BOUNDED\nOutboundRedirects=DISABLED\nImplicitCookiePersistence=DISABLED\nTlsValidation=SYSTEM_DEFAULT\nAcceptance=PASS\n' >> artifacts/p14-security/manifest.txt
       - name: Upload P14 security evidence
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
