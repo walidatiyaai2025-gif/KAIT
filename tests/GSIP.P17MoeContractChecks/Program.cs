@@ -29,9 +29,10 @@ try
         ["MOE_LAST_STUDENT_RECORD"] = "/last",
         ["MOE_LAST_SUCCESS_RECORD"] = "/lastsuccess"
     };
+    var expectedCodes = expectedPaths.Keys.ToArray();
 
     var services = await db.CatalogServices.AsNoTracking()
-        .Where(service => service.IsCurrent && expectedPaths.Keys.Contains(service.Code))
+        .Where(service => service.IsCurrent && expectedCodes.Contains(service.Code))
         .Include(service => service.EnvironmentConfigs)
         .Include(service => service.Fields)
         .Include(service => service.ResultMappings)
@@ -105,7 +106,7 @@ try
     await new MoeMetadataSeedService(db, clock).SeedAsync();
     var after = await CaptureCountsAsync(db);
     var afterIds = await db.CatalogServices.AsNoTracking()
-        .Where(service => service.IsCurrent && expectedPaths.Keys.Contains(service.Code))
+        .Where(service => service.IsCurrent && expectedCodes.Contains(service.Code))
         .Select(service => service.Id)
         .OrderBy(id => id)
         .ToArrayAsync();
