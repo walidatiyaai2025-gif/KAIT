@@ -9,6 +9,7 @@ const string Password = "SYNTHETIC_MOE_PASSWORD";
 await ConvertsProtectedPairToBasicAsync();
 await MarkerRequiresProtectedPairAsync();
 await KnownMoeEndpointRequiresProtectedPairAsync();
+await NonDefaultPortMoeEndpointDoesNotAuthorizePairAsync();
 await UndocumentedMoeEndpointDoesNotAuthorizePairAsync();
 await UnscopedProtectedPairFailsClosedAsync();
 await MissingCredentialFailsClosedAsync();
@@ -69,6 +70,28 @@ async Task KnownMoeEndpointRequiresProtectedPairAsync()
     Check(response.StatusCode == HttpStatusCode.Unauthorized,
         "Known MOE Student UAT endpoint without protected Basic credentials did not fail closed.");
     Check(inner.Calls == 0, "Known MOE Student UAT endpoint without credentials reached network transport.");
+}
+
+async Task NonDefaultPortMoeEndpointDoesNotAuthorizePairAsync()
+{
+    var inner = new RecordingHandler();
+    using var client = Client(inner);
+    using var request = new HttpRequestMessage(
+        HttpMethod.Get,
+        "https://moe-uat.api-non-prod.cait.gov.kw:444/Student-API/v1/studentdata/last?cid=123456789012");
+    request.Headers.TryAddWithoutValidation(BasicAuthenticationTransformHandler.UsernameHeader, Username);
+    request.Headers.TryAddWithoutValidation(BasicAuthenticationTransformHandler.PasswordHeader, Password);
+
+    using var response = await client.SendAsync(request);
+
+    Check(response.StatusCode == HttpStatusCode.Unauthorized,
+        "Non-default-port MOE origin incorrectly authorized protected Basic credentials.");
+    Check(inner.Calls == 0,
+        "Non-default-port MOE origin reached outbound transport with protected Basic credentials.");
+    Check(!request.Headers.Contains(BasicAuthenticationTransformHandler.UsernameHeader)
+          && !request.Headers.Contains(BasicAuthenticationTransformHandler.PasswordHeader)
+          && request.Headers.Authorization is null,
+        "Protected Basic credential material remained on the rejected non-default-port request.");
 }
 
 async Task UndocumentedMoeEndpointDoesNotAuthorizePairAsync()
