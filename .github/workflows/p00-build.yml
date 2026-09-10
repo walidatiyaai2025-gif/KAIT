@@ -14,10 +14,21 @@ jobs:
   build-test-package:
     runs-on: windows-latest
     timeout-minutes: 15
+    env:
+      CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
     steps:
-      - name: Checkout
+      - name: Checkout exact candidate
         uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          fetch-depth: 0
+
+      - name: Assert exact candidate SHA
+        shell: pwsh
+        run: |
+          $actual = (git rev-parse HEAD).Trim()
+          if ($actual -ne $env:CANDIDATE_SHA) { throw "Exact candidate mismatch: expected=$env:CANDIDATE_SHA actual=$actual" }
 
       - name: Setup pinned .NET SDK
         uses: actions/setup-dotnet@v4
@@ -48,7 +59,7 @@ jobs:
         id: package
         shell: pwsh
         run: |
-          $shortSha = $env:GITHUB_SHA.Substring(0, 12)
+          $shortSha = $env:CANDIDATE_SHA.Substring(0, 12)
           $artifact = "GSIP-P00-Baseline-0.1.0-$shortSha.zip"
           Compress-Archive -Path artifacts/p00-publish/* -DestinationPath "artifacts/$artifact" -Force
           $hash = (Get-FileHash "artifacts/$artifact" -Algorithm SHA256).Hash.ToLowerInvariant()
