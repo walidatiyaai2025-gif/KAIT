@@ -20,8 +20,8 @@ This ledger is evidence-driven. Never mark a phase CLOSED because a prompt says 
 | P13 | CLOSED | Implementation PR #71 and closure transition PR #72 normally integrated; final closure-transition main `9f76f6593123a86c1ef999ba5ec5b7b9338a53de` completed **32/32** push workflows SUCCESS |
 | P14 | CLOSED | PR #73 exact implementation head `3eca150b67663ec3e5c2d5ea918d4b75cfd9b2de` passed **37/37** governed workflows; implementation main `1f1def164d639c75d9cc26710a905cc491355a2b` passed **34/34** push workflows; closure PR #74 exact head `58022cc53c75a986cca3cb119671c213ca1fdf4d` integrated as exact main `f5dd87de7aa3f8e709d04cf8804f53c10c938633`, which passed **33/33** push workflows; no known cloud-actionable Critical/High vulnerability remains |
 | P15 | CLOSED | PR #75 final exact head `1c1af59fac0489d645e5323a9c6c97f8a76bc5a7` passed **37/37** governed PR workflows and normally integrated as exact implementation main `d60318da5b19d06df20864083f5a4a78b9792e88`, which passed **34/34** governed push workflows; closure PR #77 exact head `7ad7f07b760f3102bd2776cdfe4e35d2fb427765` passed **37/37** governed PR workflows and normally integrated as exact closure main `48267786e9f0d21934dee339eed32688b6e2d488`, which passed **34/34** governed push workflows; P15 run `34440072557` passed 45 static checks and full package/lifecycle acceptance |
-| P16 | CLOSURE TRANSITION CANDIDATE | PR #85 exact corrected head `0e767d4f355e403b70602a7645cd7ffba25b3b43` passed **40/40** governed PR workflows and integrated as exact accepted main `8863b4b8151ebb08e98fdb225ea5418c5297eb5c`; that main passed **36/36** governed push workflows; exact-main P16 run `34456867989` passed all four acceptance legs; version `0.1.2`; formal phase closure requires this governance/evidence reconciliation PR to pass exact-head CI, merge normally, and its resulting exact-new-main to pass every governed workflow |
-| P17 | STAGED / IMPLEMENTATION LOCKED | Final convergence and release closure; may open only after the post-0.1.2 P16 reconciliation transition integrates and resulting exact-new-main governed CI is terminal green; only P17 may make a final-completion claim |
+| P16 | CLOSED | PR #85 exact corrected head `0e767d4f355e403b70602a7645cd7ffba25b3b43` passed **40/40** governed PR workflows and integrated as exact accepted main `8863b4b8151ebb08e98fdb225ea5418c5297eb5c`; that main passed **36/36** governed push workflows; exact-main P16 run `34456867989` passed all four acceptance legs; closure PR #86 exact head `eeb03879d4b31b04bf333c8b5d021983ace8afe9` passed **39/39** governed PR workflows, normally integrated as exact main `18efd6c71a35505105d44df673d1d75fde293a2e`, whose exact-new-main matrix passed **36/36** governed push workflows |
+| P17 | OPEN / READY | Final convergence and release closure. P17 is the sole canonical phase and may make a final-completion claim only when same-commit/same-artifact exact final evidence satisfies `docs/FINAL_ACCEPTANCE_CRITERIA.md`; owner/external NOT PASS items must remain accurately deferred |
 
 ## P00 closure record
 
@@ -185,9 +185,9 @@ Formal closure unit `P15::closure-reconciliation` used `worker/p15-closure-recon
 
 Target-server Windows/IIS/TLS proof, owner-approved Production certificate selection, Production DNS/network/proxy/firewall behavior, owner-controlled signing and earlier live MOJ external evidence remain NOT PASS where unavailable. They are not promoted to PASS by cloud packaging or closure evidence. Detailed evidence: `docs/evidence/P15_INSTALLER_PACKAGING.md`.
 
-## P16 acceptance and closure-transition record
+## P16 acceptance and formal closure record
 
-P16 cloud-actionable implementation and acceptance are terminal on exact integrated source `8863b4b8151ebb08e98fdb225ea5418c5297eb5c`; this ledger row is a closure-transition candidate and does not itself authorize P17 before normal integration plus exact-new-main verification.
+P16 is formally **CLOSED** from exact integrated 0.1.2 evidence.
 
 Canonical implementation unit `P16::full-acceptance-release-candidate` used `worker/p16-full-acceptance-continuation`, PR #80. Final implementation head `e655dc4d0effb4f962d3e97e4a0230471238ba55` completed **38/38 governed pull-request workflows SUCCESS**. PR #80 normally integrated as exact implementation main `75ef2f322a53f1e2ed0bfdf8fa3e4ccece5edd85`, whose resulting exact-main matrix completed **35/35 governed push workflows SUCCESS**.
 
@@ -197,7 +197,7 @@ PR #85 normally integrated with an expected-head guard as exact accepted main `8
 
 Exact-main P16 run `34456867989` completed `static-contract`, `release-candidate-package`, `runtime-ui-recovery`, and aggregate `p16-gate` SUCCESS. Runtime acceptance passed Permissions, Service Execution, Audit and Dashboard browser checks, Arabic RTL/English LTR four-screen parity, SQL/protected-state backup/restore rehearsal, bounded performance baseline and execution-plan integrity.
 
-Current same-SHA release-candidate identity bound to source `8863b4b8151ebb08e98fdb225ea5418c5297eb5c`:
+Accepted same-SHA release-candidate identity bound to source `8863b4b8151ebb08e98fdb225ea5418c5297eb5c`:
 
 - version `0.1.2`, target `win-x64`, framework `net10.0`, pinned SDK `10.0.400`;
 - `GSIP-0.1.2-win-x64.zip` — SHA-256 `b4971d31b11f3c1c6a6afba9026afd6865b7c006063eb59ffbdc9e2182efd426`;
@@ -205,9 +205,13 @@ Current same-SHA release-candidate identity bound to source `8863b4b8151ebb08e98
 - Actions artifact `10143946003` — `P16-Release-Candidate-8863b4b8151ebb08e98fdb225ea5418c5297eb5c`, size 62,185,768 bytes, digest `sha256:b7c8f175b1669323917bbfa6b557076ce8b2d2c611af7009b13f83e4282429d6`;
 - Actions artifact `10144204144` — `P16-Runtime-UI-Recovery-8863b4b8151ebb08e98fdb225ea5418c5297eb5c`, size 3,482,259 bytes, digest `sha256:4b5564603f8c00c5d07357dd206647f0f4dabfa5b04cd8fcc931bc1ab5a4965d`.
 
-Canonical closure unit `P16::closure-reconciliation` uses existing branch `worker/p16-closure-reconciliation`. The post-0.1.2 reconciliation transition is governance/evidence-only and must preserve every closed baseline. P16 is not formally CLOSED until the reconciliation PR exact head completes all governed PR workflows SUCCESS, it integrates normally from exact current main, every governed workflow on the resulting exact-new-main is terminal SUCCESS, and Issue #1 records that exact transition evidence. Only then may P17 become the sole canonical phase.
+Canonical closure unit `P16::closure-reconciliation` used existing branch `worker/p16-closure-reconciliation`, PR #86. Final exact closure head `eeb03879d4b31b04bf333c8b5d021983ace8afe9` completed **39/39 governed pull-request workflows SUCCESS**. PR #86 normally integrated as exact main `18efd6c71a35505105d44df673d1d75fde293a2e`. The resulting exact-new-main matrix completed **36/36 governed push workflows SUCCESS**, failure=0, queued=0 and in-progress=0. Issue #1 records the exact closure transition and preserved deferred boundaries. These facts satisfy the encoded P16 exit gate; P17 is therefore the sole canonical OPEN / READY phase.
 
 Authorized live UAT requiring owner-controlled credentials or approved data remains `DEFERRED_EXTERNAL_NOT_PASS` where unavailable. Unproven Production details remain `PRODUCTION_DEFERRED_EXTERNAL_NOT_PASS`; Production→UAT fallback is forbidden. Target-server Windows/IIS/certificate/network/performance/signing evidence and main branch protection remain owner/external NOT PASS where unavailable.
+
+## P17 entry record
+
+P17 is **OPEN / READY** for final convergence and release closure. It must start from live `main`, recover legitimate existing work before creating new work, repair exact-main regressions before finality, and prove all applicable `docs/FINAL_ACCEPTANCE_CRITERIA.md` requirements against one exact final integrated commit and its exact release artifacts. The four canonical UI baselines under `docs/ui-baseline/` remain mandatory high-fidelity evidence. P17 is the only phase allowed to issue a `VERIFIED_FINAL_COMPLETE` claim, and only after the exact final gate is actually satisfied.
 
 ## Cross-phase gates
 
