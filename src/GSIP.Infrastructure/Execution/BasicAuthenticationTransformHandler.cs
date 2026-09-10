@@ -15,7 +15,9 @@ public sealed class BasicAuthenticationTransformHandler : DelegatingHandler
     public const string PasswordHeader = "X-GSIP-Basic-Password";
     public const string RequiredMarkerHeader = "X-CAIT-Basic-Auth-Required";
     private const string MoeUatHost = "moe-uat.api-non-prod.cait.gov.kw";
-    private const string MoeStudentPathPrefix = "/Student-API/v1/studentdata/";
+    private const string MoeLastActivePath = "/Student-API/v1/studentdata/lastactive";
+    private const string MoeLastStudentPath = "/Student-API/v1/studentdata/last";
+    private const string MoeLastSuccessPath = "/Student-API/v1/studentdata/lastsuccess";
 
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
@@ -38,8 +40,8 @@ public sealed class BasicAuthenticationTransformHandler : DelegatingHandler
         request.Headers.Remove(PasswordHeader);
 
         // Protected credential carriers are scoped capabilities, not generic outbound headers.
-        // A pair must be explicitly marked for Basic transformation or target the exact known
-        // MOE UAT Student API boundary; otherwise reject rather than forwarding credentials.
+        // A pair must be explicitly marked for Basic transformation or target one of the exact
+        // owner-proven MOE UAT Student API operations; otherwise reject before transport.
         if (!basicRequired
             || (markerPresent && !markerValid)
             || !hasUsername
@@ -72,7 +74,9 @@ public sealed class BasicAuthenticationTransformHandler : DelegatingHandler
         uri is not null
         && uri.Scheme == Uri.UriSchemeHttps
         && string.Equals(uri.Host, MoeUatHost, StringComparison.OrdinalIgnoreCase)
-        && uri.AbsolutePath.StartsWith(MoeStudentPathPrefix, StringComparison.Ordinal);
+        && (string.Equals(uri.AbsolutePath, MoeLastActivePath, StringComparison.Ordinal)
+            || string.Equals(uri.AbsolutePath, MoeLastStudentPath, StringComparison.Ordinal)
+            || string.Equals(uri.AbsolutePath, MoeLastSuccessPath, StringComparison.Ordinal));
 
     private static bool TryReadSingle(HttpRequestMessage request, string headerName, out string value)
     {
