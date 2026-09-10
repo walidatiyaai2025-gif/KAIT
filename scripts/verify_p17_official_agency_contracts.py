@@ -15,7 +15,8 @@ for path in (SEED, TOKEN, BOOT, MOH_DOC, CSC_DOC):
 seed = SEED.read_text(encoding="utf-8")
 token = TOKEN.read_text(encoding="utf-8")
 boot = BOOT.read_text(encoding="utf-8")
-docs = MOH_DOC.read_text(encoding="utf-8") + "\n" + CSC_DOC.read_text(encoding="utf-8")
+moh_doc = MOH_DOC.read_text(encoding="utf-8")
+docs = moh_doc + "\n" + CSC_DOC.read_text(encoding="utf-8")
 
 required_seed_fragments = [
     '"MOH_CERTIFICATE_INFORMATION"',
@@ -51,6 +52,21 @@ required_seed_fragments = [
 for fragment in required_seed_fragments:
     if fragment not in seed:
         raise SystemExit(f"official contract seed drift: missing {fragment}")
+
+certificate_definition = seed.split('"MOH_CERTIFICATE_INFORMATION"', 1)[1].split(
+    '"MOH_DEATH_CERTIFICATE_CIVIL_ID"', 1
+)[0]
+if '\n            "string",\n            false,\n            [' not in certificate_definition:
+    raise SystemExit("MOH Certificate contract must not infer TokenApiKeyRequired without operation-level evidence")
+
+certificate_row = next(
+    (line for line in moh_doc.splitlines() if line.startswith("| MOH Certificate Information |")),
+    None,
+)
+if certificate_row is None or "Bearer token only" not in certificate_row or "target receives Bearer token and API key" in certificate_row:
+    raise SystemExit("MOH Certificate documentation still claims unproven API-key transport")
+if "GSIP does not configure, seed, or transmit an API key for this service" not in moh_doc:
+    raise SystemExit("MOH Certificate fail-closed API-key evidence boundary is not documented")
 
 required_token_fragments = [
     'GehaValueTypeKey = "X-GSIP-TokenGehaValueType"',
