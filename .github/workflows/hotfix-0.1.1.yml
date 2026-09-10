@@ -1,10 +1,10 @@
-name: Hotfix 0.1.1 UAT Configuration
+name: Hotfix 0.1.2 MOJ Token Flow
 
 on:
   push:
     branches:
       - main
-      - 'hotfix/0.1.1-auth-uat-demo-main'
+      - 'hotfix/0.1.2-moj-token-flow'
   pull_request:
     branches:
       - main
@@ -35,7 +35,7 @@ jobs:
         run: dotnet restore GSIP.sln
       - name: Build
         run: dotnet build GSIP.sln -c Release --no-restore
-      - name: Verify hotfix security and routing contracts
+      - name: Verify hotfix security and token-flow contracts
         run: python scripts/verify_hotfix_0_1_1.py
       - name: Preserve P15 packaging contract
         run: python scripts/verify_p15_installer.py
