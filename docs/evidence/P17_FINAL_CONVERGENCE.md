@@ -60,7 +60,7 @@ PR #94 merged normally using expected-head protection for exact head `6d3aa3008f
 
 `4d7e5371a28d37237b32cfc382e748582af01b46`
 
-That exact main completed **37/37 governed push workflows SUCCESS**, with failure=0, queued=0 and in-progress=0. Exact-main P16 run `34520888811` completed all acceptance legs and aggregate `p16-gate` SUCCESS.
+That exact main completed **38/38 governed push workflows SUCCESS**, with failure=0, queued=0 and in-progress=0. Exact-main P16 run `34520888811` completed all acceptance legs and aggregate `p16-gate` SUCCESS.
 
 ## Exact formal-closure-main artifact evidence
 
@@ -80,6 +80,28 @@ Source `4d7e5371a28d37237b32cfc382e748582af01b46`, version `0.1.2`, runtime `win
 
 Downloaded P15/P16 manifests bind `SourceSha`/`CandidateSha` to exact `4d7e5371a28d37237b32cfc382e748582af01b46`. This evidence cannot be reused if `main` moves.
 
+## Post-formal-closure evidence reconciliation
+
+Post-formal-closure evidence reconciliation PR #95 exact head `75c85e21f9c06943cd2bb31724f8fa1924c27896` completed **40/40 governed pull-request workflows SUCCESS** and merged normally with expected-head protection to exact main `cbbcd4eaadb98d61b65e040c048e57b2c0f50e47`. That exact main completed **38/38 governed push workflows SUCCESS**, failure=0.
+
+Fresh exact `cbbcd4ea...` artifact evidence, version `0.1.2`, runtime `win-x64`:
+
+- P15 run `34525041438`:
+  - package `GSIP-0.1.2-win-x64.zip` SHA-256 `1620aa6bad7358da5ade77392d995c2315f4bb57bc5f018e022e02860253b2f2`;
+  - installer `GSIP-0.1.2-Setup-x64.exe` SHA-256 `b072319217532a3944d952e8938b7f8a991d97dd3092802538e0fe77f577ddd1`;
+  - artifact `10171329005`, size 62,248,493 bytes, archive digest `sha256:f09c187422a8fdadeec34ca41d529439dc92a62d1c9389966552942c70743aa0`.
+- P16 run `34525040954`:
+  - release package `GSIP-0.1.2-win-x64.zip` SHA-256 `d19f7adbc3d3388daebca81df40eddbef8d032b901f8383e2a6976bd3f99350b`;
+  - release installer `GSIP-0.1.2-Setup-x64.exe` SHA-256 `32aea16cd60d6b006fdcb873bc6bd748fbec3c9e4c4af59fdd88fa7d5419e2d3`;
+  - release artifact `10171336671`, size 62,249,137 bytes, archive digest `sha256:dc3a994c9ea26af0de28bf67e9e7214fad6e05ada37fba9cdb80597061736d28`;
+  - runtime/UI artifact `10171433048`, size 3,482,444 bytes, archive digest `sha256:7816db30ee723129a4792a0b5ea2f7683683be317f8892a5fb1e7060ad15cfdc`.
+- P17 run `34525041117`:
+  - artifact `10171310053`, size 341 bytes, archive digest `sha256:0f6809c018fb4083e20f3b949d65bf61d2c062f39d5ca1ddf0289dccd717c0a2`.
+
+P15 and P16 intentionally perform independent builds from the same exact source for different acceptance purposes. Their output byte hashes are therefore tracked as separate artifact identities rather than assumed interchangeable. For release handoff, the P16 release-candidate package/installer is the release-candidate identity; P15 remains independent installer lifecycle/hash evidence. Both exact-source SHA checks and their own SHA-256 verification gates passed.
+
+`cbbcd4eaadb98d61b65e040c048e57b2c0f50e47` is the latest fully verified exact-main predecessor recorded by this evidence-only recovery. The merge SHA eventually produced by this recovery is intentionally not self-encoded here; issue #1 live post-merge evidence plus current repository state are authoritative for the resulting newer main, which must independently pass exact-main CI/artifact verification before either required zero-gap sweep may count.
+
 ## Branch reconciliation after formal closure
 
 The full branch census covered every returned branch page. Against exact `4d7e5371...`, the formal-closure, closure-reconciliation, P17 idempotency staging, MOH contract and green-catalog branches all had `ahead_by=0`; no lawful unique P17 implementation work remained outside main.
@@ -96,11 +118,11 @@ The first sweep from implementation main `2723e85e9d63182b1384615400a20ecc8babfe
 - sampled historical worker/hotfix branches were integrated/superseded with no current lawful unique work requiring replay;
 - GitHub releases and Git tag refs were absent; no release/tag was fabricated when exact Actions artifact identity/hash evidence was available.
 
-After PR #94, exact main `4d7e5371...` reached terminal **37/37 SUCCESS** and fresh same-SHA artifacts were available. The first terminal-green LIVE sweep then found stale issue/canonical governance text still describing pre-#94 state. That is a cloud-actionable evidence drift and therefore **resets the clean-sweep count to zero**. This reconciliation line exists only to close that drift; it changes no product/runtime implementation.
+After PR #94, exact main `4d7e5371...` reached terminal **38/38 SUCCESS** and fresh same-SHA artifacts were available. The first terminal-green LIVE sweep then found stale issue/canonical governance text still describing pre-#94 state, so it did **not** count as a clean sweep. PR #95 repaired the first post-closure evidence drift and its resulting exact main `cbbcd4ea...` reached **38/38 SUCCESS** with fresh same-SHA P15/P16/P17 artifacts. A subsequent LIVE sweep found that canonical files still lacked complete PR #95/current-main provenance, so the clean-sweep count again remains zero until this recovery is integrated and its own resulting exact main is validated.
 
 ## Post-closure reconciliation gate
 
-Any reconciliation commit made after exact `4d7e5371...` creates a new source identity and must satisfy the same no-stale-evidence rule:
+Any reconciliation commit after exact `cbbcd4ea...` creates a new source identity and must satisfy the same no-stale-evidence rule:
 
 - exact reconciliation head must be known and unchanged;
 - complete governed PR workflow matrix must be terminal SUCCESS on that exact head;
@@ -120,7 +142,7 @@ The following remain explicitly NOT PASS and are never promoted by repository/cl
 1. `DEFERRED_EXTERNAL_NOT_PASS`: credential-bearing authorized UAT smoke requires owner-controlled credentials/SecretRefs and approved non-destructive test data. Owner action: provision through protected administration, verify exact service/environment/profile scope with no Production fallback, execute the approved minimal UAT request, retain only sanitized evidence.
 2. `PRODUCTION_DEFERRED_EXTERNAL_NOT_PASS`: authoritative Production operation/authentication/reachability/authorized test evidence is unavailable. Owner action: obtain authoritative Production evidence, configure independently, and execute minimum authorized non-destructive acceptance; never infer UAT behavior.
 3. `OWNER_LAST_TARGET_IIS_TLS_NOT_PASS`: real target Windows Server/IIS/TLS/DNS/network lifecycle acceptance requires owner-controlled target/certificate. Owner action: install the exact accepted artifact and retain sanitized host/site/binding/health evidence.
-4. `OWNER_LAST_SIGNING_NOT_PASS`: private signing material must remain outside Git. Owner action: sign with the approved owner-controlled key/certificate and retain sanitized signature evidence.
+4. `OWNER_LAST_SIGNING_NOT_PASS`: private signing material must remain outside Git. Owner action: sign with the approved owner-controlled key/certificate and retain sanitized signature evidence without exposing private key material.
 5. `OWNER_LAST_BRANCH_PROTECTION_NOT_PASS`: live main remains unprotected. Owner/admin action: apply the documented PR-only/provider-bound required-check policy with strict/up-to-date checks, admin enforcement, conversation resolution, force-push disabled and deletion disabled, then independently read back the applied policy.
 
 `VERIFIED_FINAL_COMPLETE` remains forbidden until exact final main, same-SHA required CI and artifacts, canonical P17 CLOSED state, zero cloud-actionable gaps, all recoverable work pushed, `UNPUSHED_WORK=NONE`, and both required consecutive clean sweeps are proven.
