@@ -4,6 +4,7 @@ using System.Text.Json.Nodes;
 using GSIP.Application.Authorization;
 using GSIP.Application.Secrets;
 using GSIP.Application.Setup;
+using GSIP.Domain.Metadata;
 using GSIP.Domain.Secrets;
 using GSIP.Infrastructure.Authorization;
 using GSIP.Infrastructure.Execution;
