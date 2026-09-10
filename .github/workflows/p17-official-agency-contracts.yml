@@ -4,23 +4,35 @@ on:
   pull_request:
     paths:
       - 'src/GSIP.Infrastructure/Metadata/OfficialAgencyMetadataSeedService.cs'
+      - 'src/GSIP.Infrastructure/Metadata/MoeMetadataSeedService.cs'
       - 'src/GSIP.Infrastructure/Metadata/GreenGovernmentCatalogBootstrapService.cs'
       - 'src/GSIP.Infrastructure/Execution/TokenEndpointContractMetadata.cs'
+      - 'src/GSIP.Infrastructure/Execution/BasicAuthenticationTransformHandler.cs'
+      - 'src/GSIP.Infrastructure/DependencyInjection.cs'
       - 'docs/MOH_UAT_CONTRACT_MATRIX.md'
       - 'docs/CSC_UAT_CONTRACT_MATRIX.md'
+      - 'docs/MOE_UAT_CONTRACT_MATRIX.md'
       - 'scripts/verify_p17_official_agency_contracts.py'
+      - 'scripts/verify_p17_moe_contracts.py'
       - 'tests/GSIP.P17OfficialAgencyContractChecks/**'
+      - 'tests/GSIP.P17BasicAuthChecks/**'
       - '.github/workflows/p17-official-agency-contracts.yml'
   push:
     branches: [ main ]
     paths:
       - 'src/GSIP.Infrastructure/Metadata/OfficialAgencyMetadataSeedService.cs'
+      - 'src/GSIP.Infrastructure/Metadata/MoeMetadataSeedService.cs'
       - 'src/GSIP.Infrastructure/Metadata/GreenGovernmentCatalogBootstrapService.cs'
       - 'src/GSIP.Infrastructure/Execution/TokenEndpointContractMetadata.cs'
+      - 'src/GSIP.Infrastructure/Execution/BasicAuthenticationTransformHandler.cs'
+      - 'src/GSIP.Infrastructure/DependencyInjection.cs'
       - 'docs/MOH_UAT_CONTRACT_MATRIX.md'
       - 'docs/CSC_UAT_CONTRACT_MATRIX.md'
+      - 'docs/MOE_UAT_CONTRACT_MATRIX.md'
       - 'scripts/verify_p17_official_agency_contracts.py'
+      - 'scripts/verify_p17_moe_contracts.py'
       - 'tests/GSIP.P17OfficialAgencyContractChecks/**'
+      - 'tests/GSIP.P17BasicAuthChecks/**'
       - '.github/workflows/p17-official-agency-contracts.yml'
 
 permissions:
@@ -39,16 +51,24 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
-      - name: Static contract verification
+      - name: Static official-agency contract verification
         run: python scripts/verify_p17_official_agency_contracts.py
+      - name: Static MOE contract verification
+        run: python scripts/verify_p17_moe_contracts.py
       - name: Restore solution
         run: dotnet restore GSIP.sln
       - name: Restore P17 contract checks
         run: dotnet restore tests/GSIP.P17OfficialAgencyContractChecks/GSIP.P17OfficialAgencyContractChecks.csproj
+      - name: Restore P17 Basic auth checks
+        run: dotnet restore tests/GSIP.P17BasicAuthChecks/GSIP.P17BasicAuthChecks.csproj
       - name: Build solution Release
         run: dotnet build GSIP.sln -c Release --no-restore
       - name: Build P17 contract checks Release
         run: dotnet build tests/GSIP.P17OfficialAgencyContractChecks/GSIP.P17OfficialAgencyContractChecks.csproj -c Release --no-restore
+      - name: Build P17 Basic auth checks Release
+        run: dotnet build tests/GSIP.P17BasicAuthChecks/GSIP.P17BasicAuthChecks.csproj -c Release --no-restore
+      - name: Run P17 Basic auth transport acceptance
+        run: dotnet run --project tests/GSIP.P17BasicAuthChecks/GSIP.P17BasicAuthChecks.csproj -c Release --no-build
       - name: Start SQL Server LocalDB
         shell: pwsh
         run: |
