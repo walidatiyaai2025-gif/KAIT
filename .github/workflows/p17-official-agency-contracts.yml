@@ -9,6 +9,7 @@ on:
       - 'docs/MOH_UAT_CONTRACT_MATRIX.md'
       - 'docs/CSC_UAT_CONTRACT_MATRIX.md'
       - 'scripts/verify_p17_official_agency_contracts.py'
+      - 'tests/GSIP.P17OfficialAgencyContractChecks/**'
       - '.github/workflows/p17-official-agency-contracts.yml'
   push:
     branches: [ main ]
@@ -19,6 +20,7 @@ on:
       - 'docs/MOH_UAT_CONTRACT_MATRIX.md'
       - 'docs/CSC_UAT_CONTRACT_MATRIX.md'
       - 'scripts/verify_p17_official_agency_contracts.py'
+      - 'tests/GSIP.P17OfficialAgencyContractChecks/**'
       - '.github/workflows/p17-official-agency-contracts.yml'
 
 permissions:
@@ -35,7 +37,11 @@ jobs:
           dotnet-version: '10.0.x'
       - name: Static contract verification
         run: python3 scripts/verify_p17_official_agency_contracts.py
-      - name: Restore
+      - name: Restore solution
         run: dotnet restore GSIP.sln
-      - name: Build
+      - name: Build solution
         run: dotnet build GSIP.sln -c Release --no-restore
+      - name: Restore P17 contract checks
+        run: dotnet restore tests/GSIP.P17OfficialAgencyContractChecks/GSIP.P17OfficialAgencyContractChecks.csproj
+      - name: Run P17 contract checks
+        run: dotnet run --project tests/GSIP.P17OfficialAgencyContractChecks/GSIP.P17OfficialAgencyContractChecks.csproj -c Release --no-restore
