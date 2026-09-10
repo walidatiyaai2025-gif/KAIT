@@ -88,7 +88,22 @@ phase_post_p12_closure_candidate = (
     and final_p12_head in text["project_control"]
     and "| P12 | CLOSED |" in text["ledger"]
 )
-phase_post_p12 = phase_post_p12_open or phase_post_p12_staged_transition or phase_post_p12_closure_candidate
+phase_post_p12_closed = (
+    current_phase_number >= 17
+    and "**P17 — Final convergence and release closure**" in text["phase"]
+    and "Status: **CLOSED**" in text["phase"]
+    and "P16 is formally **CLOSED**" in text["phase"]
+    and p12_closure_evidence_preserved
+    and integrated_p12_sha in text["project_control"]
+    and final_p12_head in text["project_control"]
+    and "| P12 | CLOSED |" in text["ledger"]
+    and "| P17 | CLOSED |" in text["ledger"]
+    and (
+        "P17 is formally **CLOSED**" in text["project_control"]
+        or "P00-P17 are formally CLOSED" in text["project_control"]
+    )
+)
+phase_post_p12 = phase_post_p12_open or phase_post_p12_staged_transition or phase_post_p12_closure_candidate or phase_post_p12_closed
 phase_state_valid = phase_open or phase_closure_transition or phase_post_p12
 layout_phase = re.search(r"<strong>P(\d{2})</strong>", text["layout"])
 layout_phase_number = int(layout_phase.group(1)) if layout_phase else -1
