@@ -14,6 +14,8 @@ public sealed class BasicAuthenticationTransformHandler : DelegatingHandler
     public const string UsernameHeader = "X-GSIP-Basic-Username";
     public const string PasswordHeader = "X-GSIP-Basic-Password";
     public const string RequiredMarkerHeader = "X-CAIT-Basic-Auth-Required";
+    private const string MoeUatHost = "moe-uat.api-non-prod.cait.gov.kw";
+    private const string MoeStudentPathPrefix = "/Student-API/v1/studentdata/";
 
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
@@ -22,10 +24,12 @@ public sealed class BasicAuthenticationTransformHandler : DelegatingHandler
         var markerPresent = request.Headers.Contains(RequiredMarkerHeader);
         var markerValid = TryReadSingle(request, RequiredMarkerHeader, out var markerValue)
                           && string.Equals(markerValue, "1", StringComparison.Ordinal);
+        var knownMoeStudentEndpoint = IsKnownMoeStudentEndpoint(request.RequestUri);
         var hasUsername = TryReadSingle(request, UsernameHeader, out var username);
         var hasPassword = TryReadSingle(request, PasswordHeader, out var password);
+        var basicRequired = markerPresent || knownMoeStudentEndpoint;
 
-        if (!markerPresent && !hasUsername && !hasPassword)
+        if (!basicRequired && !hasUsername && !hasPassword)
             return base.SendAsync(request, cancellationToken);
 
         // Never allow internal auth-control or credential-carrier headers to escape the process.
@@ -59,6 +63,12 @@ public sealed class BasicAuthenticationTransformHandler : DelegatingHandler
             request.Headers.Authorization = null;
         }
     }
+
+    private static bool IsKnownMoeStudentEndpoint(Uri? uri) =>
+        uri is not null
+        && uri.Scheme == Uri.UriSchemeHttps
+        && string.Equals(uri.Host, MoeUatHost, StringComparison.OrdinalIgnoreCase)
+        && uri.AbsolutePath.StartsWith(MoeStudentPathPrefix, StringComparison.Ordinal);
 
     private static bool TryReadSingle(HttpRequestMessage request, string headerName, out string value)
     {
