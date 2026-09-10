@@ -85,17 +85,20 @@ jobs:
           global-json-file: global.json
       - name: Restore exact dependency graph
         run: dotnet restore GSIP.sln
-      - name: Audit known NuGet vulnerabilities
+      - name: Collect NuGet vulnerability and deprecation evidence
         shell: bash
         run: |
           mkdir -p artifacts/p14-dependencies
           dotnet list GSIP.sln package --vulnerable --include-transitive --format json > artifacts/p14-dependencies/vulnerable.json
-          python scripts/verify_p14_dependency_audit.py artifacts/p14-dependencies/vulnerable.json | tee artifacts/p14-dependencies/vulnerability-result.txt
-      - name: Record deprecated dependency review
+          dotnet list GSIP.sln package --deprecated --include-transitive --format json > artifacts/p14-dependencies/deprecated.json
+      - name: Enforce dependency security gate
         shell: bash
         run: |
-          dotnet list GSIP.sln package --deprecated --include-transitive --format json > artifacts/p14-dependencies/deprecated.json
-          printf 'CandidateSha=%s\nKnownNuGetVulnerabilityGate=PASS\nDeprecatedDependencyReport=CAPTURED_FOR_REVIEW\n' "$CANDIDATE_SHA" > artifacts/p14-dependencies/manifest.txt
+          python scripts/verify_p14_dependency_audit.py \
+            artifacts/p14-dependencies/vulnerable.json \
+            artifacts/p14-dependencies/deprecated.json \
+            | tee artifacts/p14-dependencies/dependency-result.txt
+          printf 'CandidateSha=%s\nKnownNuGetVulnerabilityGate=PASS\nDeprecatedDependencyGate=PASS\n' "$CANDIDATE_SHA" > artifacts/p14-dependencies/manifest.txt
       - name: Upload P14 dependency evidence
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
