@@ -1,3 +1,4 @@
+using System.Data;
 using System.Security.Cryptography;
 using System.Text;
 using GSIP.Application.Authorization;
@@ -84,12 +85,6 @@ public sealed class MojUatConfigurationController(
         if (config.AuthProfileId is Guid profileId)
         {
             profile = await authProfiles.GetAsync(profileId, cancellationToken);
-            if (profile.OwnerServiceId != service.Id
-                || profile.OwnerEnvironmentId != CatalogEnvironmentCodes.UatId
-                || profile.Bindings.Count(binding => binding.ServiceId == service.Id && binding.EnvironmentId == CatalogEnvironmentCodes.UatId) != 1)
-            {
-                return Conflict("The UAT authentication binding is not an exact owner binding.");
-            }
         }
         else
         {
@@ -103,10 +98,16 @@ public sealed class MojUatConfigurationController(
                 cancellationToken);
         }
 
+        if (!HasExclusiveOwnerBinding(profile, service.Id))
+        {
+            return Conflict("The UAT authentication binding is not an exclusive exact owner binding.");
+        }
+
         var incompatibleSecrets = profile.Secrets
             .Where(secret => !string.Equals(secret.Name, ApiKeySecretName, StringComparison.OrdinalIgnoreCase))
             .ToArray();
-        if (incompatibleSecrets.Any(secret => !LegacyTokenSecretNames.Contains(secret.Name)))
+        if (incompatibleSecrets.Any(secret => !LegacyTokenSecretNames.Contains(secret.Name))
+            || (incompatibleSecrets.Length != 0 && profile.AuthType != AuthProfileType.TokenEndpoint))
         {
             TempData["MojUatError"] = "INCOMPATIBLE_SECRET_SLOTS";
             return RedirectToAction(nameof(Index));
@@ -117,61 +118,79 @@ public sealed class MojUatConfigurationController(
 
         try
         {
-            // Safely retire only the known obsolete token-flow slots. Unknown slots are never
-            // silently destroyed by this hotfix.
-            foreach (var legacy in incompatibleSecrets)
+            // Retire only the known obsolete token-flow slots and convert the profile/config
+            // inside one serializable database transaction. ISecretVault is scoped to the same
+            // DbContext, so a failed slot delete or profile/config update rolls the revoke back.
+            await using (var transitionTransaction =
+                await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken))
             {
-                await secretVault.RevokeAsync(
-                    service.Id,
-                    CatalogEnvironmentCodes.UatId,
-                    profile.Id,
-                    legacy.Name,
-                    legacy.Reference,
-                    cancellationToken);
-
-                var deleted = await db.AuthProfileSecrets
-                    .Where(slot => slot.AuthProfileId == profile.Id
-                        && slot.SecretName == legacy.Name
-                        && slot.SecretReference == legacy.Reference.Value
-                        && slot.Generation == legacy.Generation)
-                    .ExecuteDeleteAsync(cancellationToken);
-                if (deleted != 1)
+                try
                 {
-                    throw new InvalidOperationException("The legacy secret slot changed during UAT conversion.");
+                    foreach (var legacy in incompatibleSecrets)
+                    {
+                        await secretVault.RevokeAsync(
+                            service.Id,
+                            CatalogEnvironmentCodes.UatId,
+                            profile.Id,
+                            legacy.Name,
+                            legacy.Reference,
+                            cancellationToken);
+
+                        var deleted = await db.AuthProfileSecrets
+                            .Where(slot => slot.AuthProfileId == profile.Id
+                                && slot.SecretName == legacy.Name
+                                && slot.SecretReference == legacy.Reference.Value
+                                && slot.Generation == legacy.Generation)
+                            .ExecuteDeleteAsync(cancellationToken);
+                        if (deleted != 1)
+                        {
+                            throw new InvalidOperationException("The legacy secret slot changed during UAT conversion.");
+                        }
+                    }
+
+                    profile = await authProfiles.UpdateAsync(
+                        new UpdateAuthProfileCommand(profile.Id, "MOJ API 129 UAT API key", AuthProfileType.ApiKeyHeader),
+                        cancellationToken);
+
+                    await db.CatalogServices
+                        .Where(item => item.Id == service.Id && item.IsCurrent)
+                        .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.Active, true), cancellationToken);
+                    await db.CatalogEnvironments
+                        .Where(item => item.Id == CatalogEnvironmentCodes.UatId && item.Code == CatalogEnvironmentCodes.Uat)
+                        .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.Active, true), cancellationToken);
+                    var configUpdated = await db.ServiceEnvironmentConfigs
+                        .Where(item => item.ServiceId == service.Id && item.EnvironmentId == CatalogEnvironmentCodes.UatId)
+                        .ExecuteUpdateAsync(setters => setters
+                            .SetProperty(item => item.BaseUrl, UatBaseUrl)
+                            .SetProperty(item => item.RelativePath, RelativePath)
+                            .SetProperty(item => item.HttpMethod, "POST")
+                            .SetProperty(item => item.ContentType, "application/x-www-form-urlencoded")
+                            .SetProperty(item => item.NonSecretHeadersJson, "{}")
+                            .SetProperty(item => item.TimeoutSeconds, 30)
+                            .SetProperty(item => item.TlsPolicy, "SystemDefault")
+                            .SetProperty(item => item.ValidateServerCertificate, true)
+                            .SetProperty(item => item.ProxyUrl, string.Empty)
+                            .SetProperty(item => item.Active, true)
+                            .SetProperty(item => item.AuthProfileId, profile.Id)
+                            .SetProperty(item => item.LastTestedAtUtc, (DateTimeOffset?)null)
+                            .SetProperty(item => item.LastTestStatus, "API_KEY_CONFIGURATION_IN_PROGRESS"),
+                            cancellationToken);
+                    if (configUpdated != 1)
+                    {
+                        throw new InvalidOperationException("The exact UAT configuration changed during update.");
+                    }
+
+                    await transitionTransaction.CommitAsync(cancellationToken);
+                }
+                catch
+                {
+                    await transitionTransaction.RollbackAsync(CancellationToken.None);
+                    db.ChangeTracker.Clear();
+                    throw;
                 }
             }
 
-            profile = await authProfiles.UpdateAsync(
-                new UpdateAuthProfileCommand(profile.Id, "MOJ API 129 UAT API key", AuthProfileType.ApiKeyHeader),
-                cancellationToken);
-
-            await db.CatalogServices
-                .Where(item => item.Id == service.Id && item.IsCurrent)
-                .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.Active, true), cancellationToken);
-            await db.CatalogEnvironments
-                .Where(item => item.Id == CatalogEnvironmentCodes.UatId && item.Code == CatalogEnvironmentCodes.Uat)
-                .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.Active, true), cancellationToken);
-            var configUpdated = await db.ServiceEnvironmentConfigs
-                .Where(item => item.ServiceId == service.Id && item.EnvironmentId == CatalogEnvironmentCodes.UatId)
-                .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(item => item.BaseUrl, UatBaseUrl)
-                    .SetProperty(item => item.RelativePath, RelativePath)
-                    .SetProperty(item => item.HttpMethod, "POST")
-                    .SetProperty(item => item.ContentType, "application/x-www-form-urlencoded")
-                    .SetProperty(item => item.NonSecretHeadersJson, "{}")
-                    .SetProperty(item => item.TimeoutSeconds, 30)
-                    .SetProperty(item => item.TlsPolicy, "SystemDefault")
-                    .SetProperty(item => item.ValidateServerCertificate, true)
-                    .SetProperty(item => item.ProxyUrl, string.Empty)
-                    .SetProperty(item => item.Active, true)
-                    .SetProperty(item => item.AuthProfileId, profile.Id)
-                    .SetProperty(item => item.LastTestedAtUtc, (DateTimeOffset?)null)
-                    .SetProperty(item => item.LastTestStatus, "API_KEY_CONFIGURATION_IN_PROGRESS"),
-                    cancellationToken);
-            if (configUpdated != 1)
-            {
-                throw new InvalidOperationException("The exact UAT configuration changed during update.");
-            }
+            db.ChangeTracker.Clear();
 
             var clearBytes = Encoding.UTF8.GetBytes(apiKey);
             try
@@ -238,6 +257,15 @@ public sealed class MojUatConfigurationController(
                 CryptographicOperations.ZeroMemory(clearBytes);
             }
 
+            profile = await authProfiles.GetAsync(profile.Id, cancellationToken);
+            if (!HasExclusiveOwnerBinding(profile, service.Id)
+                || profile.AuthType != AuthProfileType.ApiKeyHeader
+                || profile.Secrets.Count != 1
+                || !string.Equals(profile.Secrets[0].Name, ApiKeySecretName, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("The API-key-only UAT profile did not converge to the exact expected scope.");
+            }
+
             await authProfiles.SetEnabledAsync(profile.Id, true, cancellationToken);
             await SetStatusAsync(service.Id, "READY_FOR_UAT_EXECUTION", cancellationToken);
             TempData["MojUatSuccess"] = "READY_FOR_UAT_EXECUTION";
@@ -276,18 +304,37 @@ public sealed class MojUatConfigurationController(
 
         if (config.AuthProfileId is Guid profileId)
         {
+            var profile = await authProfiles.GetAsync(profileId, cancellationToken);
+            if (!HasExclusiveOwnerBinding(profile, service.Id))
+            {
+                await DisableConfigurationOnlyAsync(service.Id, "BINDING_MISMATCH_DISABLED", cancellationToken);
+                return Conflict("The UAT authentication binding is not an exclusive exact owner binding.");
+            }
+
             await authProfiles.SetEnabledAsync(profileId, false, cancellationToken);
         }
 
-        await db.ServiceEnvironmentConfigs
-            .Where(item => item.ServiceId == service.Id && item.EnvironmentId == CatalogEnvironmentCodes.UatId)
-            .ExecuteUpdateAsync(setters => setters
-                .SetProperty(item => item.Active, false)
-                .SetProperty(item => item.LastTestStatus, "DISABLED_BY_ADMIN")
-                .SetProperty(item => item.LastTestedAtUtc, (DateTimeOffset?)null),
-                cancellationToken);
+        await DisableConfigurationOnlyAsync(service.Id, "DISABLED_BY_ADMIN", cancellationToken);
         TempData["MojUatSuccess"] = "UAT_DISABLED";
         return RedirectToAction(nameof(Index));
+    }
+
+    private async Task DisableConfigurationOnlyAsync(
+        Guid serviceId,
+        string status,
+        CancellationToken cancellationToken)
+    {
+        var updated = await db.ServiceEnvironmentConfigs
+            .Where(item => item.ServiceId == serviceId && item.EnvironmentId == CatalogEnvironmentCodes.UatId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(item => item.Active, false)
+                .SetProperty(item => item.LastTestStatus, status)
+                .SetProperty(item => item.LastTestedAtUtc, (DateTimeOffset?)null),
+                cancellationToken);
+        if (updated != 1)
+        {
+            throw new InvalidOperationException("The exact UAT configuration changed while disabling it.");
+        }
     }
 
     private async Task SetStatusAsync(Guid serviceId, string status, CancellationToken cancellationToken)
@@ -327,17 +374,15 @@ public sealed class MojUatConfigurationController(
             }
         }
 
-        var apiKeyConfigured = profile?.Secrets.Count(secret =>
-            string.Equals(secret.Name, ApiKeySecretName, StringComparison.OrdinalIgnoreCase)) == 1;
+        var apiKeyConfigured = profile is not null
+            && profile.Secrets.Count == 1
+            && string.Equals(profile.Secrets[0].Name, ApiKeySecretName, StringComparison.OrdinalIgnoreCase);
         var exactContract = string.Equals(config.BaseUrl, UatBaseUrl, StringComparison.Ordinal)
             && string.Equals(config.RelativePath, RelativePath, StringComparison.Ordinal)
             && string.Equals(config.HttpMethod, "POST", StringComparison.OrdinalIgnoreCase)
             && string.Equals(config.ContentType, "application/x-www-form-urlencoded", StringComparison.OrdinalIgnoreCase)
             && string.Equals(config.NonSecretHeadersJson.Trim(), "{}", StringComparison.Ordinal);
-        var exactBinding = profile is not null
-            && profile.OwnerServiceId == service.Id
-            && profile.OwnerEnvironmentId == CatalogEnvironmentCodes.UatId
-            && profile.Bindings.Count(binding => binding.ServiceId == service.Id && binding.EnvironmentId == CatalogEnvironmentCodes.UatId) == 1;
+        var exactBinding = profile is not null && HasExclusiveOwnerBinding(profile, service.Id);
         var ready = service.Active
             && environment.Active
             && config.Active
@@ -375,6 +420,21 @@ public sealed class MojUatConfigurationController(
             status,
             errorMessage,
             successMessage);
+    }
+
+    private static bool HasExclusiveOwnerBinding(AuthProfileDescriptor profile, Guid serviceId)
+    {
+        if (profile.OwnerServiceId != serviceId
+            || profile.OwnerEnvironmentId != CatalogEnvironmentCodes.UatId
+            || profile.Bindings.Count != 1)
+        {
+            return false;
+        }
+
+        var binding = profile.Bindings[0];
+        return binding.ServiceId == serviceId
+            && binding.EnvironmentId == CatalogEnvironmentCodes.UatId
+            && !binding.IsShared;
     }
 
     private static bool IsAcceptableSecretValue(string value) =>
