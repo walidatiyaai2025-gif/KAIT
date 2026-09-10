@@ -13,6 +13,8 @@ internal sealed record TokenEndpointContractMetadata(
     string PasswordField,
     string? GehaField,
     int? DocumentedTtlSeconds,
+    bool UsernameRequired,
+    bool PasswordRequired,
     bool ApiKeyRequired)
 {
     public const string PathKey = "X-GSIP-TokenEndpointPath";
@@ -20,11 +22,14 @@ internal sealed record TokenEndpointContractMetadata(
     public const string ResponsePathKey = "X-GSIP-TokenResponsePath";
     public const string UsernameFieldKey = "X-GSIP-TokenUsernameField";
     public const string PasswordFieldKey = "X-GSIP-TokenPasswordField";
+    public const string UsernameRequiredKey = "X-GSIP-TokenUsernameRequired";
+    public const string PasswordRequiredKey = "X-GSIP-TokenPasswordRequired";
     public const string GehaFieldKey = "X-GSIP-TokenGehaField";
     public const string DocumentedTtlSecondsKey = "X-GSIP-TokenDocumentedTtlSeconds";
     public const string ApiKeyRequiredKey = "X-GSIP-TokenApiKeyRequired";
     public const string ApiKeySecretName = "x-api-key";
     public const string GehaSecretName = "geha";
+    public const string EmptyCredentialSentinel = "__GSIP_UAT_EMPTY_CREDENTIAL__";
     public const int MaximumResponseBytes = 64 * 1024;
 
     private static readonly HashSet<string> ReservedKeys = new(StringComparer.OrdinalIgnoreCase)
@@ -34,6 +39,8 @@ internal sealed record TokenEndpointContractMetadata(
         ResponsePathKey,
         UsernameFieldKey,
         PasswordFieldKey,
+        UsernameRequiredKey,
+        PasswordRequiredKey,
         GehaFieldKey,
         DocumentedTtlSecondsKey,
         ApiKeyRequiredKey
@@ -58,7 +65,6 @@ internal sealed record TokenEndpointContractMetadata(
                 || path.Contains('\\') || path.Contains('?') || path.Contains('#') || path.Any(char.IsControl))
                 throw new InvalidOperationException("Token endpoint metadata is invalid.");
 
-            // Preserve the P08 legacy contract when only the token path existed.
             var contentType = OptionalString(document.RootElement, RequestContentTypeKey) ?? "application/x-www-form-urlencoded";
             if (!string.Equals(contentType, "application/x-www-form-urlencoded", StringComparison.OrdinalIgnoreCase)
                 && !string.Equals(contentType, "application/json", StringComparison.OrdinalIgnoreCase))
@@ -81,19 +87,21 @@ internal sealed record TokenEndpointContractMetadata(
                 ttl = seconds;
             }
 
-            var apiKeyRequired = false;
-            if (document.RootElement.TryGetProperty(ApiKeyRequiredKey, out var requiredElement))
-            {
-                apiKeyRequired = requiredElement.ValueKind switch
-                {
-                    JsonValueKind.True => true,
-                    JsonValueKind.False => false,
-                    JsonValueKind.String when bool.TryParse(requiredElement.GetString(), out var parsed) => parsed,
-                    _ => throw new InvalidOperationException("Token endpoint metadata is invalid.")
-                };
-            }
+            var usernameRequired = OptionalBoolean(document.RootElement, UsernameRequiredKey, true);
+            var passwordRequired = OptionalBoolean(document.RootElement, PasswordRequiredKey, true);
+            var apiKeyRequired = OptionalBoolean(document.RootElement, ApiKeyRequiredKey, false);
 
-            return new TokenEndpointContractMetadata(path, contentType, responsePath, usernameField, passwordField, gehaField, ttl, apiKeyRequired);
+            return new TokenEndpointContractMetadata(
+                path,
+                contentType,
+                responsePath,
+                usernameField,
+                passwordField,
+                gehaField,
+                ttl,
+                usernameRequired,
+                passwordRequired,
+                apiKeyRequired);
         }
         catch (JsonException exception)
         {
@@ -103,10 +111,12 @@ internal sealed record TokenEndpointContractMetadata(
 
     public HttpContent BuildRequestContent(string username, string password, string? geha)
     {
+        var usernameValue = ResolveCredentialValue(username, UsernameRequired);
+        var passwordValue = ResolveCredentialValue(password, PasswordRequired);
         var values = new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            [UsernameField] = username,
-            [PasswordField] = password
+            [UsernameField] = usernameValue,
+            [PasswordField] = passwordValue
         };
         if (GehaField is not null)
         {
@@ -163,6 +173,8 @@ internal sealed record TokenEndpointContractMetadata(
             ["token-response-path"] = ResponsePath,
             ["token-username-field"] = UsernameField,
             ["token-password-field"] = PasswordField,
+            ["token-username-required"] = UsernameRequired.ToString(CultureInfo.InvariantCulture),
+            ["token-password-required"] = PasswordRequired.ToString(CultureInfo.InvariantCulture),
             ["username-generation"] = usernameGeneration.ToString(CultureInfo.InvariantCulture),
             ["password-generation"] = passwordGeneration.ToString(CultureInfo.InvariantCulture),
             ["token-ttl-seconds"] = DocumentedTtlSeconds?.ToString(CultureInfo.InvariantCulture)
@@ -178,6 +190,39 @@ internal sealed record TokenEndpointContractMetadata(
             result["api-key-generation"] = apiGeneration.ToString(CultureInfo.InvariantCulture);
         }
         return result;
+    }
+
+    private static string ResolveCredentialValue(string value, bool required)
+    {
+        if (string.Equals(value, EmptyCredentialSentinel, StringComparison.Ordinal))
+        {
+            if (required)
+                throw new InvalidOperationException("Token endpoint credential metadata is incomplete.");
+            return string.Empty;
+        }
+
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            if (required)
+                throw new InvalidOperationException("Token endpoint credential metadata is incomplete.");
+            return string.Empty;
+        }
+
+        if (value.Any(character => character is '\r' or '\n' or '\0'))
+            throw new InvalidOperationException("Token endpoint credential metadata is invalid.");
+        return value;
+    }
+
+    private static bool OptionalBoolean(JsonElement root, string name, bool defaultValue)
+    {
+        if (!root.TryGetProperty(name, out var element)) return defaultValue;
+        return element.ValueKind switch
+        {
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.String when bool.TryParse(element.GetString(), out var parsed) => parsed,
+            _ => throw new InvalidOperationException("Token endpoint metadata is invalid.")
+        };
     }
 
     private static string RequiredString(JsonElement root, string name) => OptionalString(root, name)
