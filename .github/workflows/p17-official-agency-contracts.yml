@@ -2,40 +2,8 @@ name: P17 Official Agency Contracts
 
 on:
   pull_request:
-    paths:
-      - 'src/GSIP.Infrastructure/Metadata/OfficialAgencyMetadataSeedService.cs'
-      - 'src/GSIP.Infrastructure/Metadata/MoeMetadataSeedService.cs'
-      - 'src/GSIP.Infrastructure/Metadata/GreenGovernmentCatalogBootstrapService.cs'
-      - 'src/GSIP.Infrastructure/Execution/TokenEndpointContractMetadata.cs'
-      - 'src/GSIP.Infrastructure/Execution/BasicAuthenticationTransformHandler.cs'
-      - 'src/GSIP.Infrastructure/DependencyInjection.cs'
-      - 'docs/MOH_UAT_CONTRACT_MATRIX.md'
-      - 'docs/CSC_UAT_CONTRACT_MATRIX.md'
-      - 'docs/MOE_UAT_CONTRACT_MATRIX.md'
-      - 'scripts/verify_p17_official_agency_contracts.py'
-      - 'scripts/verify_p17_moe_contracts.py'
-      - 'tests/GSIP.P17OfficialAgencyContractChecks/**'
-      - 'tests/GSIP.P17BasicAuthChecks/**'
-      - 'tests/GSIP.P17MoeContractChecks/**'
-      - '.github/workflows/p17-official-agency-contracts.yml'
   push:
     branches: [ main ]
-    paths:
-      - 'src/GSIP.Infrastructure/Metadata/OfficialAgencyMetadataSeedService.cs'
-      - 'src/GSIP.Infrastructure/Metadata/MoeMetadataSeedService.cs'
-      - 'src/GSIP.Infrastructure/Metadata/GreenGovernmentCatalogBootstrapService.cs'
-      - 'src/GSIP.Infrastructure/Execution/TokenEndpointContractMetadata.cs'
-      - 'src/GSIP.Infrastructure/Execution/BasicAuthenticationTransformHandler.cs'
-      - 'src/GSIP.Infrastructure/DependencyInjection.cs'
-      - 'docs/MOH_UAT_CONTRACT_MATRIX.md'
-      - 'docs/CSC_UAT_CONTRACT_MATRIX.md'
-      - 'docs/MOE_UAT_CONTRACT_MATRIX.md'
-      - 'scripts/verify_p17_official_agency_contracts.py'
-      - 'scripts/verify_p17_moe_contracts.py'
-      - 'tests/GSIP.P17OfficialAgencyContractChecks/**'
-      - 'tests/GSIP.P17BasicAuthChecks/**'
-      - 'tests/GSIP.P17MoeContractChecks/**'
-      - '.github/workflows/p17-official-agency-contracts.yml'
 
 permissions:
   contents: read
@@ -94,3 +62,25 @@ jobs:
         run: dotnet run --project tests/GSIP.P17OfficialAgencyContractChecks/GSIP.P17OfficialAgencyContractChecks.csproj -c Release --no-build
       - name: Run P17 MOE metadata acceptance
         run: dotnet run --project tests/GSIP.P17MoeContractChecks/GSIP.P17MoeContractChecks.csproj -c Release --no-build
+      - name: Write exact-candidate P17 evidence manifest
+        shell: pwsh
+        run: |
+          $evidence = Join-Path $PWD 'artifacts/p17-official-agency-contracts'
+          New-Item -ItemType Directory -Force -Path $evidence | Out-Null
+          @(
+            "CandidateSha=$env:CANDIDATE_SHA",
+            'OfficialAgencyStatic=PASS',
+            'MoeStatic=PASS',
+            'BasicAuthTransport=PASS',
+            'OfficialAgencyPersistence=PASS',
+            'MoeMetadataPersistence=PASS',
+            'ProductionFallback=FORBIDDEN',
+            'SecretMaterialSeeded=NO'
+          ) | Set-Content -Path (Join-Path $evidence 'manifest.txt') -Encoding utf8
+      - name: Upload exact-candidate P17 evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: P17-Official-Agency-Contracts-${{ env.CANDIDATE_SHA }}
+          path: artifacts/p17-official-agency-contracts/
+          if-no-files-found: error
+          retention-days: 30
