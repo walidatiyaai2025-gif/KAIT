@@ -4,7 +4,7 @@
 
 **P16 — Full automated acceptance on the exact release candidate**
 
-Status: **OPEN / ACTIVE — closure reconciliation**. P17 is **STAGED / IMPLEMENTATION LOCKED**.
+Status: **OPEN / ACTIVE** — closure reconciliation. P17 is **STAGED / IMPLEMENTATION LOCKED**.
 
 P00-P15 remain formally CLOSED from preserved integrated evidence. P16 implementation plus the post-implementation 0.1.1 regression repair are terminal from exact repository evidence, but P16 itself remains OPEN until this closure transition is normally integrated and the resulting exact-new-main governed CI is terminal green.
 
