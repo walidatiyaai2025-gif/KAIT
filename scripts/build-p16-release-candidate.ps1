@@ -10,6 +10,9 @@ if ([string]::IsNullOrWhiteSpace($candidateSha)) { throw 'Could not resolve exac
 if ($env:CANDIDATE_SHA -and $candidateSha -ne $env:CANDIDATE_SHA) {
     throw "P16 release candidate mismatch: expected=$env:CANDIDATE_SHA actual=$candidateSha"
 }
+[xml]$props = Get-Content (Join-Path $root 'Directory.Build.props')
+$expectedVersion = [string]$props.Project.PropertyGroup.VersionPrefix
+if ([string]::IsNullOrWhiteSpace($expectedVersion)) { throw 'VersionPrefix is missing from Directory.Build.props.' }
 
 python scripts/verify_p15_installer.py
 if ($LASTEXITCODE -ne 0) { throw 'P15 installer source contract failed on the P16 candidate.' }
@@ -35,7 +38,7 @@ $manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
 if ([string]$manifest.SourceSha -ne $candidateSha) {
     throw "P16 release manifest source mismatch: expected=$candidateSha actual=$($manifest.SourceSha)"
 }
-if ([string]$manifest.Version -ne '0.1.0') { throw "Unexpected P16 candidate version: $($manifest.Version)" }
+if ([string]$manifest.Version -ne $expectedVersion) { throw "Unexpected P16 candidate version: expected=$expectedVersion actual=$($manifest.Version)" }
 
 $packagePath = Join-Path $outputRoot ([string]$manifest.Package)
 $installerPath = Join-Path $outputRoot ([string]$manifest.Installer)
@@ -71,5 +74,6 @@ $releaseManifest | ConvertTo-Json -Depth 5 | Set-Content (Join-Path $outputRoot 
 
 Write-Host "P16_RELEASE_CANDIDATE_BUILD=PASS"
 Write-Host "P16_RELEASE_CANDIDATE_SHA=$candidateSha"
+Write-Host "P16_RELEASE_CANDIDATE_VERSION=$expectedVersion"
 Write-Host "P16_PACKAGE=$($manifest.Package) SHA256=$($manifest.PackageSha256)"
 Write-Host "P16_INSTALLER=$($manifest.Installer) SHA256=$($manifest.InstallerSha256)"
