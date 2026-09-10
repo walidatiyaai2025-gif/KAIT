@@ -15,10 +15,19 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 40
     env:
+      CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       GSIP_P05_SQL: 'Server=(localdb)\MSSQLLocalDB;Database=GSIP_P05_${{ github.run_id }}_${{ github.run_attempt }};Integrated Security=true;TrustServerCertificate=true;MultipleActiveResultSets=true'
     steps:
-      - name: Checkout
+      - name: Checkout exact candidate
         uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          fetch-depth: 0
+      - name: Assert exact candidate SHA
+        shell: pwsh
+        run: |
+          $actual = (git rev-parse HEAD).Trim()
+          if ($actual -ne $env:CANDIDATE_SHA) { throw "Exact candidate mismatch: expected=$env:CANDIDATE_SHA actual=$actual" }
       - name: Setup pinned .NET SDK
         uses: actions/setup-dotnet@v4
         with:
@@ -40,24 +49,14 @@ jobs:
         run: dotnet run --project tests/GSIP.P05Checks/GSIP.P05Checks.csproj -c Release --no-build
       - name: Verify protected bilingual metadata UI
         shell: pwsh
-        run: |
-          $sourcePath = 'scripts/verify-p05-metadata-ui.ps1'
-          $candidatePath = 'scripts/verify-p05-metadata-ui.ci.ps1'
-          $script = Get-Content $sourcePath -Raw
-          $staleAssertion = "Assert-Contains `$layout '<strong>P05</strong>' 'Shell phase marker was not advanced to P05.'"
-          $phaseMonotonicAssertion = "if (`$layout -notmatch '<strong>P(?:0[5-9]|1[0-7])</strong>') { throw 'Shell phase marker is missing or predates closed P05.' }"
-          if (-not $script.Contains($staleAssertion, [System.StringComparison]::Ordinal)) {
-            throw 'Expected legacy P05 shell phase assertion was not found; reconcile the regression script explicitly.'
-          }
-          $script.Replace($staleAssertion, $phaseMonotonicAssertion) | Set-Content $candidatePath -Encoding utf8
-          & ./$candidatePath
+        run: ./scripts/verify-p05-metadata-ui.ps1
       - name: Validate execution plan and governance
         run: python scripts/validate_execution_plan.py
       - name: Upload P05 metadata evidence
         if: ${{ always() && github.event_name == 'push' }}
         uses: actions/upload-artifact@v4
         with:
-          name: P05-Metadata-Evidence-${{ github.sha }}
+          name: P05-Metadata-Evidence-${{ env.CANDIDATE_SHA }}
           path: artifacts/p05-evidence/
           if-no-files-found: error
           retention-days: 30
