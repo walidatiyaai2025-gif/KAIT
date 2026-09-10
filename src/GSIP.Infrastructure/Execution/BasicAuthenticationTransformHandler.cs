@@ -73,6 +73,7 @@ public sealed class BasicAuthenticationTransformHandler : DelegatingHandler
     private static bool IsKnownMoeStudentEndpoint(Uri? uri) =>
         uri is not null
         && uri.Scheme == Uri.UriSchemeHttps
+        && uri.IsDefaultPort
         && string.Equals(uri.Host, MoeUatHost, StringComparison.OrdinalIgnoreCase)
         && (string.Equals(uri.AbsolutePath, MoeLastActivePath, StringComparison.Ordinal)
             || string.Equals(uri.AbsolutePath, MoeLastStudentPath, StringComparison.Ordinal)
