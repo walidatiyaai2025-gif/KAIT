@@ -7,6 +7,8 @@ const string Username = "SYNTHETIC_MOE_USER";
 const string Password = "SYNTHETIC_MOE_PASSWORD";
 
 await ConvertsProtectedPairToBasicAsync();
+await MarkerRequiresProtectedPairAsync();
+await KnownMoeEndpointRequiresProtectedPairAsync();
 await MissingCredentialFailsClosedAsync();
 await ExistingAuthorizationFailsClosedAsync();
 await InvalidUsernameFailsClosedAsync();
@@ -20,6 +22,7 @@ async Task ConvertsProtectedPairToBasicAsync()
     var inner = new RecordingHandler();
     using var client = Client(inner);
     using var request = new HttpRequestMessage(HttpMethod.Get, "https://synthetic.invalid/lastactive");
+    request.Headers.TryAddWithoutValidation(BasicAuthenticationTransformHandler.RequiredMarkerHeader, "1");
     request.Headers.TryAddWithoutValidation(BasicAuthenticationTransformHandler.UsernameHeader, Username);
     request.Headers.TryAddWithoutValidation(BasicAuthenticationTransformHandler.PasswordHeader, Password);
 
@@ -27,12 +30,43 @@ async Task ConvertsProtectedPairToBasicAsync()
 
     Check(response.StatusCode == HttpStatusCode.OK, "Valid Basic pair did not reach transport.");
     Check(inner.Calls == 1, "Valid Basic pair must issue exactly one outbound request.");
-    Check(!inner.SawInternalUsernameHeader && !inner.SawInternalPasswordHeader,
-        "Internal Basic credential-carrier headers escaped to transport.");
+    Check(!inner.SawInternalUsernameHeader && !inner.SawInternalPasswordHeader && !inner.SawRequiredMarkerHeader,
+        "Internal Basic auth-control/credential headers escaped to transport.");
     Check(inner.AuthorizationScheme == "Basic", "Authorization scheme was not Basic.");
     var expected = Convert.ToBase64String(Encoding.ASCII.GetBytes(Username + ":" + Password));
     Check(inner.AuthorizationParameter == expected, "Basic Authorization payload was not composed from the protected credential pair.");
     Check(request.Headers.Authorization is null, "Authorization header was not cleared after transport.");
+}
+
+async Task MarkerRequiresProtectedPairAsync()
+{
+    var inner = new RecordingHandler();
+    using var client = Client(inner);
+    using var request = new HttpRequestMessage(HttpMethod.Get, "https://synthetic.invalid/lastactive");
+    request.Headers.TryAddWithoutValidation(BasicAuthenticationTransformHandler.RequiredMarkerHeader, "1");
+
+    using var response = await client.SendAsync(request);
+
+    Check(response.StatusCode == HttpStatusCode.Unauthorized,
+        "Basic-required marker without credentials did not fail closed.");
+    Check(inner.Calls == 0, "Basic-required marker without credentials reached transport.");
+    Check(!request.Headers.Contains(BasicAuthenticationTransformHandler.RequiredMarkerHeader),
+        "Basic-required marker was retained after fail-closed rejection.");
+}
+
+async Task KnownMoeEndpointRequiresProtectedPairAsync()
+{
+    var inner = new RecordingHandler();
+    using var client = Client(inner);
+    using var request = new HttpRequestMessage(
+        HttpMethod.Get,
+        "https://moe-uat.api-non-prod.cait.gov.kw/Student-API/v1/studentdata/last?cid=123456789012");
+
+    using var response = await client.SendAsync(request);
+
+    Check(response.StatusCode == HttpStatusCode.Unauthorized,
+        "Known MOE Student UAT endpoint without protected Basic credentials did not fail closed.");
+    Check(inner.Calls == 0, "Known MOE Student UAT endpoint without credentials reached network transport.");
 }
 
 async Task MissingCredentialFailsClosedAsync()
@@ -110,6 +144,7 @@ sealed class RecordingHandler : HttpMessageHandler
     public int Calls { get; private set; }
     public bool SawInternalUsernameHeader { get; private set; }
     public bool SawInternalPasswordHeader { get; private set; }
+    public bool SawRequiredMarkerHeader { get; private set; }
     public string? AuthorizationScheme { get; private set; }
     public string? AuthorizationParameter { get; private set; }
 
@@ -118,6 +153,7 @@ sealed class RecordingHandler : HttpMessageHandler
         Calls++;
         SawInternalUsernameHeader = request.Headers.Contains(BasicAuthenticationTransformHandler.UsernameHeader);
         SawInternalPasswordHeader = request.Headers.Contains(BasicAuthenticationTransformHandler.PasswordHeader);
+        SawRequiredMarkerHeader = request.Headers.Contains(BasicAuthenticationTransformHandler.RequiredMarkerHeader);
         AuthorizationScheme = request.Headers.Authorization?.Scheme;
         AuthorizationParameter = request.Headers.Authorization?.Parameter;
         return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
