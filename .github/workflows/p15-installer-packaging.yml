@@ -44,15 +44,16 @@ jobs:
       - name: Build versioned package and setup executable
         shell: pwsh
         run: ./scripts/build-p15-package.ps1
-      - name: Verify clean install explicit upgrade repair uninstall lifecycle
+      - name: Verify ownership-safe install upgrade repair uninstall lifecycle
         shell: pwsh
         run: |
           [xml]$props = Get-Content ./Directory.Build.props
           $version = [string]$props.Project.PropertyGroup.VersionPrefix
           $setup = Join-Path $PWD "artifacts/p15/GSIP-$version-Setup-x64.exe"
           $testRoot = Join-Path $env:RUNNER_TEMP 'GSIP-P15-Lifecycle'
+          $unownedRoot = Join-Path $env:RUNNER_TEMP 'GSIP-P15-Unowned'
           $installLog = Join-Path $env:RUNNER_TEMP 'GSIP-P15-install.log'
-          Remove-Item $testRoot -Recurse -Force -ErrorAction SilentlyContinue
+          Remove-Item $testRoot,$unownedRoot -Recurse -Force -ErrorAction SilentlyContinue
           Remove-Item $installLog -Force -ErrorAction SilentlyContinue
 
           function Invoke-Setup {
@@ -75,6 +76,37 @@ jobs:
             }
           }
 
+          function Invoke-SetupExpectFailure {
+            param(
+              [Parameter(Mandatory=$true)][string[]]$Arguments,
+              [Parameter(Mandatory=$true)][string]$FailureMessage
+            )
+            $start = [System.Diagnostics.ProcessStartInfo]::new()
+            $start.FileName = $setup
+            $start.UseShellExecute = $false
+            foreach ($argument in $Arguments) { [void]$start.ArgumentList.Add($argument) }
+            $process = [System.Diagnostics.Process]::Start($start)
+            if ($null -eq $process) { throw "$FailureMessage (process did not start)" }
+            try {
+              $process.WaitForExit()
+              if ($process.ExitCode -eq 0) { throw "$FailureMessage (unexpected success)" }
+            }
+            finally {
+              $process.Dispose()
+            }
+          }
+
+          # A non-empty directory without a valid GSIP ownership manifest must never be overwritten
+          # or recursively purged, even when the caller explicitly supplies --purge-state.
+          New-Item -ItemType Directory -Force -Path $unownedRoot | Out-Null
+          $sentinel = Join-Path $unownedRoot 'sentinel.txt'
+          'foreign-content-must-survive' | Set-Content $sentinel -Encoding ascii
+          Invoke-SetupExpectFailure -Arguments @('install','--skip-iis','--install-root',$unownedRoot,'--log-path',$installLog) -FailureMessage 'Unowned non-empty install root was accepted.'
+          if ((Get-Content $sentinel -Raw).Trim() -ne 'foreign-content-must-survive') { throw 'Unowned install attempt modified foreign content.' }
+          Invoke-SetupExpectFailure -Arguments @('uninstall','--skip-iis','--purge-state','--install-root',$unownedRoot,'--log-path',$installLog) -FailureMessage 'Unowned root purge was accepted.'
+          if ((Get-Content $sentinel -Raw).Trim() -ne 'foreign-content-must-survive') { throw 'Unowned purge modified foreign content.' }
+          'P15_UNOWNED_ROOT_PROTECTION=PASS' | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+
           # acceptance invocation: install --skip-iis
           Invoke-Setup -Arguments @('install','--skip-iis','--install-root',$testRoot,'--log-path',$installLog) -FailureMessage 'Clean install lifecycle step failed.'
           if (-not (Test-Path (Join-Path $testRoot 'app/GSIP.Web.dll'))) { throw 'Installed payload is missing.' }
@@ -85,11 +117,16 @@ jobs:
           'synthetic-dp-key-marker' | Set-Content (Join-Path $keys 'synthetic-key.xml') -Encoding ascii
           'synthetic-protected-setup-marker' | Set-Content (Join-Path $setupState 'completed.protected') -Encoding ascii
 
+          $manifestPath = Join-Path $testRoot 'install-manifest.json'
+          Invoke-SetupExpectFailure -Arguments @('repair','--skip-iis','--install-root',$testRoot,'--site-name','ForeignSite','--log-path',$installLog) -FailureMessage 'Repair accepted a forged site identity.'
+          Invoke-SetupExpectFailure -Arguments @('uninstall','--skip-iis','--purge-state','--install-root',$testRoot,'--app-pool','ForeignPool','--log-path',$installLog) -FailureMessage 'Purge accepted a forged application-pool identity.'
+          if (-not (Test-Path $manifestPath) -or -not (Test-Path (Join-Path $testRoot 'app/GSIP.Web.dll'))) { throw 'Ownership-scope rejection damaged the valid installation.' }
+          'P15_OWNERSHIP_SCOPE_ISOLATION=PASS' | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+
           # Represent a previous installed version and one replaceable legacy binary, then run the
           # new installer through the real install/upgrade path.
           $legacyFile = Join-Path $testRoot 'app/legacy-only.txt'
           'legacy-binary-marker' | Set-Content $legacyFile -Encoding ascii
-          $manifestPath = Join-Path $testRoot 'install-manifest.json'
           $previousManifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
           $previousManifest.Version = '0.0.9'
           $previousManifest | ConvertTo-Json -Depth 8 | Set-Content $manifestPath -Encoding utf8
@@ -112,6 +149,8 @@ jobs:
           if (Test-Path (Join-Path $testRoot 'app/GSIP.Web.dll')) { throw 'Replaceable application binary remained after uninstall.' }
           if (-not (Test-Path (Join-Path $keys 'synthetic-key.xml'))) { throw 'Default uninstall deleted Data Protection state.' }
           if (-not (Test-Path (Join-Path $setupState 'completed.protected'))) { throw 'Default uninstall deleted protected setup state.' }
+          if (-not (Test-Path $manifestPath)) { throw 'Default uninstall deleted the GSIP ownership manifest.' }
+          'P15_OWNERSHIP_MARKER_PRESERVED=PASS' | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
 
           Invoke-Setup -Arguments @('install','--skip-iis','--install-root',$testRoot,'--log-path',$installLog) -FailureMessage 'Reinstall lifecycle step failed.'
           if (-not (Test-Path (Join-Path $keys 'synthetic-key.xml'))) { throw 'Reinstall did not rediscover preserved Data Protection state.' }

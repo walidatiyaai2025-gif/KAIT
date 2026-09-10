@@ -10,6 +10,9 @@ namespace GSIP.Setup;
 internal static class Program
 {
     private const string PayloadResourceName = "GSIP.Payload.zip";
+    private const string ProductName = "Government Services Integration Portal";
+    private const string ProductArchitecture = "win-x64";
+    private const string InstallManifestName = "install-manifest.json";
     private const string DefaultSiteName = "GSIP";
     private const string DefaultAppPoolName = "GSIP";
     private const int DefaultPort = 8080;
@@ -48,15 +51,23 @@ internal static class Program
         }
 
         var installRoot = ValidateInstallRoot(options.InstallRoot);
+        var ownership = ReadInstallOwnership(installRoot);
+        ValidateInstallOwnershipForInstall(options, installRoot, ownership);
+
+        if (!options.SkipIis && ownership is null)
+        {
+            if (SiteExists(options.SiteName))
+                throw new InvalidOperationException("Existing IIS site is not owned by this GSIP installation. Choose a different site name or uninstall the existing application explicitly.");
+            if (AppPoolExists(options.AppPoolName))
+                throw new InvalidOperationException("Existing IIS application pool is not owned by this GSIP installation. Choose a different application-pool name.");
+        }
+
         var appDirectory = Path.Combine(installRoot, "app");
         var appDataDirectory = Path.Combine(appDirectory, "App_Data");
         var stageDirectory = Path.Combine(Path.GetTempPath(), $"gsip-stage-{Guid.NewGuid():N}");
         var backupDirectory = Path.Combine(installRoot, $".backup-{Guid.NewGuid():N}");
 
         Directory.CreateDirectory(stageDirectory);
-        Directory.CreateDirectory(installRoot);
-        Directory.CreateDirectory(appDirectory);
-        Directory.CreateDirectory(appDataDirectory);
 
         var appPoolWasRunning = false;
         try
@@ -64,14 +75,22 @@ internal static class Program
             ExtractEmbeddedPayload(stageDirectory);
             ValidateStagedPayload(stageDirectory);
 
+            Directory.CreateDirectory(installRoot);
+            Directory.CreateDirectory(appDirectory);
+            Directory.CreateDirectory(appDataDirectory);
+
             if (!options.SkipIis)
             {
-                appPoolWasRunning = IsAppPoolStarted(options.AppPoolName);
+                appPoolWasRunning = AppPoolExists(options.AppPoolName) && IsAppPoolStarted(options.AppPoolName);
                 StopAppPoolIfPresent(options.AppPoolName);
             }
 
             BackupReplaceableApplicationFiles(appDirectory, backupDirectory);
             CopyDirectory(stageDirectory, appDirectory);
+
+            // Materialize the ownership marker before IIS mutation. If a later IIS step fails,
+            // the exact root/site/pool remain attributable to GSIP and can be safely repaired or removed.
+            WriteInstallManifest(installRoot, options);
 
             if (!options.SkipIis)
             {
@@ -81,7 +100,6 @@ internal static class Program
                 RegisterMaintenanceEntry(installRoot, options);
             }
 
-            WriteInstallManifest(installRoot, options);
             DeleteDirectoryIfExists(backupDirectory);
             Console.WriteLine($"GSIP_SETUP_SUCCESS: {options.Action} version={ProductVersion} root={installRoot}");
             return 0;
@@ -89,6 +107,8 @@ internal static class Program
         catch
         {
             RollBackApplicationFiles(appDirectory, backupDirectory);
+            if (ownership is null && !File.Exists(GetInstallManifestPath(installRoot)))
+                DeleteDirectoryIfExists(installRoot);
             if (!options.SkipIis && appPoolWasRunning)
                 TryRunAppCmd("start", "apppool", $"/apppool.name:{options.AppPoolName}");
             throw;
@@ -105,14 +125,17 @@ internal static class Program
             RequireAdministrator();
 
         var installRoot = ValidateInstallRoot(options.InstallRoot);
+        var ownership = ReadInstallOwnership(installRoot)
+            ?? throw new InvalidOperationException("Uninstall requires a valid GSIP ownership manifest at the requested install root.");
+        RequireOwnershipMatch(options, ownership);
         var appDirectory = Path.Combine(installRoot, "app");
 
         if (!options.SkipIis)
         {
-            StopSiteIfPresent(options.SiteName);
-            StopAppPoolIfPresent(options.AppPoolName);
-            DeleteSiteIfPresent(options.SiteName);
-            DeleteAppPoolIfPresent(options.AppPoolName);
+            StopSiteIfPresent(ownership.SiteName);
+            StopAppPoolIfPresent(ownership.AppPoolName);
+            DeleteSiteIfPresent(ownership.SiteName);
+            DeleteAppPoolIfPresent(ownership.AppPoolName);
             RemoveMaintenanceEntry();
         }
 
@@ -124,9 +147,7 @@ internal static class Program
         }
 
         RemoveReplaceableApplicationFiles(appDirectory);
-        var manifest = Path.Combine(installRoot, "install-manifest.json");
-        if (File.Exists(manifest)) File.Delete(manifest);
-        Console.WriteLine($"GSIP_SETUP_SUCCESS: uninstall; protected mutable state preserved at {Path.Combine(appDirectory, "App_Data")}");
+        Console.WriteLine($"GSIP_SETUP_SUCCESS: uninstall; protected mutable state and ownership manifest preserved at {installRoot}");
         return 0;
     }
 
@@ -330,9 +351,9 @@ internal static class Program
     {
         var manifest = new
         {
-            Product = "Government Services Integration Portal",
+            Product = ProductName,
             Version = ProductVersion,
-            Architecture = "win-x64",
+            Architecture = ProductArchitecture,
             options.SiteName,
             options.AppPoolName,
             options.Port,
@@ -341,8 +362,66 @@ internal static class Program
             SetupState = @"app\App_Data\setup\completed.protected",
             WrittenAtUtc = DateTimeOffset.UtcNow
         };
-        File.WriteAllText(Path.Combine(installRoot, "install-manifest.json"), JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true }));
+        File.WriteAllText(GetInstallManifestPath(installRoot), JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true }));
     }
+
+    private static InstallOwnership? ReadInstallOwnership(string installRoot)
+    {
+        var manifestPath = GetInstallManifestPath(installRoot);
+        if (!File.Exists(manifestPath))
+            return null;
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(manifestPath));
+            var root = document.RootElement;
+            if (!TryReadRequiredString(root, "Product", out var product) || !string.Equals(product, ProductName, StringComparison.Ordinal) ||
+                !TryReadRequiredString(root, "Architecture", out var architecture) || !string.Equals(architecture, ProductArchitecture, StringComparison.OrdinalIgnoreCase) ||
+                !TryReadRequiredString(root, "Version", out _) ||
+                !TryReadRequiredString(root, "SiteName", out var siteName) ||
+                !TryReadRequiredString(root, "AppPoolName", out var appPoolName))
+                throw new InvalidOperationException("Install root contains an invalid or incompatible GSIP ownership manifest.");
+
+            return new InstallOwnership(siteName, appPoolName);
+        }
+        catch (JsonException exception)
+        {
+            throw new InvalidOperationException("Install root contains a corrupt GSIP ownership manifest.", exception);
+        }
+    }
+
+    private static bool TryReadRequiredString(JsonElement root, string propertyName, out string value)
+    {
+        value = string.Empty;
+        if (!root.TryGetProperty(propertyName, out var property) || property.ValueKind != JsonValueKind.String)
+            return false;
+        value = property.GetString()?.Trim() ?? string.Empty;
+        return value.Length > 0;
+    }
+
+    private static void ValidateInstallOwnershipForInstall(SetupOptions options, string installRoot, InstallOwnership? ownership)
+    {
+        if (ownership is not null)
+        {
+            RequireOwnershipMatch(options, ownership);
+            return;
+        }
+
+        if (options.Action == SetupAction.Repair)
+            throw new InvalidOperationException("Repair requires a valid GSIP ownership manifest at the requested install root.");
+
+        if (Directory.Exists(installRoot) && Directory.EnumerateFileSystemEntries(installRoot).Any())
+            throw new InvalidOperationException("Install root is not empty and is not owned by GSIP. Choose an empty directory or the existing GSIP installation root.");
+    }
+
+    private static void RequireOwnershipMatch(SetupOptions options, InstallOwnership ownership)
+    {
+        if (!string.Equals(options.SiteName, ownership.SiteName, StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(options.AppPoolName, ownership.AppPoolName, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Requested IIS site/application-pool identity does not match the GSIP ownership manifest.");
+    }
+
+    private static string GetInstallManifestPath(string installRoot) => Path.Combine(installRoot, InstallManifestName);
 
     private static void RegisterMaintenanceEntry(string installRoot, SetupOptions options)
     {
@@ -353,7 +432,7 @@ internal static class Program
             File.Copy(currentSetup, maintenancePath, overwrite: true);
 
         using var key = Registry.LocalMachine.CreateSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\GSIP", writable: true);
-        key?.SetValue("DisplayName", "Government Services Integration Portal");
+        key?.SetValue("DisplayName", ProductName);
         key?.SetValue("DisplayVersion", ProductVersion);
         key?.SetValue("Publisher", "GSIP");
         key?.SetValue("InstallLocation", installRoot);
@@ -390,6 +469,8 @@ internal static class Program
     }
 
     private enum SetupAction { Install, Repair, Uninstall }
+
+    private sealed record InstallOwnership(string SiteName, string AppPoolName);
 
     private sealed record SetupOptions(SetupAction Action, string InstallRoot, string SiteName, string AppPoolName, int Port, bool SkipIis, bool PurgeState)
     {

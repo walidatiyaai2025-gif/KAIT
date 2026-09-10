@@ -80,8 +80,9 @@ internal static class IisBindingConfigurator
 
         RemoveBindingIfPresent(siteName, "http", automaticHttpBinding);
         EnsureBinding(siteName, "https", desiredBinding);
+        SetHttpsSslFlags(siteName, desiredBinding, string.IsNullOrWhiteSpace(normalizedHost) ? 0 : 1);
         ConfigureSslCertificate(port, normalizedHost, thumbprint);
-        log.Write("BINDING", $"protocol=https port={port} hostname={(string.IsNullOrWhiteSpace(normalizedHost) ? "(all)" : normalizedHost)} certificate=[SELECTED]");
+        log.Write("BINDING", $"protocol=https port={port} hostname={(string.IsNullOrWhiteSpace(normalizedHost) ? "(all)" : normalizedHost)} certificate=[SELECTED] sni={(string.IsNullOrWhiteSpace(normalizedHost) ? "off" : "on")}");
     }
 
     public static bool VerifyBinding(string siteName, string protocol, int port, string hostName)
@@ -140,6 +141,19 @@ internal static class IisBindingConfigurator
             "site",
             $"/site.name:{siteName}",
             $"/-bindings.[protocol='{protocol}',bindingInformation='{bindingInformation}']");
+    }
+
+    private static void SetHttpsSslFlags(string siteName, string bindingInformation, int sslFlags)
+    {
+        if (sslFlags is not (0 or 1))
+            throw new ArgumentOutOfRangeException(nameof(sslFlags));
+
+        RunRequired(
+            AppCmdPath,
+            "set",
+            "site",
+            $"/site.name:{siteName}",
+            $"/bindings.[protocol='https',bindingInformation='{bindingInformation}'].sslFlags:{sslFlags}");
     }
 
     private static void ConfigureSslCertificate(int port, string hostName, string thumbprint)
