@@ -15,7 +15,7 @@
 
 ## Formal phase status
 
-P00-P17 are formally CLOSED from repository/cloud implementation and closure evidence proposed by this exact reconciliation line. P17 is formally **CLOSED**. This does not terminate project-wide convergence: any later cloud-actionable regression, stale integration/evidence, unique legitimate branch work, required-test gap, release mismatch, or governance drift must be repaired immediately. This formal-closure line is canonical only after its exact head is terminal green, normally integrated with expected-head protection, and the resulting exact-new-main is terminal green.
+P00-P17 are formally CLOSED from repository/cloud implementation. P17 is formally **CLOSED**. This does not terminate project-wide convergence: any later cloud-actionable regression, stale integration/evidence, unique legitimate branch work, required-test gap, release mismatch, or governance drift must be repaired immediately.
 
 P17 implementation/convergence was integrated through PR #92:
 
@@ -26,9 +26,19 @@ P17 closure transition was integrated through PR #93:
 
 - exact closure-transition head `7e4fb7264c346f4f5310ad4b44c07fe51a07c151` — **41/41 governed PR workflows SUCCESS**;
 - normal expected-head-protected merge produced exact main `72d1ea92e14978b08a1b0ed1727716001ebf1390` — **37/37 governed push workflows SUCCESS**;
-- open PRs immediately after #93 merge: none;
-- default-main static sweep: no actionable TODO, FIXME, NotImplementedException, Assert.Inconclusive, explicit `Skip =`, or Assert.Ignore finding in the inspected repository scope;
-- release/tag inventory: no GitHub releases and no Git tag refs; repository final acceptance requires exact artifact identity/hash evidence, not a fabricated release/tag.
+- default-main static sweep found no actionable TODO, FIXME, NotImplementedException, Assert.Inconclusive, explicit `Skip =`, or Assert.Ignore finding in the inspected repository scope;
+- release/tag inventory contained no GitHub releases and no Git tag refs; repository final acceptance requires exact artifact identity/hash evidence, not a fabricated release/tag.
+
+P17 formal closure was integrated through PR #94:
+
+- exact formal-closure head `6d3aa3008f08b4d8a534bff2a1bd5e81cde8ad1f` — **41/41 governed PR workflows SUCCESS** with failure=0, queued=0 and in-progress=0 at terminal verification;
+- fresh same-head P15/P16/P17 artifact identities and SHA-256 archive digests were read back before merge;
+- no review, unresolved review thread, competing claim or open competing PR displaced the canonical line;
+- PR #94 merged normally using `expected_head_sha=6d3aa3008f08b4d8a534bff2a1bd5e81cde8ad1f`;
+- the merge produced exact formal-closure integration main `4d7e5371a28d37237b32cfc382e748582af01b46`;
+- that exact main completed **37/37 governed push workflows SUCCESS**, with failure=0, queued=0 and in-progress=0;
+- exact-main P16 run `34520888811` completed static contract, release candidate packaging, runtime/UI recovery and aggregate `p16-gate` SUCCESS;
+- branch reconciliation found no lawful unique P17 work outside main: formal/closure/idempotency/MOH/green branches were `ahead_by=0`; `hotfix/p17-remove-stray-moh-placeholder` is PR #91 and is explicitly **SUPERSEDED — DO NOT MERGE** because replay would delete legitimate newer MOH evidence.
 
 Detailed P17 closure evidence: `docs/evidence/P17_FINAL_CONVERGENCE.md`.
 
@@ -49,7 +59,17 @@ Version `0.1.2`, exact source `72d1ea92e14978b08a1b0ed1727716001ebf1390`:
 - P16 runtime/UI artifact `10168083331`, 3,482,563 bytes, archive digest `sha256:b549a04e6aaa4465355af0eeb32595d6aab0156f088edc0b2b9cb3bf03d22d4c`;
 - P17 artifact `10167841257`, 342 bytes, archive digest `sha256:552b5935cdcca7de3198291529807f3227cf4f41367942243108a992850fe3d4`.
 
-Because the formal-closure source changes governance and a regression verifier, this `72d1ea92...` evidence is closure-transition provenance only. The exact formal-closure PR head and its resulting exact final main must independently pass their governed matrices and emit fresh same-SHA P15/P16/P17 evidence before final handoff.
+This `72d1ea92...` evidence is retained only as closure-transition provenance after the formal-closure source changed governance and a regression verifier.
+
+## Exact formal-closure integration artifact identity
+
+Version `0.1.2`, exact source `4d7e5371a28d37237b32cfc382e748582af01b46`:
+
+- P15 run `34520888888`; `GSIP-0.1.2-win-x64.zip` SHA-256 `f5bd784d97bae7fef7caa81fa417cc9558ceb667fb735cc7f02a19d8b59755a9`; `GSIP-0.1.2-Setup-x64.exe` SHA-256 `995436e25567447a27d4dd079186959b0c337b9e3c5e675d23537a4760873fe4`; artifact `10169748209`, 62,248,637 bytes, archive digest `sha256:85829cf800762407d7cfb8f5247ea1f5cdb92e0d5a411ecb09d9c15eafea696d`;
+- P16 run `34520888811`; release `GSIP-0.1.2-win-x64.zip` SHA-256 `163ca0280d63198b974906a001670e09dd47872229d6debac61deb5d634b8f75`; release `GSIP-0.1.2-Setup-x64.exe` SHA-256 `2cbd9c38af344fee1ec61579a2cf08273da8aa7ffba2aed6e45f8a493f201c5f`; release artifact `10169728697`, 62,248,706 bytes, archive digest `sha256:dc71cde929e91a51eecd7e2a242ab370198063714450c057bb4ee47bae7cc73d`; runtime/UI artifact `10169865209`, 3,482,090 bytes, archive digest `sha256:6a5bd3f2073881c806c1a7ee298b98783f3aa1788b7582a115eca96c6337cf1f`;
+- P17 run `34520888987`; artifact `10169702431`, 342 bytes, archive digest `sha256:7f1f91ec8d741f34c8bb3b46805b718205a89a1711300b1344df188eb3aae100`.
+
+The P15 and P16 manifests inside those exact-main artifacts both bind `SourceSha`/`CandidateSha` to `4d7e5371a28d37237b32cfc382e748582af01b46`. These identities are historical evidence for the formal-closure integration main. Any later governance/evidence reconciliation merge creates a new exact main and must be validated independently; green CI or artifacts from `4d7e5371...` cannot be reused as evidence for a newer SHA.
 
 ## Authoritative source order
 
@@ -94,11 +114,11 @@ No stale prompt, old issue comment, branch description, superseded evidence, or 
 
 The closed P00-P16 evidence remains authoritative for setup/database safety; identity/MFA/session controls; RBAC and service-level Default Deny; metadata versioning and independent environment configuration; Secret Vault/AuthProfiles/token cache; generic execution; five canonical MOJ services; request history/export; tamper-evident audit; admin health/diagnostics; bilingual accessibility/design parity; security/resilience; Windows/IIS package lifecycle; backup/restore rehearsal; and full automated release-candidate acceptance.
 
-P17 added official MOH/CSC/MOE UAT materialization and recovered project-wide regressions discovered during final convergence without weakening prior boundaries. Product implementation remains locked during formal closure reconciliation.
+P17 added official MOH/CSC/MOE UAT materialization and recovered project-wide regressions discovered during final convergence without weakening prior boundaries. Product implementation remains locked after formal P17 closure.
 
 ## Post-P17 zero-gap requirement
 
-P17 CLOSED is not final execution termination. After formal closure integration, perform full LIVE project sweeps until **two consecutive sweeps** find zero cloud-actionable gaps while exact-main governed CI remains terminal green. Each sweep must cover open PRs/issues, claims/leases, all branches with potential unique legitimate work, recent merges, CI, production TODO/FIXME/stubs, required-test skips, canonical documents, release/version/artifact/hash evidence, owner/deferred classifications, and `UNPUSHED_WORK`.
+P17 CLOSED is not final execution termination. After every formal-closure or evidence reconciliation merge, perform full LIVE project sweeps until **two consecutive sweeps** find zero cloud-actionable gaps while exact-main governed CI remains terminal green. Each sweep must cover open PRs/issues, claims/leases, all branches with potential unique legitimate work, recent merges, CI, production TODO/FIXME/stubs, required-test skips, canonical documents, release/version/artifact/hash evidence, owner/deferred classifications, and `UNPUSHED_WORK`.
 
 Only after both sweeps are clean may `REMAINING_CLOUD_ACTIONABLE_WORK=0` be reported. `VERIFIED_FINAL_COMPLETE` remains forbidden unless the user's stricter exact-final-main/same-SHA CI/artifact/governance conditions are also proven.
 
