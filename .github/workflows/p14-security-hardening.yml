@@ -1,0 +1,102 @@
+name: P14 Security Hardening and Resilience
+
+on:
+  push:
+    branches:
+      - main
+      - 'worker/p14-security-hardening-resilience'
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  security-boundary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          fetch-depth: 0
+      - name: Assert exact candidate SHA
+        shell: bash
+        run: |
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          echo "EXACT_CANDIDATE_SHA=$CANDIDATE_SHA"
+      - name: Setup pinned .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Restore solution and P14 acceptance
+        run: |
+          dotnet restore GSIP.sln
+          dotnet restore tests/GSIP.P14SecurityChecks/GSIP.P14SecurityChecks.csproj
+      - name: Build Release
+        run: |
+          dotnet build GSIP.sln -c Release --no-restore
+          dotnet build tests/GSIP.P14SecurityChecks/GSIP.P14SecurityChecks.csproj -c Release --no-restore
+      - name: Run P14 authentication boundary and resilience acceptance
+        shell: bash
+        run: |
+          mkdir -p artifacts/p14-security
+          dotnet run --project tests/GSIP.P14SecurityChecks/GSIP.P14SecurityChecks.csproj -c Release --no-build | tee artifacts/p14-security/security-boundary.txt
+      - name: Preserve planning integrity
+        run: python scripts/validate_execution_plan.py
+      - name: Build P14 security manifest
+        shell: bash
+        run: |
+          printf 'CandidateSha=%s\nUnit=P14::security-hardening-resilience-convergence\nState=OPEN_PHASE_CANDIDATE_NOT_CLOSURE\nRestrictedSessionBoundary=ENFORCED\nChallengeRateLimit=ENFORCED\n' "$CANDIDATE_SHA" > artifacts/p14-security/manifest.txt
+      - name: Upload P14 security evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: P14-Security-Boundary-${{ env.CANDIDATE_SHA }}
+          path: artifacts/p14-security/
+          if-no-files-found: error
+          retention-days: 30
+
+  nuget-vulnerability-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          fetch-depth: 0
+      - name: Assert exact candidate SHA
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+      - name: Setup pinned .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Restore exact dependency graph
+        run: dotnet restore GSIP.sln
+      - name: Audit known NuGet vulnerabilities
+        shell: bash
+        run: |
+          mkdir -p artifacts/p14-dependencies
+          dotnet list GSIP.sln package --vulnerable --include-transitive --format json > artifacts/p14-dependencies/vulnerable.json
+          python scripts/verify_p14_dependency_audit.py artifacts/p14-dependencies/vulnerable.json | tee artifacts/p14-dependencies/vulnerability-result.txt
+      - name: Record deprecated dependency review
+        shell: bash
+        run: |
+          dotnet list GSIP.sln package --deprecated --include-transitive --format json > artifacts/p14-dependencies/deprecated.json
+          printf 'CandidateSha=%s\nKnownNuGetVulnerabilityGate=PASS\nDeprecatedDependencyReport=CAPTURED_FOR_REVIEW\n' "$CANDIDATE_SHA" > artifacts/p14-dependencies/manifest.txt
+      - name: Upload P14 dependency evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: P14-Dependency-Audit-${{ env.CANDIDATE_SHA }}
+          path: artifacts/p14-dependencies/
+          if-no-files-found: error
+          retention-days: 30

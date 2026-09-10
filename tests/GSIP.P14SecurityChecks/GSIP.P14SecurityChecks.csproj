@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>GSIP.P14SecurityChecks</AssemblyName>
+    <RootNamespace>GSIP.P14SecurityChecks</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <ProjectReference Include="..\..\src\GSIP.Web\GSIP.Web.csproj" />
+    <ProjectReference Include="..\..\src\GSIP.Infrastructure\GSIP.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>

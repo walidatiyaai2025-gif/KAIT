@@ -1,6 +1,8 @@
 using System.Globalization;
+using System.Security.Claims;
 using System.Threading.RateLimiting;
 using GSIP.Application.Configuration;
+using GSIP.Application.Identity;
 using GSIP.Application.Setup;
 using GSIP.Infrastructure;
 using GSIP.Integrations;
@@ -44,9 +46,44 @@ builder.Services.AddHealthChecks();
 
 var loginPermitLimit = Math.Max(1, builder.Configuration.GetValue<int?>("IdentitySecurity:LoginRateLimitPermitCount") ?? 10);
 var loginWindowSeconds = Math.Clamp(builder.Configuration.GetValue<int?>("IdentitySecurity:LoginRateLimitWindowSeconds") ?? 60, 1, 3600);
+var challengePermitLimit = Math.Clamp(builder.Configuration.GetValue<int?>("IdentitySecurity:ChallengeRateLimitPermitCount") ?? 6, 1, 30);
+var challengeWindowSeconds = Math.Clamp(builder.Configuration.GetValue<int?>("IdentitySecurity:ChallengeRateLimitWindowSeconds") ?? 60, 1, 3600);
+
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    // MFA and forced-password challenges are authenticated restricted sessions.
+    // Partition them by exact user identity after authentication, with IP as a
+    // fail-closed fallback. Other routes are not globally throttled here.
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+    {
+        var path = context.Request.Path.Value ?? string.Empty;
+        var challengePost = HttpMethods.IsPost(context.Request.Method)
+            && (string.Equals(path, "/mfa/enroll", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(path, "/mfa/verify", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(path, "/password/change", StringComparison.OrdinalIgnoreCase));
+        if (!challengePost)
+        {
+            return RateLimitPartition.GetNoLimiter("non-challenge");
+        }
+
+        var userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var partitionKey = !string.IsNullOrWhiteSpace(userId)
+            ? $"user:{userId}"
+            : $"ip:{context.Connection.RemoteIpAddress?.ToString() ?? "unknown"}";
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey,
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = challengePermitLimit,
+                Window = TimeSpan.FromSeconds(challengeWindowSeconds),
+                QueueLimit = 0,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                AutoReplenishment = true
+            });
+    });
+
     options.AddPolicy("login", context => RateLimitPartition.GetFixedWindowLimiter(
         partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         factory: _ => new FixedWindowRateLimiterOptions
@@ -101,8 +138,9 @@ app.Use(async (context, next) =>
 });
 
 app.UseRouting();
-app.UseRateLimiter();
 app.UseAuthentication();
+app.UseRateLimiter();
+app.UseRestrictedSessionBoundary();
 app.UseAuthorization();
 
 app.MapHealthChecks("/health/live", new HealthCheckOptions

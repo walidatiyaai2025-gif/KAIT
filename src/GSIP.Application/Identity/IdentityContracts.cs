@@ -8,6 +8,24 @@ public static class GsipIdentityClaims
     public const string RememberMeRequested = "gsip:remember_me_requested";
 }
 
+public static class GsipSessionRestrictions
+{
+    public const string MfaEnrollment = "mfa-enrollment";
+    public const string MfaVerification = "mfa-verification";
+    public const string PasswordChange = "password-change";
+
+    public static bool IsRestricted(ClaimsPrincipal principal)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+        return !string.IsNullOrWhiteSpace(principal.FindFirstValue(GsipIdentityClaims.SessionRestriction));
+    }
+
+    public static bool IsKnown(string? value) =>
+        string.Equals(value, MfaEnrollment, StringComparison.Ordinal)
+        || string.Equals(value, MfaVerification, StringComparison.Ordinal)
+        || string.Equals(value, PasswordChange, StringComparison.Ordinal);
+}
+
 public enum AccountSignInStatus
 {
     Succeeded = 0,
@@ -65,6 +83,8 @@ public sealed class IdentitySecurityOptions
     public int MfaChallengeMinutes { get; init; } = 5;
     public int LoginRateLimitPermitCount { get; init; } = 10;
     public int LoginRateLimitWindowSeconds { get; init; } = 60;
+    public int ChallengeRateLimitPermitCount { get; init; } = 6;
+    public int ChallengeRateLimitWindowSeconds { get; init; } = 60;
 }
 
 public interface IAccountSecurityPolicyProvider
@@ -84,4 +104,3 @@ public interface IAccountAuthenticationService
     Task SignOutAsync(ClaimsPrincipal principal, CancellationToken cancellationToken = default);
     Task<AccountOperationResult> SetAccountEnabledAsync(Guid userId, bool enabled, CancellationToken cancellationToken = default);
 }
-
