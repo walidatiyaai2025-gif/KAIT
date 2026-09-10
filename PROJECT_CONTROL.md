@@ -15,7 +15,7 @@
 
 ## Canonical status proposed by this closure transition
 
-P00 through P16 are **CLOSED** from repository/cloud evidence. P17 is a **CLOSURE TRANSITION CANDIDATE** until this exact closure head is terminal green, normally merged with expected-head protection, and the resulting exact-new-main is terminal green. Closing P17 does not terminate project-wide convergence: any later cloud-actionable regression, stale integration/evidence, unique legitimate branch work, required-test gap, release mismatch, or governance drift must be repaired immediately.
+P00 through P16 are **CLOSED** from repository/cloud evidence. P17 is a **CLOSURE TRANSITION CANDIDATE** until this exact closure head is terminal green, normally integrated with expected-head protection, and the resulting exact-new-main is terminal green. Closing P17 does not terminate project-wide convergence: any later cloud-actionable regression, stale integration/evidence, unique legitimate branch work, required-test gap, release mismatch, or governance drift must be repaired immediately.
 
 P17 implementation/convergence was integrated through PR #92:
 
@@ -29,7 +29,7 @@ Detailed P17 closure evidence: `docs/evidence/P17_FINAL_CONVERGENCE.md`.
 
 ## Preserved P12 exact closure provenance
 
-P12 remains **CLOSED** from exact accepted evidence and that provenance is retained explicitly for later-phase regression acceptance. Final P12 implementation head `32ea4d59d3e25b58eaf19879c5cd752eb4ca3142` was integrated as exact P12 main `951901869dece4771a3ad99f4854ab5f0c7a5be4`. The canonical P12 evidence file preserves the same identities. No P17 closure transition may erase or reinterpret this proven P12 admin operations/health/diagnostics baseline.
+P12 remains **CLOSED** from exact accepted evidence and that provenance is retained explicitly for later-phase regression acceptance. Final P12 implementation head `f367ca78fca217e9d5c7da0a1328dca047940390` was normally integrated as exact P12 implementation main `1ed40707552f62058980b44d6cb1e7251dbeb2d4`. The canonical P12 evidence file preserves the same identities together with **35/35 exact-head workflows SUCCESS** and **31/31 push workflows SUCCESS**. No P17 closure transition may erase, substitute, or reinterpret this proven P12 admin operations/health/diagnostics baseline.
 
 ## Exact implementation-candidate artifact identity
 
