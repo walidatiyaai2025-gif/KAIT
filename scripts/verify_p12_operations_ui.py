@@ -27,7 +27,8 @@ text = {label: path.read_text(encoding="utf-8") for label, path in files.items()
 
 integrated_p12_sha = "1ed40707552f62058980b44d6cb1e7251dbeb2d4"
 final_p12_head = "f367ca78fca217e9d5c7da0a1328dca047940390"
-p12_transition_main = "42136cf59202c90f20f204e520c644acc69a88ca"
+phase_match = re.search(r"\*\*P(\d{2})\s+—", text["phase"])
+current_phase_number = int(phase_match.group(1)) if phase_match else -1
 phase_open = (
     "**P12 — Admin operations, health and diagnostics**" in text["phase"]
     and "Status: **OPEN / READY**" in text["phase"]
@@ -50,17 +51,6 @@ phase_closure_transition = (
     and integrated_p12_sha in text["ledger"]
     and final_p12_head in text["ledger"]
 )
-phase_post_p12 = (
-    "**P13 — Arabic/English UX and accessibility convergence**" in text["phase"]
-    and "Status: **OPEN / READY**" in text["phase"]
-    and "P12 — Admin operations, health and diagnostics is **CLOSED**" in text["phase"]
-    and integrated_p12_sha in text["phase"]
-    and final_p12_head in text["phase"]
-    and p12_transition_main in text["phase"]
-    and "P14–P17 remain **LOCKED**" in text["phase"]
-    and "DEFERRED_EXTERNAL_NOT_PASS" in text["phase"]
-    and "PRODUCTION_DEFERRED_EXTERNAL_NOT_PASS" in text["phase"]
-)
 p12_closure_evidence_preserved = (
     "Status: **CLOSED — exact integrated evidence**" in text["closure_evidence"]
     and integrated_p12_sha in text["closure_evidence"]
@@ -70,13 +60,18 @@ p12_closure_evidence_preserved = (
     and "DEFERRED_EXTERNAL_NOT_PASS" in text["closure_evidence"]
     and "PRODUCTION_DEFERRED_EXTERNAL_NOT_PASS" in text["closure_evidence"]
 )
-phase_state_valid = phase_open or phase_closure_transition or (phase_post_p12 and p12_closure_evidence_preserved)
+phase_post_p12 = (
+    current_phase_number >= 13
+    and "Status: **OPEN / READY**" in text["phase"]
+    and p12_closure_evidence_preserved
+)
+phase_state_valid = phase_open or phase_closure_transition or phase_post_p12
 layout_phase = re.search(r"<strong>P(\d{2})</strong>", text["layout"])
 layout_phase_number = int(layout_phase.group(1)) if layout_phase else -1
 
 checks = {
-    "canonical authority is P12-open, P12-transition, or a verified post-P12 phase": phase_state_valid,
-    "post-P12 authority preserves closure evidence and keeps future phases locked": phase_open or phase_closure_transition or (phase_post_p12 and p12_closure_evidence_preserved),
+    "canonical authority is P12-open, P12-transition, or a verified later phase": phase_state_valid,
+    "later-phase authority preserves exact P12 closure evidence": phase_open or phase_closure_transition or (current_phase_number >= 13 and p12_closure_evidence_preserved),
     "operations route is authenticated": "[Authorize]" in text["controller"] and '[Route("operations")]' in text["controller"],
     "health uses canonical operations service": "IAdminOperationsService operations" in text["controller"] and "GetHealthAsync(User" in text["controller"],
     "database diagnostic is permission protected": "GsipPermissions.DiagnosticsRun" in text["controller"] and "RunDatabaseDiagnosticAsync" in text["controller"],

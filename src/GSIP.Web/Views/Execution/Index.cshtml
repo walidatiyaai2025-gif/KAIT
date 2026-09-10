@@ -8,6 +8,7 @@
     var isArabic = CultureInfo.CurrentUICulture.TextInfo.IsRightToLeft;
     var details = Model.SelectedService;
     var result = Model.ExecutionResult;
+    var selectedServiceCode = Model.Services.FirstOrDefault(option => option.Id == Model.SelectedServiceId)?.Code;
 }
 
 <section class="execution-hero" aria-labelledby="execution-title">
@@ -152,7 +153,7 @@ else
             {
                 <a class="result-tab" href="#raw-response" role="tab" aria-selected="false">@L["RawResponse"]</a>
             }
-            <button class="result-tab" type="button" role="tab" aria-selected="false" disabled title="@L["HistoryDeferred"]">@L["History"]</button>
+            <a class="result-tab" href="/requests?culture=@culture&amp;serviceCode=@Uri.EscapeDataString(selectedServiceCode ?? string.Empty)" role="tab" aria-selected="false" data-testid="execution-history-link">@L["History"]</a>
         </div>
         <div class="result-content-grid">
             <div id="structured-result" class="execution-result-panel">

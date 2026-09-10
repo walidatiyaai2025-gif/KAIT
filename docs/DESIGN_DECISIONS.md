@@ -57,6 +57,10 @@ The reference artwork includes operational request and alert totals. P13 intenti
 
 The inherited P01 mobile rule hid navigation items five and later. That became invalid once Requests, Audit, Permissions and Settings were real modules. P13 keeps the bottom navigation pattern but makes it horizontally reachable instead of deleting routes. All primary links remain in the accessibility tree and are keyboard focusable.
 
+### Service Execution history convergence
+
+The Service Execution reference includes Result, Raw Response and History navigation in the result workspace. P07 correctly deferred History before request history existed, but P10 subsequently delivered the protected `/requests` surface. P13 therefore removes the stale disabled History control and links it to P10 request history filtered by the selected service code. Authorization remains owned and enforced by `RequestHistoryController`/`IRequestHistoryService`; P13 does not duplicate or weaken that boundary.
+
 ### Cross-phase screenshot reuse
 
 P13 does not clone the established P04, P07 or P11 browser harnesses. Their workflows remain independent regression gates and capture the Permissions, Service Execution and Audit reference surfaces on the same exact candidate SHA. P13 adds the missing Home bilingual desktop/narrow browser evidence and strengthens P04 to checkout and retain artifacts for the exact pull-request head. This preserves independent acceptance while avoiding duplicate test implementations.
