@@ -4,69 +4,75 @@
 
 **P16 — Full automated acceptance on the exact release candidate**
 
-Status: **OPEN / ACTIVE** — closure reconciliation. P17 is **STAGED / IMPLEMENTATION LOCKED**.
+Status: **OPEN / ACTIVE** — CLOSURE TRANSITION CANDIDATE. P17 is **STAGED / IMPLEMENTATION LOCKED** until this reconciliation is normally integrated and every governed workflow on the resulting exact-new-main is terminal SUCCESS.
 
-P00-P15 remain formally CLOSED from preserved integrated evidence. P16 implementation plus the post-implementation 0.1.1 regression repair are terminal from exact repository evidence, but P16 itself remains OPEN until this closure transition is normally integrated and the resulting exact-new-main governed CI is terminal green.
+P00-P15 remain formally CLOSED from preserved integrated evidence. P16 cloud-actionable implementation, regression recovery, exact release-candidate packaging, runtime/browser acceptance, backup/restore rehearsal, bounded performance smoke and UI parity evidence are terminal from exact repository evidence on the current accepted integrated source. This branch performs governance/evidence reconciliation only and does not authorize P17 implementation before its merge and exact-new-main gate complete.
 
 ## Preserved P13 closed baseline provenance
 
-P13 remains **CLOSED** from its exact accepted implementation provenance: final P13 implementation head `1576764a16ea6ddfed735cb0824cb38de26c83d8` integrated as exact implementation main `203cc28db714fae5c2c70e85adc9cc2306bb2107`, followed by its normally integrated closure transition. This exact provenance remains explicit so the closed P13 bilingual UI/accessibility baseline can continue to be independently verified by post-P13 governed CI.
+P13 remains **CLOSED** from its exact accepted implementation provenance: final P13 implementation head `1576764a16ea6ddfed735cb0824cb38de26c83d8` integrated as exact implementation main `203cc28db714fae5c2c70e85adc9cc2306bb2107`, followed by its normally integrated closure transition. This provenance remains explicit so the closed P13 bilingual UI/accessibility baseline can continue to be independently verified by post-P13 governed CI.
 
-## P16 accepted implementation and regression-recovery evidence
+## P16 implementation and regression-recovery provenance
 
-Canonical implementation unit: `P16::full-acceptance-release-candidate`.
-Canonical implementation branch: `worker/p16-full-acceptance-continuation`.
-Canonical implementation PR: #80.
-Final exact implementation head: `e655dc4d0effb4f962d3e97e4a0230471238ba55` — **38/38 governed pull-request workflows SUCCESS**.
+Canonical implementation unit: `P16::full-acceptance-release-candidate`.  
+Canonical implementation branch: `worker/p16-full-acceptance-continuation`.  
+Canonical implementation PR: #80.  
+Final exact implementation head: `e655dc4d0effb4f962d3e97e4a0230471238ba55` — **38/38 governed pull-request workflows SUCCESS**.  
 Original exact integrated implementation main: `75ef2f322a53f1e2ed0bfdf8fa3e4ccece5edd85` — **35/35 governed push workflows SUCCESS**.
 
-A later exact-main regression/operability repair was required for API 129 UAT configuration. Stale PR #82 was closed without merge and replayed from the then-current exact main as canonical hotfix PR #83. PR #83 final exact head `fd2ca1491db0a614ac93292a2dcfe8c656018d09` completed **39/39 governed pull-request workflows SUCCESS** and was normally merged with an expected-head guard.
+The subsequent 0.1.1 API129 UAT shortcut was later found to contradict the repository-authoritative token-exchange contract. That exact-main regression was recovered on the existing hotfix line rather than bypassed or duplicated. PR #85 final corrected head `0e767d4f355e403b70602a7645cd7ffba25b3b43` completed **40/40 governed pull-request workflows SUCCESS** and was normally merged with an expected-head guard.
 
-The current accepted exact integrated P16 source is therefore:
+The current accepted exact integrated P16 source is:
 
-`252e3422dd31bc9eb58b64c1019800f5b50b6e51` — Merge PR #83: secure API129 UAT 0.1.1 hotfix.
+`8863b4b8151ebb08e98fdb225ea5418c5297eb5c` — Merge PR #85: restore evidence-bound MOJ token exchange.
 
-That exact main completed **36/36 governed push workflows SUCCESS**, with queued=0, in-progress=0 and failure=0 at terminal verification.
+That exact main completed **36/36 governed push workflows SUCCESS**, with no queued, in-progress, failed, cancelled, timed-out or action-required workflow in the terminal snapshot.
 
-Exact-main P16 workflow run `34450118608` completed all four jobs SUCCESS:
+The corrected API129 UAT contract is exact-scope `x-api-key + username + password` -> `POST /genToken` -> transient Bearer token from `data` -> target request with the same `x-api-key + Authorization: Bearer`. Optional empty-credential placeholders and broad cross-service MOJ authentication convergence were removed. Production remains independently configured and fail-closed; Production -> UAT fallback is forbidden.
+
+P04 Default Deny remains authoritative: global `Services.Execute` is not sufficient to bypass the per-service permission matrix. No automatic System Administrator per-service privilege expansion is introduced by this recovery.
+
+## Exact current P16 acceptance
+
+Exact-main P16 workflow run: `34456867989`  
+Exact source SHA: `8863b4b8151ebb08e98fdb225ea5418c5297eb5c`  
+Version: `0.1.2`  
+Target runtime: `win-x64`  
+Framework: `net10.0` / pinned SDK `10.0.400`
+
+All required P16 jobs completed SUCCESS:
 
 - `static-contract`;
 - `release-candidate-package`;
 - `runtime-ui-recovery`;
 - aggregate `p16-gate`.
 
-Acceptance includes exact-candidate restore/build and contracts, P14/P15 preservation, Permissions, Service Execution, Audit and Dashboard browser/runtime acceptance, Arabic RTL and English LTR desktop+narrow UI parity consolidation, SQL Server LocalDB plus protected App_Data backup/restore rehearsal, bounded localhost performance smoke, execution-plan integrity and exact-candidate release packaging.
+Acceptance includes exact-candidate restore/build and contracts, preservation of P14/P15 controls, Permissions, Service Execution, Audit and Dashboard browser/runtime acceptance, Arabic RTL and English LTR desktop+narrow UI parity consolidation, SQL Server LocalDB plus protected App_Data backup/restore rehearsal, bounded localhost performance smoke, execution-plan integrity and exact-candidate release packaging.
 
 ## Exact current release-candidate identity
 
-Source SHA: `252e3422dd31bc9eb58b64c1019800f5b50b6e51`  
-Version: `0.1.1`  
-Target runtime: `win-x64`  
-Framework: `net10.0` / pinned SDK `10.0.400`
+- `GSIP-0.1.2-win-x64.zip` — SHA-256 `b4971d31b11f3c1c6a6afba9026afd6865b7c006063eb59ffbdc9e2182efd426`;
+- `GSIP-0.1.2-Setup-x64.exe` — SHA-256 `7a5de1c18bf9b84bd052d855d089f51ffdae175d40c872b574a68892fba99ff0`;
+- Actions artifact `10143946003` — `P16-Release-Candidate-8863b4b8151ebb08e98fdb225ea5418c5297eb5c`, size 62,185,768 bytes, archive digest `sha256:b7c8f175b1669323917bbfa6b557076ce8b2d2c611af7009b13f83e4282429d6`;
+- Actions artifact `10144204144` — `P16-Runtime-UI-Recovery-8863b4b8151ebb08e98fdb225ea5418c5297eb5c`, size 3,482,259 bytes, archive digest `sha256:4b5564603f8c00c5d07357dd206647f0f4dabfa5b04cd8fcc931bc1ab5a4965d`.
 
-- `GSIP-0.1.1-win-x64.zip` — SHA-256 `a9f99baad0ef4acd9ce27e85745628ed0f9167c9f4df8208a2c2494d30fcac01`;
-- `GSIP-0.1.1-Setup-x64.exe` — SHA-256 `4bfac9c2a9a7603057a5ef76eab442eb0ae0b8676d5b68a10d6604d9d8a632b7`;
-- Actions artifact `10141308643` — `P16-Release-Candidate-252e3422dd31bc9eb58b64c1019800f5b50b6e51`, size 62,175,280 bytes, archive digest `sha256:8729cd521783fda8f084833cb221566abaeea7e7f153035e889f1a9a40ae96a3`;
-- Actions artifact `10141410049` — `P16-Runtime-UI-Recovery-252e3422dd31bc9eb58b64c1019800f5b50b6e51`, size 3,481,261 bytes, archive digest `sha256:5ba6df9ea5d4ce59570250d96a9c45647d4f8550b61429d89d55c6e9145d3317`.
-
-The earlier P16 0.1.0 package/artifact identities remain historical evidence for pre-hotfix main `75ef2f322a53f1e2ed0bfdf8fa3e4ccece5edd85`; they are superseded for P16 closure by the 0.1.1 same-SHA evidence above.
+Earlier P16 0.1.0 and 0.1.1 artifacts remain historical provenance only and are superseded for closure by the exact 0.1.2 same-SHA evidence above.
 
 ## P16 closure transition
 
-Canonical closure unit: `P16::closure-reconciliation`.
+Canonical closure unit: `P16::closure-reconciliation`.  
 Canonical closure branch: `worker/p16-closure-reconciliation`.
-Canonical closure PR: #84.
 
 This closure line is governance/evidence-only. It must not implement P17 functionality or weaken any existing gate.
 
-P16 remains OPEN/ACTIVE until all of the following are proven:
+P16 may be recorded as formally CLOSED and P17 may become the sole canonical phase only after all of the following are proven:
 
-1. PR #84 final exact head completes every governed pull-request workflow SUCCESS;
-2. PR #84 is normally integrated from the then-current exact `main` without bypass or stale-base merge;
+1. this reconciliation PR final exact head completes every governed pull-request workflow SUCCESS;
+2. the reconciliation PR is normally integrated from exact current `main` without bypass or stale-base merge;
 3. every governed push workflow on the resulting exact-new-main is terminal SUCCESS;
-4. Issue #1 and canonical governance/ledger state are reconciled to that resulting exact main.
+4. Issue #1 is updated with the exact closure-transition head, merge SHA and exact-new-main CI evidence.
 
-Only after those conditions are proven may P16 become formally CLOSED and P17 become the sole canonical phase.
+Until those conditions are proven, P17 implementation remains forbidden.
 
 ## Locked future work
 
