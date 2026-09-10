@@ -4,6 +4,8 @@ Owner-supplied CAIT Swagger/OAS 3.0 evidence captured on 2026-09-10.
 
 These contracts are UAT-only. No Production endpoint is inferred. Credentials and API keys are never seeded.
 
+Implementation status: the four contracts below are materialized by `OfficialAgencyMetadataSeedService` as disabled UAT `TokenEndpoint` configurations with independent Service + Environment bindings. Activation still requires protected credential provisioning and an explicit administrator action.
+
 | GSIP service | UAT base URL | Target operation | Token operation | Token request | Token response path | Extra auth |
 | --- | --- | --- | --- | --- | --- | --- |
 | MOH Certificate Information | `https://moh-uat.api-non-prod.cait.gov.kw/prmapi/moj/v1` | `POST /certificate` | `POST /authenticate` | JSON `{ username, password }` | `data` | `x-api-key` is required by the supplied Swagger security scheme; target receives Bearer token and API key |
