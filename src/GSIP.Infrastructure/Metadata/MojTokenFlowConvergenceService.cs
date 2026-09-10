@@ -25,6 +25,46 @@ internal sealed class MojTokenFlowConvergenceService(IServiceScopeFactory scopeF
         TokenEndpointContractMetadata.GehaSecretName
     };
 
+    private static readonly IReadOnlyDictionary<string, TokenDefaults> UatTokenDefaults =
+        new Dictionary<string, TokenDefaults>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["MARRIAGECASES"] = new(
+                "/genToken",
+                "application/x-www-form-urlencoded",
+                "data",
+                "username",
+                "password",
+                null),
+            ["ISSINGLEBASIC"] = new(
+                "/genToken",
+                "application/x-www-form-urlencoded",
+                "data",
+                "username",
+                "password",
+                null),
+            ["MARRIAGECOUPLELASTCASE"] = new(
+                "/genToken",
+                "application/x-www-form-urlencoded",
+                "data",
+                "username",
+                "password",
+                null),
+            ["FAMILYJUDGMENTTEXT"] = new(
+                "/token",
+                "application/json",
+                "token",
+                "username",
+                "password",
+                null),
+            ["PROCURATIONSTATUS"] = new(
+                "/Authenticate/Token",
+                "application/json",
+                "token",
+                "UserName",
+                "Password",
+                "Geha")
+        };
+
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
@@ -47,26 +87,37 @@ internal sealed class MojTokenFlowConvergenceService(IServiceScopeFactory scopeF
 
         foreach (var service in services)
         {
+            if (!UatTokenDefaults.TryGetValue(service.Code, out var tokenDefaults))
+                continue;
+
             var config = service.EnvironmentConfigs.SingleOrDefault(item => item.EnvironmentId == CatalogEnvironmentCodes.UatId);
-            if (config is null || string.IsNullOrWhiteSpace(config.NonSecretHeadersJson))
+            if (config is null)
                 continue;
 
             JsonObject metadata;
             try
             {
-                metadata = JsonNode.Parse(config.NonSecretHeadersJson)?.AsObject() ?? new JsonObject();
+                metadata = string.IsNullOrWhiteSpace(config.NonSecretHeadersJson)
+                    ? new JsonObject()
+                    : JsonNode.Parse(config.NonSecretHeadersJson)?.AsObject() ?? new JsonObject();
             }
             catch
             {
-                continue;
+                metadata = new JsonObject();
             }
 
-            if (!metadata.ContainsKey(TokenEndpointContractMetadata.PathKey))
-                continue;
-
+            metadata[TokenEndpointContractMetadata.PathKey] = tokenDefaults.Path;
+            metadata[TokenEndpointContractMetadata.RequestContentTypeKey] = tokenDefaults.ContentType;
+            metadata[TokenEndpointContractMetadata.ResponsePathKey] = tokenDefaults.ResponsePath;
+            metadata[TokenEndpointContractMetadata.UsernameFieldKey] = tokenDefaults.UsernameField;
+            metadata[TokenEndpointContractMetadata.PasswordFieldKey] = tokenDefaults.PasswordField;
             metadata[TokenEndpointContractMetadata.ApiKeyRequiredKey] = true;
             metadata[TokenEndpointContractMetadata.UsernameRequiredKey] = false;
             metadata[TokenEndpointContractMetadata.PasswordRequiredKey] = false;
+            if (tokenDefaults.GehaField is null)
+                metadata.Remove(TokenEndpointContractMetadata.GehaFieldKey);
+            else
+                metadata[TokenEndpointContractMetadata.GehaFieldKey] = tokenDefaults.GehaField;
 
             await db.ServiceEnvironmentConfigs
                 .Where(item => item.ServiceId == service.Id && item.EnvironmentId == CatalogEnvironmentCodes.UatId)
@@ -136,11 +187,10 @@ internal sealed class MojTokenFlowConvergenceService(IServiceScopeFactory scopeF
             profile = await authProfiles.GetAsync(profile.Id, cancellationToken);
             var hasApiKey = profile.Secrets.Any(secret =>
                 string.Equals(secret.Name, TokenEndpointContractMetadata.ApiKeySecretName, StringComparison.OrdinalIgnoreCase));
-            var gehaRequired = metadata.ContainsKey(TokenEndpointContractMetadata.GehaFieldKey);
             var hasGeha = profile.Secrets.Any(secret =>
                 string.Equals(secret.Name, TokenEndpointContractMetadata.GehaSecretName, StringComparison.OrdinalIgnoreCase));
 
-            if (wasEnabled && hasApiKey && (!gehaRequired || hasGeha))
+            if (wasEnabled && hasApiKey && (tokenDefaults.GehaField is null || hasGeha))
                 await authProfiles.SetEnabledAsync(profile.Id, true, cancellationToken);
         }
     }
@@ -275,4 +325,12 @@ internal sealed class MojTokenFlowConvergenceService(IServiceScopeFactory scopeF
                 .SetProperty(item => item.Active, false)
                 .SetProperty(item => item.LastTestStatus, "TOKEN_FLOW_CONVERGENCE_REQUIRES_REVIEW"),
                 cancellationToken);
+
+    private sealed record TokenDefaults(
+        string Path,
+        string ContentType,
+        string ResponsePath,
+        string UsernameField,
+        string PasswordField,
+        string? GehaField);
 }
