@@ -32,13 +32,27 @@ if missing:
 
 phase = (ROOT / "CURRENT_PHASE.md").read_text(encoding="utf-8")
 control = (ROOT / "PROJECT_CONTROL.md").read_text(encoding="utf-8")
+ledger = (ROOT / "docs/TASK_LEDGER.md").read_text(encoding="utf-8")
 criteria = (ROOT / "docs/FINAL_ACCEPTANCE_CRITERIA.md").read_text(encoding="utf-8")
 parity_gate = (ROOT / "docs/UI_DESIGN_PARITY_GATE.md").read_text(encoding="utf-8")
 workflow = (ROOT / ".github/workflows/p16-full-acceptance.yml").read_text(encoding="utf-8")
 evidence = (ROOT / "docs/evidence/P16_FULL_ACCEPTANCE.md").read_text(encoding="utf-8")
 
+p16_current_authority = "P16 — Full automated acceptance on the exact release candidate" in phase
+p17_post_p16_authority = (
+    "P17 — Final convergence and release closure" in phase
+    and "Status: **OPEN / READY**" in phase
+    and "P00-P16 are formally **CLOSED**" in phase
+    and "P16 is formally **CLOSED**" in phase
+    and "| P16 | CLOSED |" in ledger
+    and "| P17 | OPEN / READY |" in ledger
+    and "P00-P16 are formally CLOSED" in control
+    and "P17" in control
+)
+if not (p16_current_authority or p17_post_p16_authority):
+    raise SystemExit("Missing canonical P16 phase authority or governed post-P16 P17 authority")
+
 for text, needle, description in [
-    (phase, "P16 — Full automated acceptance on the exact release candidate", "canonical P16 phase authority"),
     (control, "P16", "P16 project-control boundary"),
     (criteria, "same-commit/same-artifact", "same-candidate final acceptance rule"),
     (parity_gate, "P16 must run full UI parity acceptance", "P16 UI parity rule"),
