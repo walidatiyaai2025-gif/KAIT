@@ -43,7 +43,7 @@ public sealed class OfficialAgencyMetadataSeedService(GsipDbContext db, ISystemC
             "password",
             null,
             "string",
-            true,
+            false,
             [
                 F("maleCivilId", "الرقم المدني للزوج", "Male Civil ID", "text", true, true),
                 F("femaleCivilId", "الرقم المدني للزوجة", "Female Civil ID", "text", true, true)
