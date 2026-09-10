@@ -1,6 +1,6 @@
 # P15 — Windows / IIS Installer and Packaging Evidence
 
-Status: **CLOSED FROM IMPLEMENTATION EVIDENCE / CLOSURE TRANSITION PENDING**
+Status: **CLOSED**
 
 ## Authority and phase entry
 
@@ -113,14 +113,16 @@ The following remain outside P15 cloud proof and must not be called PASS without
 
 `--skip-iis` is intentionally an isolated CI mode used to execute the exact Setup EXE lifecycle without claiming target IIS deployment evidence. It bypasses only IIS mutation; ownership/destructive-operation checks remain active. The production wizard/IIS/HTTPS code path remains fail-closed on missing prerequisites, unowned collisions or certificate selection.
 
-## Remaining closure-transition gate
+## Formal closure-transition evidence
 
-All lawful cloud-actionable P15 implementation and integration gates are terminal from exact evidence. P15 is **not yet formally closed by this document alone**.
+Canonical closure unit `P15::closure-reconciliation` used `worker/p15-closure-reconciliation` and PR #77. Exact closure head `7ad7f07b760f3102bd2776cdfe4e35d2fb427765` completed **37/37 governed pull-request workflows SUCCESS**. PR #77 was then normally integrated from exact implementation main `d60318da5b19d06df20864083f5a4a78b9792e88` as exact closure main:
 
-Formal closure still requires the governance/evidence closure transition on `worker/p15-closure-reconciliation` to:
+`48267786e9f0d21934dee339eed32688b6e2d488`
 
-1. pass every governed workflow on its own exact head;
-2. merge normally while based on current exact `main`;
-3. produce a resulting exact-new-main SHA whose full governed push matrix is terminal SUCCESS.
+The resulting exact-new-main gate completed **34/34 governed push workflows SUCCESS**, with failure=0, queued=0 and in-progress=0. No required gate was waived, weakened or represented as PASS while incomplete.
 
-P16 remains **STAGED / IMPLEMENTATION LOCKED** until those three transition steps are proven. No target-server, certificate, signing, live-UAT or Production evidence is promoted to PASS by this closure reconciliation.
+All eight closure conditions recorded by `CURRENT_PHASE.md` before the transition are therefore satisfied from exact repository evidence: final implementation head green, normal implementation merge, implementation exact-main green, integrated package/hash identity reconciled, external items preserved as NOT PASS, closure-transition head green, normal closure merge, and exact closure main green.
+
+P15 is formally **CLOSED**. P16 is legally **OPEN / READY** as the sole canonical current phase. P17 remains locked until P16 closes normally.
+
+No target-server, certificate, signing, live-UAT or Production evidence is promoted to PASS by P15 closure. Repository branch protection also remains `OWNER_LAST / NOT PASS` until authorized administration and independent read-back prove otherwise.
