@@ -8,6 +8,10 @@ Status: **OPEN / ACTIVE — closure reconciliation**. P17 is **STAGED / IMPLEMEN
 
 P00-P15 remain formally CLOSED from preserved integrated evidence. P16 implementation plus the post-implementation 0.1.1 regression repair are terminal from exact repository evidence, but P16 itself remains OPEN until this closure transition is normally integrated and the resulting exact-new-main governed CI is terminal green.
 
+## Preserved P13 closed baseline provenance
+
+P13 remains **CLOSED** from its exact accepted implementation provenance: final P13 implementation head `1576764a16ea6ddfed735cb0824cb38de26c83d8` integrated as exact implementation main `203cc28db714fae5c2c70e85adc9cc2306bb2107`, followed by its normally integrated closure transition. This exact provenance remains explicit so the closed P13 bilingual UI/accessibility baseline can continue to be independently verified by post-P13 governed CI.
+
 ## P16 accepted implementation and regression-recovery evidence
 
 Canonical implementation unit: `P16::full-acceptance-release-candidate`.
