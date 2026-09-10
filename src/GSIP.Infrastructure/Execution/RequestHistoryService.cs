@@ -256,7 +256,7 @@ public sealed class RequestHistoryService(
     private static string BuildPrintHtml(IReadOnlyList<RequestHistoryItem> items)
     {
         var rows = string.Join("", items.Select(item => $"<tr><td>{WebUtility.HtmlEncode(item.StartedAtUtc.ToString("u"))}</td><td>{WebUtility.HtmlEncode(item.RequestId)}</td><td>{WebUtility.HtmlEncode(item.ServiceCode)}</td><td>{WebUtility.HtmlEncode(item.Status.ToString())}</td><td>{WebUtility.HtmlEncode(item.OutcomeCode)}</td></tr>"));
-        return "<!doctype html><html dir=\"auto\"><head><meta charset=\"utf-8\"><title>GSIP Request History</title></head><body><h1>GSIP Request History / سجل الطلبات</h1><table><thead><tr><th>Time</th><th>Request ID</th><th>Service</th><th>Status</th><th>Outcome</th></tr></thead><tbody>" + rows + "</tbody></table><script>window.print()</script></body></html>";
+        return "<!doctype html><html dir=\"auto\"><head><meta charset=\"utf-8\"><title>GSIP Request History</title></head><body><h1>GSIP Request History / سجل الطلبات</h1><table><thead><tr><th>Time</th><th>Request ID</th><th>Service</th><th>Status</th><th>Outcome</th></tr></thead><tbody>" + rows + "</tbody></table><script src=\"/js/request-history-print.js\" defer></script></body></html>";
     }
 
     private static string[] Columns(RequestHistoryItem item) =>
