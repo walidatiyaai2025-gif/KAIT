@@ -53,6 +53,9 @@ internal static class Program
         var installRoot = ValidateInstallRoot(options.InstallRoot);
         var ownership = ReadInstallOwnership(installRoot);
         ValidateInstallOwnershipForInstall(options, installRoot, ownership);
+        var originalManifestText = ownership is null
+            ? null
+            : File.ReadAllText(GetInstallManifestPath(installRoot));
 
         if (!options.SkipIis && ownership is null)
         {
@@ -89,7 +92,8 @@ internal static class Program
             CopyDirectory(stageDirectory, appDirectory);
 
             // Materialize the ownership marker before IIS mutation. If a later IIS step fails,
-            // the exact root/site/pool remain attributable to GSIP and can be safely repaired or removed.
+            // a new installation remains attributable to GSIP; existing maintenance restores its
+            // prior marker together with the prior binaries.
             WriteInstallManifest(installRoot, options);
 
             if (!options.SkipIis)
@@ -107,7 +111,9 @@ internal static class Program
         catch
         {
             RollBackApplicationFiles(appDirectory, backupDirectory);
-            if (ownership is null && !File.Exists(GetInstallManifestPath(installRoot)))
+            if (originalManifestText is not null)
+                WriteInstallManifestText(GetInstallManifestPath(installRoot), originalManifestText);
+            else if (ownership is null && !File.Exists(GetInstallManifestPath(installRoot)))
                 DeleteDirectoryIfExists(installRoot);
             if (!options.SkipIis && appPoolWasRunning)
                 TryRunAppCmd("start", "apppool", $"/apppool.name:{options.AppPoolName}");
@@ -362,7 +368,23 @@ internal static class Program
             SetupState = @"app\App_Data\setup\completed.protected",
             WrittenAtUtc = DateTimeOffset.UtcNow
         };
-        File.WriteAllText(GetInstallManifestPath(installRoot), JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true }));
+        WriteInstallManifestText(
+            GetInstallManifestPath(installRoot),
+            JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true }));
+    }
+
+    private static void WriteInstallManifestText(string manifestPath, string content)
+    {
+        var temporaryPath = $"{manifestPath}.tmp-{Guid.NewGuid():N}";
+        try
+        {
+            File.WriteAllText(temporaryPath, content);
+            File.Move(temporaryPath, manifestPath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
+        }
     }
 
     private static InstallOwnership? ReadInstallOwnership(string installRoot)
