@@ -68,7 +68,7 @@ public sealed class BasicAuthenticationTransformHandler : DelegatingHandler
     }
 
     private static bool IsValidUsername(string value) =>
-        IsSafeAsciiCredential(value) && !value.Contains(':', StringComparison.Ordinal);
+        IsSafeAsciiCredential(value) && !value.Contains(':');
 
     private static bool IsValidPassword(string value) => IsSafeAsciiCredential(value);
 
