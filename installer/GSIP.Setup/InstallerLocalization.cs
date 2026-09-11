@@ -106,7 +106,11 @@ internal static partial class InstallerLocalization
             AttachRecursive(child);
     }
 
-    private static void HandleControlAdded(object? sender, ControlEventArgs args) => AttachRecursive(args.Control);
+    private static void HandleControlAdded(object? sender, ControlEventArgs args)
+    {
+        if (args.Control is { } control)
+            AttachRecursive(control);
+    }
 
     private static void HandleTextChanged(object? sender, EventArgs args)
     {
