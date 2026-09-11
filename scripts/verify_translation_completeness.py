@@ -137,7 +137,7 @@ require("RightToLeft = RightToLeft.Yes" in installer_localization and "RightToLe
 require("ControlAdded" in installer_localization and "TextChanged" in installer_localization,
         "Windows installer dynamic pages are not localization-aware.")
 for marker in ["Back", "Next", "Cancel", "Install", "Finish", "Prerequisites", "Install path", "HTTPS certificate"]:
-    require(f'(\"{marker}\",' in installer_localization, f"Installer localization mapping missing: {marker}")
+    require(f'("{marker}",' in installer_localization, f"Installer localization mapping missing: {marker}")
 for marker in [
     "Install path is required.",
     "IIS site name is required.",
