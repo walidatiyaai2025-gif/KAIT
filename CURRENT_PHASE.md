@@ -114,3 +114,18 @@ Owner-controlled release/code signing remains `OWNER_LAST_SIGNING_NOT_PASS` wher
 Main branch protection remains `OWNER_LAST / NOT PASS` and is also tracked explicitly as `OWNER_LAST_BRANCH_PROTECTION_NOT_PASS`; live read-back reports `main` with `protected=false` and required status-check enforcement off. Owner action: an authorized repository administrator must apply the documented main protection policy with provider-bound governed required checks, strict up-to-date enforcement, admin enforcement, conversation resolution, force-push disabled and deletion disabled, then independently read back the applied policy.
 
 None of these owner/external boundaries is PASS, and none authorizes fabrication of evidence. Independent cloud-actionable project convergence continues around them even after P17 closure.
+
+## Superseding post-PR100 live authority
+
+The `Post-PR99 ... current reconciliation` section above is retained as historical provenance only. Its references to `worker/post-final-governance-reconciliation` as the active recovery line are no longer current.
+
+PR #100 (`P17 post-final governance reconciliation`) completed its exact-head governed CI, was merged normally with expected-head protection, and its recovery head is historical/absorbed after integration. This file deliberately does **not** self-encode the resulting or any later `main` SHA as “current”, because any commit that edits this file necessarily creates a newer source identity after merge.
+
+For post-PR100 final convergence, the authoritative current identity and evidence are therefore read in this order:
+
+1. LIVE repository `main` and its exact commit SHA;
+2. same-SHA governed workflow results and same-SHA P15/P16/P17 artifacts;
+3. issue #1 current-state body/comments for the live exact-main reconciliation and clean-sweep evidence;
+4. this file for the invariant phase status and convergence rules.
+
+P17 remains **CLOSED** and product implementation remains locked. `VERIFIED_FINAL_COMPLETE`, `REMAINING_CLOUD_ACTIONABLE_WORK=0`, and any exact-final-main claim may be asserted only from live evidence after exact-main CI/artifacts, issue #1 reconciliation, and two consecutive independent zero-gap sweeps on one unchanged exact `main`. Any later main movement invalidates the prior finality evidence and restarts validation. OWNER_LAST / DEFERRED_EXTERNAL boundaries remain NOT PASS without real owner/external evidence.

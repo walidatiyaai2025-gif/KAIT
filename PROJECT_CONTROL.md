@@ -165,3 +165,13 @@ Precise owner actions are retained in `CURRENT_PHASE.md`, issue #1, and `docs/OW
 ## Release control
 
 Final acceptance is a same-commit/same-artifact claim. Source, tests, CI, installer/package, SHA-256, UI/security/database evidence, rollback/handoff evidence, and canonical governance must refer to the exact final candidate. A stale CI result, dirty/unpushed work, mismatched artifact identity, or unreconciled canonical document blocks final completion.
+
+## Superseding post-PR100 control authority
+
+The `Post-PR99 predecessor reconciliation` subsection above is historical provenance. Its description of `worker/post-final-governance-reconciliation` as the current cloud-actionable gap is superseded.
+
+PR #100 completed the governance/evidence reconciliation line and was integrated after terminal exact-head CI using expected-head protection. The recovery head is absorbed after integration. To prevent recursive self-staleness, this control file does not encode its own resulting merge SHA as “current”; a commit cannot know the exact future merge identity that will contain it.
+
+For all post-PR100 work, LIVE repository `main` is the source identity authority and issue #1 is the mutable live reconciliation record for exact-main CI, exact-source P15/P16/P17 artifacts, clean sweeps and finality. This file remains authoritative for invariant project controls: P00-P17 CLOSED, product implementation locked, project-wide regression recovery mandatory, SHA-specific evidence only, expected-head-protected integration, two fresh zero-gap sweeps after source movement, and `UNPUSHED_WORK=NONE` before stop.
+
+No `VERIFIED_FINAL_COMPLETE` or `REMAINING_CLOUD_ACTIONABLE_WORK=0` claim is valid solely because PR #100 merged. Those states require the live exact main to satisfy all workflow/artifact/governance gates and two consecutive full zero-gap sweeps without source movement. OWNER_LAST / DEFERRED_EXTERNAL items remain NOT PASS without real evidence.
