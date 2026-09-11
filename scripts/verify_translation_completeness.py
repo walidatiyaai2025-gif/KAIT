@@ -54,6 +54,7 @@ moj = read("src/GSIP.Web/Views/MojUatConfiguration/Index.cshtml")
 audit = read("src/GSIP.Web/Views/Audit/Index.cshtml")
 operations = read("src/GSIP.Web/Views/Operations/Index.cshtml")
 installer_localization = read("installer/GSIP.Setup/InstallerLocalization.cs")
+installer_dialog_hook = read("installer/GSIP.Setup/InstallerDialogLocalizationHook.cs")
 wizard_entry = read("installer/GSIP.Setup/WizardEntryPoint.cs")
 
 require('src="~/js/translation-convergence.js"' in layout, "Arabic translation convergence runtime is not loaded by the shared layout.")
@@ -113,6 +114,21 @@ require("ControlAdded" in installer_localization and "TextChanged" in installer_
         "Windows installer dynamic pages are not localization-aware.")
 for marker in ["Back", "Next", "Cancel", "Install", "Finish", "Prerequisites", "Install path", "HTTPS certificate"]:
     require(f'(\"{marker}\",' in installer_localization, f"Installer localization mapping missing: {marker}")
+for marker in [
+    "Install path is required.",
+    "IIS site name is required.",
+    "Application pool name is required.",
+    "Select a valid Local Computer HTTPS certificate before continuing.",
+    "Application deployment failed.",
+    "Installation verification failed:",
+]:
+    require(marker in installer_localization, f"Installer validation/error localization mapping missing: {marker}")
+require("InstallerDialogLocalizationHook.EnsureInstalled();" in installer_localization,
+        "Installer modal-dialog localization hook is not activated in Arabic mode.")
+require("SetWindowsHookExW" in installer_dialog_hook and "EnumChildWindows" in installer_dialog_hook,
+        "Installer modal-dialog text is not covered by the Arabic localization hook.")
+require("InstallerLocalization.TranslateForUser" in installer_dialog_hook,
+        "Installer modal-dialog hook does not use the canonical Arabic translation map.")
 require("InstallerLocalization.Attach(wizard);" in wizard_entry, "Windows installer localization layer is not attached to the interactive wizard.")
 require("InstallerLocalization.T(" in wizard_entry, "Windows installer entry-point messages are not bilingual.")
 
