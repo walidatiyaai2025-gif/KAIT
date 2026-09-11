@@ -36,7 +36,7 @@ Canonical closure-transition PR #93 exact head `7e4fb7264c346f4f5310ad4b44c07fe5
 Exact `72d1ea92...` evidence includes:
 
 - P15 ZIP SHA-256 `472e8eed6e1118bf9da14e54bc26fbfcbc4d457570c99d800fc2465479446ecf`; Setup SHA-256 `c90b835d8f16d82bf71e992c065c9309180222af2b232141943b07c98549cfbc`; artifact `10167797374`, digest `sha256:457a428ef40379f0dce36be9cd48d14b6e70dff208af2175f767d218af5b8b24`, 62,247,061 bytes;
-- P16 release ZIP SHA-256 `1761ac167bc40c36a08051ddf07e53f73512b1293531ffb8cc10ca029d637bb0`; Setup SHA-256 `ce39d65319b1c977cf3797789686d6c6b45fb338ec5fb6b4272fcf68641349b1`; release artifact `10167858384`, digest `sha256:746c7805303c8692b9b31d45fab943c8a869d34ea30e4771a6d240850051335d`, 62,247,913 bytes; runtime/UI artifact `10168083331`, digest `sha256:b549a04e6aaa4465355af0eeb32595d6aab0156f088edc0b2b9cb3bf03d22d4c`, 3,482,563 bytes;
+- P16 release ZIP SHA-256 `1761ac167bc40c36a08051ddf07e53f73512b1293531ffb8cc10ca029d637bb0`; Setup EXE SHA-256 `ce39d65319b1c977cf3797789686d6c6b45fb338ec5fb6b4272fcf68641349b1`; release artifact `10167858384`, digest `sha256:746c7805303c8692b9b31d45fab943c8a869d34ea30e4771a6d240850051335d`, 62,247,913 bytes; runtime/UI artifact `10168083331`, digest `sha256:b549a04e6aaa4465355af0eeb32595d6aab0156f088edc0b2b9cb3bf03d22d4c`, 3,482,563 bytes;
 - P17 artifact `10167841257`, digest `sha256:552b5935cdcca7de3198291529807f3227cf4f41367942243108a992850fe3d4`, 342 bytes.
 
 These remain closure-transition provenance only after formal-closure source changes.
@@ -110,3 +110,13 @@ The following remain NOT PASS and are never converted to PASS by repository clos
 - **SERVICE / ENVIRONMENT ISOLATION**: no implicit cross-service or cross-environment credential/configuration sharing and no Production→UAT fallback.
 - **NO FALSE FINALITY**: P17 CLOSED does not end project-wide convergence; `VERIFIED_FINAL_COMPLETE` is forbidden until exact final source/CI/artifacts/hashes/governance agree and two consecutive zero-gap LIVE sweeps succeed.
 - **UNPUSHED_WORK=NONE** before any stop.
+
+## Superseding post-PR100 ledger authority
+
+The `Post-PR99 predecessor reconciliation and current recovery` section above is retained as historical provenance only. Its statement that `worker/post-final-governance-reconciliation` is the present recovery line is superseded.
+
+PR #100 completed that governance/evidence recovery and was integrated after terminal exact-head CI using expected-head protection. Its head is historical/absorbed after integration. The canonical P17 status remains **CLOSED**; no product/runtime implementation was reopened by that governance repair.
+
+To avoid creating an endless self-referential evidence loop, this ledger does not label the SHA produced by a commit that edits the ledger as its own “current final main”. Current exact source, exact-main workflow counts, exact-source artifact identities/hashes, and clean-sweep comment IDs are mutable LIVE evidence and are recorded in issue #1 after integration. The invariant ledger requirements remain: P00-P17 CLOSED, no unattended legitimate work, exact-SHA CI/artifact evidence only, no stale canonical governance, two independent zero-gap sweeps after source movement, and `UNPUSHED_WORK=NONE` before stop.
+
+A final `REMAINING_CLOUD_ACTIONABLE_WORK=0` / `VERIFIED_FINAL_COMPLETE` state is valid only when issue #1 records the unchanged live exact main after all required workflows are terminal SUCCESS, same-SHA P15/P16/P17 artifacts and SHA-256 evidence are verified, branch/marker/test/governance sweeps are clean twice consecutively, and no lawful cloud-actionable work remains. OWNER_LAST / DEFERRED_EXTERNAL items stay NOT PASS without real evidence.
