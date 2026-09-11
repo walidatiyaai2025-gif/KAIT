@@ -49,6 +49,8 @@ layout = read("src/GSIP.Web/Views/Shared/_Layout.cshtml")
 translation_js = read("src/GSIP.Web/wwwroot/js/translation-convergence.js")
 requests = read("src/GSIP.Web/Views/Requests/Index.cshtml")
 request_details = read("src/GSIP.Web/Views/Requests/Details.cshtml")
+metadata = read("src/GSIP.Web/Views/Metadata/Index.cshtml")
+auth_profiles = read("src/GSIP.Web/Views/AuthProfiles/Index.cshtml")
 setup = read("src/GSIP.Web/Views/Setup/Wizard.cshtml")
 moj = read("src/GSIP.Web/Views/MojUatConfiguration/Index.cshtml")
 audit = read("src/GSIP.Web/Views/Audit/Index.cshtml")
@@ -65,6 +67,11 @@ require("setup-message[data-operation-code]" in translation_js, "Setup operation
 required_runtime_mappings = {
     "Setup progress": "تقدم الإعداد",
     "English name": "الاسم الإنجليزي",
+    "API Key Header": "مفتاح API في الترويسة",
+    "Static Bearer": "Bearer ثابت",
+    "Token Endpoint": "نقطة إصدار الرمز",
+    "API Key + Bearer": "مفتاح API + Bearer",
+    "Custom Headers": "ترويسات مخصصة",
     "Base URL": "عنوان URL الأساسي",
     "Service Path": "مسار الخدمة",
     "Username": "اسم المستخدم",
@@ -94,6 +101,23 @@ require('@T("Correlation ID", "معرّف الارتباط")' in request_details
 require("@StatusText(Model.Summary.Status)" in request_details and "@OutcomeText(Model.Summary.OutcomeCode)" in request_details,
         "Request detail exposes raw lifecycle/outcome values.")
 require('@T("ms", "مللي ثانية")' in request_details, "Request detail duration unit is not localized.")
+
+# Metadata residual labels found in the full Razor sweep must be localized at source.
+require('@(isRtl ? "تعريفات قائمة على البيانات" : "Metadata-driven")' in metadata,
+        "Metadata dashboard kicker is not bilingual.")
+require('@service.EnvironmentCount @M["Environments"]' in metadata,
+        "Metadata environment-count badge is not localized.")
+require('@service.FieldCount @M["Fields"]' in metadata,
+        "Metadata field-count badge is not localized.")
+require('@service.MappingCount @M["Mappings"]' in metadata,
+        "Metadata mapping-count badge is not localized.")
+require("@service.EnvironmentCount env" not in metadata and "@service.FieldCount fields" not in metadata and "@service.MappingCount maps" not in metadata,
+        "Metadata dashboard still contains raw English count suffixes.")
+
+# Authentication-type values are canonical machine values, but their visible option text must be Arabic-safe.
+for marker in ["API Key Header", "Static Bearer", "Token Endpoint", "API Key + Bearer", "Custom Headers"]:
+    if f">{marker}</option>" in auth_profiles:
+        require(f"['{marker}'," in translation_js, f"Visible authentication type '{marker}' lacks Arabic display translation.")
 
 # The safety net must explicitly cover every audited hard-coded leak still present in legacy Razor surfaces.
 legacy_leaks = {
