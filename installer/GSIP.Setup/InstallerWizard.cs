@@ -13,6 +13,15 @@ internal sealed class InstallerWizard : Form
     private const int ReviewPage = 4;
     private const int FinishPage = 5;
 
+    private new static string ProductVersion
+    {
+        get
+        {
+            var version = typeof(InstallerWizard).Assembly.GetName().Version;
+            return version is null ? "unknown" : $"{version.Major}.{version.Minor}.{Math.Max(0, version.Build)}";
+        }
+    }
+
     private readonly SanitizedInstallLog _log;
     private readonly Panel _content = new() { Dock = DockStyle.Fill, Padding = new Padding(28) };
     private readonly Label _heading = new()
@@ -143,7 +152,7 @@ internal sealed class InstallerWizard : Form
     private void RenderWelcome()
     {
         _content.Controls.Add(CreateTextBlock(
-            "This wizard installs Government Services Integration Portal 0.1.0 on Windows Server / IIS.\r\n\r\n" +
+            $"This wizard installs Government Services Integration Portal {ProductVersion} on Windows Server / IIS.\r\n\r\n" +
             "Database and government-service credentials are not collected by this installer. " +
             "After deployment, GSIP opens its protected First-Run Setup at /setup for SQL Server, administrator, security and integration configuration.\r\n\r\n" +
             $"A sanitized installer log is written to:\r\n{_log.Path}"));
