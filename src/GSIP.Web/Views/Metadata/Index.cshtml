@@ -7,7 +7,7 @@
 }
 <section class="metadata-page">
     <header class="metadata-hero">
-        <div><span class="metadata-kicker">P05 · Metadata-driven</span><h1>@M["PageTitle"]</h1><p>@M["Subtitle"]</p></div>
+        <div><span class="metadata-kicker">P05 · @(isRtl ? "تعريفات قائمة على البيانات" : "Metadata-driven")</span><h1>@M["PageTitle"]</h1><p>@M["Subtitle"]</p></div>
         <div class="metadata-actions"><a class="metadata-button secondary" href="/metadata/schema">@M["Schema"]</a><a class="metadata-button" href="/metadata/export">@M["Export"]</a></div>
     </header>
 
@@ -59,7 +59,7 @@
                 @foreach (var service in services)
                 {
                     <article class="service-card">
-                        <div class="service-summary"><div><span class="service-code">@service.Code</span><h3>@(isRtl ? service.NameAr : service.NameEn)</h3></div><div class="service-badges"><span>v@service.Version</span><span>@service.EnvironmentCount env</span><span>@service.FieldCount fields</span><span>@service.MappingCount maps</span></div></div>
+                        <div class="service-summary"><div><span class="service-code">@service.Code</span><h3>@(isRtl ? service.NameAr : service.NameEn)</h3></div><div class="service-badges"><span>v@service.Version</span><span>@service.EnvironmentCount @M["Environments"]</span><span>@service.FieldCount @M["Fields"]</span><span>@service.MappingCount @M["Mappings"]</span></div></div>
                         <p class="history-note">@(service.WasUsed ? M["HistoricalProtection"] : M["NeverUsed"])</p>
                         <details class="metadata-details"><summary>@M["EditDefinition"]</summary><form method="post" action="/metadata/services/@service.Id" class="metadata-form">@Html.AntiForgeryToken()<textarea name="serviceJson" rows="18" spellcheck="false" dir="ltr">@service.DefinitionJson</textarea><button class="metadata-button" type="submit">@M["Save"]</button></form></details>
                         @if (service.Active) { <form method="post" action="/metadata/services/@service.Id/deactivate" class="inline-form">@Html.AntiForgeryToken()<button class="text-danger" type="submit">@M["Deactivate"]</button></form> }
