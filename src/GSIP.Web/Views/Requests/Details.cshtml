@@ -3,6 +3,25 @@
 @{
     var isArabic = (bool?)(ViewData["IsArabic"]) == true;
     string T(string en, string ar) => isArabic ? ar : en;
+    string StatusText(RequestLifecycleStatus value) => isArabic ? value.ToString() switch
+    {
+        "Pending" => "قيد الانتظار",
+        "Running" => "قيد التنفيذ",
+        "Succeeded" => "ناجح",
+        "Failed" => "فشل",
+        "Cancelled" => "ملغى",
+        "TimedOut" => "انتهت المهلة",
+        _ => "حالة الطلب"
+    } : value.ToString();
+    string OutcomeText(string? value) => isArabic ? value switch
+    {
+        "Success" or "Succeeded" => "ناجح",
+        "Failed" or "Failure" => "فشل",
+        "Cancelled" => "ملغى",
+        "TimedOut" or "Timeout" => "انتهت المهلة",
+        null or "" => "—",
+        _ => "نتيجة تنفيذ"
+    } : (string.IsNullOrWhiteSpace(value) ? "—" : value);
     ViewData["Title"] = T("Request details", "تفاصيل الطلب");
 }
 
@@ -16,14 +35,14 @@
 
 <section class="execution-card">
     <dl class="request-metadata-card">
-        <div><dt>Request ID</dt><dd dir="ltr">@Model.Summary.RequestId</dd></div>
-        <div><dt>Correlation ID</dt><dd dir="ltr">@Model.Summary.CorrelationId</dd></div>
+        <div><dt>@T("Request ID", "معرّف الطلب")</dt><dd dir="ltr">@Model.Summary.RequestId</dd></div>
+        <div><dt>@T("Correlation ID", "معرّف الارتباط")</dt><dd dir="ltr">@Model.Summary.CorrelationId</dd></div>
         <div><dt>@T("Entity", "الجهة")</dt><dd>@Model.Summary.EntityCode</dd></div>
         <div><dt>@T("Service", "الخدمة")</dt><dd>@Model.Summary.ServiceCode · v@Model.Summary.ServiceVersion</dd></div>
         <div><dt>@T("Environment", "البيئة")</dt><dd>@Model.Summary.EnvironmentCode</dd></div>
-        <div><dt>@T("Status", "الحالة")</dt><dd>@Model.Summary.Status · @Model.Summary.OutcomeCode</dd></div>
+        <div><dt>@T("Status", "الحالة")</dt><dd>@StatusText(Model.Summary.Status) · @OutcomeText(Model.Summary.OutcomeCode)</dd></div>
         <div><dt>HTTP</dt><dd>@(Model.Summary.HttpStatusCode?.ToString() ?? "—")</dd></div>
-        <div><dt>@T("Duration", "المدة")</dt><dd>@Model.Summary.DurationMilliseconds ms</dd></div>
+        <div><dt>@T("Duration", "المدة")</dt><dd>@Model.Summary.DurationMilliseconds @T("ms", "مللي ثانية")</dd></div>
         <div><dt>@T("Attempts", "المحاولات")</dt><dd>@Model.Summary.Attempts</dd></div>
         <div><dt>@T("Started", "بدأ")</dt><dd dir="ltr">@Model.Summary.StartedAtUtc.ToString("u")</dd></div>
         <div><dt>@T("Completed", "اكتمل")</dt><dd dir="ltr">@(Model.Summary.CompletedAtUtc?.ToString("u") ?? "—")</dd></div>
@@ -54,4 +73,4 @@
     <p role="status">@T("A stored result was suppressed because it exceeded the configured safe bound.", "تم حجب نتيجة مخزنة لأنها تجاوزت الحد الآمن المحدد.")</p>
 }
 
-<p><a href="/requests">@T("Back to request history", "العودة إلى سجل الطلبات")</a></p>
+<p><a href="/requests?culture=@(isArabic ? "ar-KW" : "en")">@T("Back to request history", "العودة إلى سجل الطلبات")</a></p>
