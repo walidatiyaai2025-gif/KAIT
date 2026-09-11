@@ -3,6 +3,35 @@
 @{
     ViewData["Title"] = Model.Text("Request history", "سجل الطلبات");
     var totalPages = Math.Max(1, (int)Math.Ceiling(Model.Page.TotalCount / (double)Model.Page.PageSize));
+    string StatusText(RequestLifecycleStatus value) => Model.IsArabic ? value.ToString() switch
+    {
+        "Started" => "بدأ",
+        "Succeeded" => "ناجح",
+        "Failed" => "فشل",
+        "Cancelled" => "ملغى",
+        _ => "حالة الطلب"
+    } : value.ToString();
+    string OutcomeText(string? value) => Model.IsArabic ? value switch
+    {
+        "Success" or "Succeeded" => "ناجح",
+        "BadRequest" => "طلب غير صالح",
+        "Unauthorized" => "غير مصرح",
+        "Forbidden" => "غير مسموح",
+        "NotFound" => "غير موجود",
+        "Conflict" => "تعارض",
+        "RateLimited" => "تم تجاوز حد الطلبات",
+        "ServerError" => "خطأ في الخادم",
+        "Timeout" or "TimedOut" => "انتهت المهلة",
+        "TlsFailure" => "فشل اتصال TLS",
+        "NetworkFailure" => "فشل الشبكة",
+        "AuthenticationUnavailable" => "المصادقة غير متاحة",
+        "ResponseTooLarge" => "الاستجابة أكبر من الحد المسموح",
+        "InvalidResponse" => "استجابة غير صالحة",
+        "Failed" or "Failure" => "فشل",
+        "Cancelled" => "ملغى",
+        null or "" => "—",
+        _ => "نتيجة تنفيذ"
+    } : (string.IsNullOrWhiteSpace(value) ? "—" : value);
 }
 
 <section class="execution-hero" aria-labelledby="history-title">
@@ -24,7 +53,7 @@
     </label>
     <label class="selector-card">
         <span>@Model.Text("Search", "بحث")</span>
-        <input name="search" value="@Model.Filter.Search" maxlength="100" placeholder="Request ID / service / outcome" />
+        <input name="search" value="@Model.Filter.Search" maxlength="100" placeholder="@Model.Text("Request ID / service / outcome", "معرّف الطلب / الخدمة / النتيجة")" />
     </label>
     <label class="selector-card">
         <span>@Model.Text("Status", "الحالة")</span>
@@ -32,7 +61,7 @@
             <option value="">@Model.Text("Any", "الكل")</option>
             @foreach (var value in Enum.GetValues<RequestLifecycleStatus>())
             {
-                <option value="@value" selected="@(Model.Filter.Status == value)">@value</option>
+                <option value="@value" selected="@(Model.Filter.Status == value)">@StatusText(value)</option>
             }
         </select>
     </label>
@@ -92,7 +121,7 @@
         <div style="overflow:auto">
             <table class="permissions-matrix">
                 <thead><tr>
-                    <th>@Model.Text("Time", "الوقت")</th><th>Request ID</th><th>@Model.Text("Service", "الخدمة")</th>
+                    <th>@Model.Text("Time", "الوقت")</th><th>@Model.Text("Request ID", "معرّف الطلب")</th><th>@Model.Text("Service", "الخدمة")</th>
                     <th>@Model.Text("Status", "الحالة")</th><th>HTTP</th><th>@Model.Text("Duration", "المدة")</th><th></th>
                 </tr></thead>
                 <tbody>
@@ -102,9 +131,9 @@
                         <td dir="ltr">@item.StartedAtUtc.ToString("u")</td>
                         <td dir="ltr">@item.RequestId</td>
                         <td>@item.ServiceCode <small>v@item.ServiceVersion</small></td>
-                        <td>@item.Status · @item.OutcomeCode</td>
+                        <td>@StatusText(item.Status) · @OutcomeText(item.OutcomeCode)</td>
                         <td>@(item.HttpStatusCode?.ToString() ?? "—")</td>
-                        <td>@item.DurationMilliseconds ms</td>
+                        <td>@item.DurationMilliseconds @Model.Text("ms", "مللي ثانية")</td>
                         <td><a href="/requests/@Uri.EscapeDataString(item.RequestId)?scope=@Model.Filter.Scope">@Model.Text("Details", "التفاصيل")</a></td>
                     </tr>
                 }
