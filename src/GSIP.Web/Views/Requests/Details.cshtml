@@ -5,20 +5,30 @@
     string T(string en, string ar) => isArabic ? ar : en;
     string StatusText(RequestLifecycleStatus value) => isArabic ? value.ToString() switch
     {
-        "Pending" => "قيد الانتظار",
-        "Running" => "قيد التنفيذ",
+        "Started" => "بدأ",
         "Succeeded" => "ناجح",
         "Failed" => "فشل",
         "Cancelled" => "ملغى",
-        "TimedOut" => "انتهت المهلة",
         _ => "حالة الطلب"
     } : value.ToString();
     string OutcomeText(string? value) => isArabic ? value switch
     {
         "Success" or "Succeeded" => "ناجح",
+        "BadRequest" => "طلب غير صالح",
+        "Unauthorized" => "غير مصرح",
+        "Forbidden" => "غير مسموح",
+        "NotFound" => "غير موجود",
+        "Conflict" => "تعارض",
+        "RateLimited" => "تم تجاوز حد الطلبات",
+        "ServerError" => "خطأ في الخادم",
+        "Timeout" or "TimedOut" => "انتهت المهلة",
+        "TlsFailure" => "فشل اتصال TLS",
+        "NetworkFailure" => "فشل الشبكة",
+        "AuthenticationUnavailable" => "المصادقة غير متاحة",
+        "ResponseTooLarge" => "الاستجابة أكبر من الحد المسموح",
+        "InvalidResponse" => "استجابة غير صالحة",
         "Failed" or "Failure" => "فشل",
         "Cancelled" => "ملغى",
-        "TimedOut" or "Timeout" => "انتهت المهلة",
         null or "" => "—",
         _ => "نتيجة تنفيذ"
     } : (string.IsNullOrWhiteSpace(value) ? "—" : value);
