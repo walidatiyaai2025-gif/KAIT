@@ -91,6 +91,16 @@ P17 being **CLOSED** does not authorize execution to stop. After every integrati
 
 `VERIFIED_FINAL_COMPLETE` remains **FORBIDDEN** until actual same-commit/same-artifact final evidence satisfies `docs/FINAL_ACCEPTANCE_CRITERIA.md`, all recoverable work is pushed, `UNPUSHED_WORK=NONE`, and the required two zero-gap sweeps pass.
 
+## Post-PR99 fully verified predecessor and current reconciliation
+
+The conditional gate above remains the standing rule, but it no longer describes the latest proven predecessor result. After PR #99, exact main `1006d9fba7d903211a23d65d740e40e4bedf07aa` completed **37/37 governed push workflows terminal SUCCESS**. Fresh exact-source P15/P16/P17 artifacts and SHA-256 evidence were verified, and two independent full LIVE project-wide zero-gap sweeps passed on that same unchanged main: issue #1 comments `5628662557` and `5628690895`. Tracker finalization was recorded in comment `5628701167`; later branch/integration and CI re-audits were recorded in `5628793858` and `5628818850`.
+
+At that predecessor state, repository/cloud convergence had legitimately reached `REMAINING_CLOUD_ACTIONABLE_WORK=0` with `UNPUSHED_WORK=NONE`. OWNER_LAST / DEFERRED_EXTERNAL items remained explicitly NOT PASS.
+
+A subsequent full repository-wide sweep found this repository-native governance file, `PROJECT_CONTROL.md`, `docs/TASK_LEDGER.md`, and the older P17 evidence still stopped at pre-PR99/post-PR95 authority and therefore constituted stale canonical evidence. The lawful recovery is `worker/post-final-governance-reconciliation`; detailed evidence is `docs/evidence/P17_POST_FINAL_GOVERNANCE_RECONCILIATION.md`.
+
+Because this governance reconciliation changes Git source identity, the previously proven `1006d9...` finality is now historical predecessor evidence only for purposes of the new candidate. The reconciliation candidate and any resulting new main must independently pass exact-head CI, normal expected-head-protected merge, exact-new-main CI and fresh same-SHA P15/P16/P17 artifact checks, followed by **two new independent full zero-gap sweeps** on one unchanged exact new main. If main moves, validation restarts. No old-SHA green result is reused as proof for a newer SHA.
+
 ## Deferred / owner-last boundaries — NOT PASS
 
 Authorized real MOJ UAT smoke requiring owner-controlled credentials/SecretRefs and approved non-destructive test data remains `DEFERRED_EXTERNAL_NOT_PASS` where unavailable. Owner action: enter secrets only through protected AuthProfile/Secret Vault administration; verify exact UAT ServiceEnvironmentConfig/AuthProfile/SecretRef bindings with no Production fallback; execute one authorized non-destructive smoke for each five canonical services; retain only sanitized RequestId/CorrelationId, timestamp, service/environment and governed outcome evidence; never record credentials, tokens or personal identifiers.
