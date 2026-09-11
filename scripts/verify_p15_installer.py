@@ -54,6 +54,9 @@ require("IIS AppPool" in setup and "(OI)(CI)M" in setup and "icacls.exe" in setu
 
 require('Text = "Back"' in wizard and '"Next"' in wizard and '"Finish"' in wizard, "wizard does not expose Back/Next/Finish navigation")
 require("Prerequisites" in wizard and "Install path" in wizard and "Application pool" in wizard, "wizard core deployment pages are incomplete")
+require("0.1.0 on Windows Server / IIS" not in wizard, "wizard still hard-codes stale 0.1.0 version")
+require("typeof(InstallerWizard).Assembly.GetName().Version" in wizard and "{ProductVersion}" in wizard,
+        "wizard display version is not derived from assembly metadata")
 require("IIS binding and HTTPS certificate" in wizard and "GetEligibleCertificates" in wizard, "wizard does not expose IIS binding and HTTPS certificate selection")
 require("LocalMachine" in bindings and "StoreName.My" in bindings and "HasPrivateKey" in bindings, "HTTPS certificate selection is not constrained to usable Local Computer certificates")
 require("netsh.exe" in bindings and "sslcert" in bindings and "certhash=" in bindings, "HTTPS certificate binding mechanism is missing")
