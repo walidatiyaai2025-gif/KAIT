@@ -72,6 +72,7 @@
     }
     <main id="main-content" class="main-content @(isSetup ? "setup-main" : string.Empty)" tabindex="-1">@RenderBody()</main>
     <script src="~/js/language-switch.js" asp-append-version="true"></script>
+    <script src="~/js/translation-convergence.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>
