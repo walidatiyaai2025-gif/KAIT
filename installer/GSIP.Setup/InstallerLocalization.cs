@@ -34,6 +34,9 @@ internal static partial class InstallerLocalization
         ("Cancel", "إلغاء"),
         ("Install", "تثبيت"),
         ("Finish", "إنهاء"),
+        ("OK", "موافق"),
+        ("Retry", "إعادة المحاولة"),
+        ("Close", "إغلاق"),
         ("Prerequisite check passed.", "تم اجتياز فحص المتطلبات المسبقة."),
         ("Prerequisite check found blocking items:", "كشف فحص المتطلبات المسبقة عن عناصر مانعة:"),
         ("IIS Web Server / appcmd.exe detected", "تم اكتشاف IIS Web Server / appcmd.exe"),
@@ -58,7 +61,14 @@ internal static partial class InstallerLocalization
         ("Binding:", "الربط:"),
         ("Certificate:", "الشهادة:"),
         ("First-Run Setup:", "إعداد المرة الأولى:"),
-        ("Sanitized installer log:", "سجل التثبيت المنقح:")
+        ("Sanitized installer log:", "سجل التثبيت المنقح:"),
+        ("Install path is required.", "مسار التثبيت مطلوب."),
+        ("IIS site name is required.", "اسم موقع IIS مطلوب."),
+        ("Application pool name is required.", "اسم مجموعة التطبيقات مطلوب."),
+        ("Select a valid Local Computer HTTPS certificate before continuing.", "اختر شهادة HTTPS صالحة من Local Computer قبل المتابعة."),
+        ("Application deployment failed. Review the sanitized installer log and Windows event logs.", "فشل نشر التطبيق. راجع سجل التثبيت المنقح وسجلات أحداث Windows."),
+        ("Installation verification failed: GSIP.Web.dll is missing.", "فشل التحقق من التثبيت: الملف GSIP.Web.dll غير موجود."),
+        ("Installation verification failed: requested IIS binding was not found.", "فشل التحقق من التثبيت: لم يتم العثور على ربط IIS المطلوب.")
     ];
 
     public static bool IsArabic => CultureInfo.CurrentUICulture.Name.StartsWith("ar", StringComparison.OrdinalIgnoreCase)
@@ -70,9 +80,19 @@ internal static partial class InstallerLocalization
     {
         if (!IsArabic) return;
 
+        InstallerDialogLocalizationHook.EnsureInstalled();
         form.RightToLeft = RightToLeft.Yes;
         form.RightToLeftLayout = true;
         AttachRecursive(form);
+    }
+
+    internal static string TranslateForUser(string text)
+    {
+        if (!IsArabic || string.IsNullOrWhiteSpace(text)) return text;
+        var result = StepRegex().Replace(text, match => $"الخطوة {match.Groups[1].Value} من 6");
+        foreach (var (english, arabic) in Replacements)
+            result = result.Replace(english, arabic, StringComparison.Ordinal);
+        return result;
     }
 
     private static void AttachRecursive(Control control)
@@ -96,7 +116,7 @@ internal static partial class InstallerLocalization
     private static void TranslateControl(Control control)
     {
         if (_translating || !IsArabic || string.IsNullOrWhiteSpace(control.Text)) return;
-        var translated = Translate(control.Text);
+        var translated = TranslateForUser(control.Text);
         if (string.Equals(translated, control.Text, StringComparison.Ordinal)) return;
 
         try
@@ -108,14 +128,6 @@ internal static partial class InstallerLocalization
         {
             _translating = false;
         }
-    }
-
-    private static string Translate(string text)
-    {
-        var result = StepRegex().Replace(text, match => $"الخطوة {match.Groups[1].Value} من 6");
-        foreach (var (english, arabic) in Replacements)
-            result = result.Replace(english, arabic, StringComparison.Ordinal);
-        return result;
     }
 
     [GeneratedRegex("^Step ([1-6]) of 6$", RegexOptions.CultureInvariant)]
