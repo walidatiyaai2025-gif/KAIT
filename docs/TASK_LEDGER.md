@@ -79,6 +79,18 @@ Final cloud convergence requires **two consecutive full LIVE-state sweeps with z
 
 The first terminal-green sweep after PR #94 found stale tracker/canonical governance text, so it did **not** count as a clean sweep. PR #95 repaired that evidence drift but its resulting exact main `cbbcd4ea...` must itself be the evidence basis for any later sweep. This recovery line records that predecessor evidence without creating a recursive requirement to encode its own future merge SHA.
 
+## Post-PR99 predecessor reconciliation and current recovery
+
+The historical paragraph immediately above is retained as provenance for the PR #95 era and is superseded for current-state reporting by this section.
+
+PR #99 repair head `ea29891ffedab20bd3dc332f7d63a1844a645cba` was lawfully integrated to exact main `1006d9fba7d903211a23d65d740e40e4bedf07aa`. That exact main completed **37/37 governed push workflows terminal SUCCESS** with fresh same-SHA P15/P16/P17 artifact/hash evidence. After stale tracker-body evidence was repaired without changing source identity, two independent full LIVE zero-gap sweeps passed on that same unchanged main: issue #1 comments `5628662557` and `5628690895`; finalization was recorded in `5628701167`.
+
+At that predecessor state, `REMAINING_CLOUD_ACTIONABLE_WORK=0` and `UNPUSHED_WORK=NONE` were proven for repository/cloud scope. Subsequent branch/integration and exact-main CI re-audits were recorded in issue comments `5628793858` and `5628818850`.
+
+The next complete project-wide sweep found this ledger, `CURRENT_PHASE.md`, `PROJECT_CONTROL.md`, and the older P17 evidence still stopped at the pre-PR99/post-PR95 state. That stale canonical evidence is the present cloud-actionable governance regression. Recovery branch `worker/post-final-governance-reconciliation` reconciles governance/evidence only; see `docs/evidence/P17_POST_FINAL_GOVERNANCE_RECONCILIATION.md`.
+
+Because this recovery changes Git source identity, the two predecessor clean sweeps do **not** count for the new candidate. The candidate must pass exact-head governed CI, normal expected-head-protected merge, exact-new-main governed push CI plus fresh same-SHA P15/P16/P17 artifact checks, then two new independent full zero-gap sweeps on one unchanged exact main. Any main movement restarts validation. Green evidence from an older SHA remains provenance only.
+
 ## OWNER_LAST / deferred external — NOT PASS
 
 The following remain NOT PASS and are never converted to PASS by repository closure:
