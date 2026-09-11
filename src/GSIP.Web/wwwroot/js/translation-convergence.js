@@ -14,14 +14,20 @@
         ['Administrator', 'مدير النظام'],
         ['Branding', 'الهوية البصرية'],
         ['Security', 'الأمان'],
+        ['Integration', 'التكامل'],
         ['Integrations', 'التكاملات'],
+        ['Notifications', 'الإشعارات'],
         ['Review', 'المراجعة'],
+        ['Finish', 'الإنهاء'],
         ['Complete', 'مكتمل'],
         ['PASS', 'ناجح'],
         ['REQUIRED', 'مطلوب'],
         ['English name', 'الاسم الإنجليزي'],
         ['Windows Authentication — GSIP process identity', 'مصادقة Windows — هوية عملية GSIP'],
         ['SQL Authentication — username + password', 'مصادقة SQL — اسم المستخدم + كلمة المرور'],
+        ['Application data directory is writable.', 'مجلد بيانات التطبيق قابل للكتابة.'],
+        ['Data Protection encryption round-trip succeeded.', 'نجح اختبار التشفير وفك التشفير لحماية البيانات.'],
+        ['.NET application runtime is active.', 'بيئة تشغيل تطبيق .NET نشطة.'],
         ['API Key Header', 'مفتاح API في الترويسة'],
         ['Static Bearer', 'Bearer ثابت'],
         ['Token Endpoint', 'نقطة إصدار الرمز'],
@@ -94,6 +100,10 @@
             element.textContent = container?.classList.contains('success')
                 ? 'تمت العملية بنجاح.'
                 : 'تعذر إكمال العملية. استخدم رمز العملية وسجل النظام للتشخيص.';
+        }
+
+        if (element.matches('.setup-checks li') && !/[\u0600-\u06FF]/u.test(element.textContent ?? '')) {
+            element.textContent = 'تعذر اجتياز أحد فحوصات الإعداد. راجع رمز العملية وسجل النظام للتشخيص.';
         }
     };
 
