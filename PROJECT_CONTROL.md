@@ -142,6 +142,14 @@ P17 CLOSED is not final execution termination. After every formal-closure or evi
 
 Only after both sweeps are clean may `REMAINING_CLOUD_ACTIONABLE_WORK=0` be reported. `VERIFIED_FINAL_COMPLETE` remains forbidden unless the user's stricter exact-final-main/same-SHA CI/artifact/governance conditions are also proven.
 
+## Post-PR99 predecessor reconciliation
+
+The standing zero-gap/finality rule above remains authoritative. Its conditions were fully satisfied on predecessor exact main `1006d9fba7d903211a23d65d740e40e4bedf07aa` before this reconciliation: PR #99 repair head `ea29891ffedab20bd3dc332f7d63a1844a645cba` was integrated, exact-main governed push CI completed **37/37 terminal SUCCESS**, fresh exact-source P15/P16/P17 artifact/hash evidence was verified, and two independent full LIVE zero-gap sweeps passed on the same unchanged source in issue #1 comments `5628662557` and `5628690895`. Tracker finalization was recorded in `5628701167`.
+
+A later complete repository sweep identified stale repository-native governance still stopping at the older post-PR95 predecessor. That is the current cloud-actionable gap. The recovery branch `worker/post-final-governance-reconciliation` updates governance/evidence only; detailed evidence is `docs/evidence/P17_POST_FINAL_GOVERNANCE_RECONCILIATION.md`.
+
+Because this reconciliation changes source identity, `1006d9...` is now predecessor provenance only for the new candidate. Before the reconciliation can become final authority, its exact head must pass governed CI, merge normally with expected-head protection, the resulting exact-new-main must pass its own governed push matrix and fresh same-SHA P15/P16/P17 evidence, and two new independent full zero-gap sweeps must pass without main movement. Old-SHA green evidence is never reused as proof for a newer SHA.
+
 ## OWNER_LAST / deferred external — NOT PASS
 
 These remain explicitly NOT PASS and are not converted to PASS by repository/cloud closure:
