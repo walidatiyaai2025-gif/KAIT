@@ -13,7 +13,7 @@ internal sealed class InstallerWizard : Form
     private const int ReviewPage = 4;
     private const int FinishPage = 5;
 
-    private static string ProductVersion
+    private new static string ProductVersion
     {
         get
         {
