@@ -26,8 +26,10 @@ internal static class WizardEntryPoint
                 catch (Win32Exception exception) when (exception.NativeErrorCode == 1223)
                 {
                     MessageBox.Show(
-                        "Administrator elevation was cancelled. GSIP Setup requires elevation to configure IIS.",
-                        "GSIP Setup",
+                        InstallerLocalization.T(
+                            "Administrator elevation was cancelled. GSIP Setup requires elevation to configure IIS.",
+                            "تم إلغاء منح صلاحيات المسؤول. يتطلب إعداد GSIP صلاحيات المسؤول لضبط IIS."),
+                        InstallerLocalization.T("GSIP Setup", "إعداد GSIP"),
                         MessageBoxButtons.OK,
                         MessageBoxIcon.Warning);
                     return 1;
@@ -38,6 +40,7 @@ internal static class WizardEntryPoint
             log.Write("START", "interactive wizard");
             ApplicationConfiguration.Initialize();
             using var wizard = new InstallerWizard(log);
+            InstallerLocalization.Attach(wizard);
             Application.Run(wizard);
             log.Write(wizard.ExitCode == 0 ? "SUCCESS" : "CANCELLED", "interactive wizard");
             return wizard.ExitCode;
@@ -62,7 +65,9 @@ internal static class WizardEntryPoint
     private static void RelaunchElevated(string? logPath)
     {
         var executable = Environment.ProcessPath
-            ?? throw new InvalidOperationException("Could not resolve the GSIP Setup executable path.");
+            ?? throw new InvalidOperationException(InstallerLocalization.T(
+                "Could not resolve the GSIP Setup executable path.",
+                "تعذر تحديد مسار ملف تشغيل إعداد GSIP."));
         var start = new ProcessStartInfo(executable)
         {
             UseShellExecute = true,
@@ -111,7 +116,9 @@ internal static class WizardEntryPoint
                 if (string.Equals(arg, "--log-path", StringComparison.OrdinalIgnoreCase))
                 {
                     if (++index >= args.Length)
-                        throw new ArgumentException("Missing value for --log-path.");
+                        throw new ArgumentException(InstallerLocalization.T(
+                            "Missing value for --log-path.",
+                            "القيمة المطلوبة للوسيط --log-path غير موجودة."));
                     logPath = args[index];
                     continue;
                 }
@@ -120,7 +127,9 @@ internal static class WizardEntryPoint
             }
 
             if (useWizard && remaining.Count != 0)
-                throw new ArgumentException("--wizard cannot be combined with command-line maintenance arguments.");
+                throw new ArgumentException(InstallerLocalization.T(
+                    "--wizard cannot be combined with command-line maintenance arguments.",
+                    "لا يمكن استخدام --wizard مع معاملات صيانة سطر الأوامر."));
 
             return new SetupCommandEnvelope(useWizard, logPath, remaining.ToArray());
         }
