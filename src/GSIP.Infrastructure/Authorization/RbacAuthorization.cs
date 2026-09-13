@@ -99,8 +99,16 @@ public sealed class GsipPermissionEvaluator(GsipDbContext dbContext) : IGsipPerm
             return false;
         }
 
-        // Resolve the service grant to exactly one active current service/entity pair.
-        // Ambiguous legacy service codes fail closed before user-level scope is applied.
+        var scope = await EntityAccessScopeStore.GetForUserAsync(dbContext, userId, cancellationToken);
+        if (scope.AllEntities && scope.AllServices)
+        {
+            // No explicit user-level restriction exists. Preserve the pre-scope
+            // RBAC/service-grant behavior without requiring catalog metadata.
+            return true;
+        }
+
+        // An explicit user scope needs an exact active current service/entity
+        // binding so forged, stale or ambiguous service codes fail closed.
         var serviceScopes = await (
             from service in dbContext.CatalogServices.AsNoTracking()
             join entity in dbContext.CatalogEntities.AsNoTracking() on service.EntityId equals entity.Id
@@ -117,7 +125,6 @@ public sealed class GsipPermissionEvaluator(GsipDbContext dbContext) : IGsipPerm
             return false;
         }
 
-        var scope = await EntityAccessScopeStore.GetForUserAsync(dbContext, userId, cancellationToken);
         return scope.AllowsService(serviceScopes[0].EntityCode, serviceScopes[0].ServiceCode);
     }
 
