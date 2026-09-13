@@ -23,21 +23,21 @@
     <input type="hidden" name="culture" value="@culture" />
     <label class="selector-card">
         <span>@L["Entity"]</span>
-        <select name="entityId" onchange="this.form.submit()" aria-label="@L["Entity"]">
+        <select name="entityId" onchange="this.form.querySelector('[name=serviceId]').value=''; this.form.querySelector('[name=environmentId]').value=''; this.form.submit();" aria-label="@L["Entity"]">
             <option value="">@L["SelectEntity"]</option>
             @foreach (var option in Model.Entities)
             {
-                <option value="@option.Id" selected="@(option.Id == Model.SelectedEntityId)">@option.Label</option>
+                <option value="@option.Id" selected="@(option.Id == Model.SelectedEntityId ? "selected" : null)">@option.Label</option>
             }
         </select>
     </label>
     <label class="selector-card">
         <span>@L["Service"]</span>
-        <select name="serviceId" onchange="this.form.submit()" aria-label="@L["Service"]">
+        <select name="serviceId" onchange="this.form.querySelector('[name=environmentId]').value=''; this.form.submit();" aria-label="@L["Service"]">
             <option value="">@L["SelectService"]</option>
             @foreach (var option in Model.Services)
             {
-                <option value="@option.Id" selected="@(option.Id == Model.SelectedServiceId)">@option.Label</option>
+                <option value="@option.Id" selected="@(option.Id == Model.SelectedServiceId ? "selected" : null)">@option.Label</option>
             }
         </select>
     </label>
@@ -47,7 +47,7 @@
             <option value="">@L["SelectEnvironment"]</option>
             @foreach (var option in Model.Environments)
             {
-                <option value="@option.Id" selected="@(option.Id == Model.SelectedEnvironmentId)">@option.Label</option>
+                <option value="@option.Id" selected="@(option.Id == Model.SelectedEnvironmentId ? "selected" : null)">@option.Label</option>
             }
         </select>
     </label>
