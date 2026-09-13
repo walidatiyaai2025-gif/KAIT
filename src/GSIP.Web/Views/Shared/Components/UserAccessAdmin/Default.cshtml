@@ -1,0 +1,235 @@
+@model UserAccessAdminViewModel
+@using System.Globalization
+@{
+    var L = new PermissionsText();
+    var culture = CultureInfo.CurrentUICulture.Name;
+    var isArabic = CultureInfo.CurrentUICulture.TextInfo.IsRightToLeft;
+}
+<section id="user-provisioning" class="permission-panel role-admin-panel" aria-labelledby="user-provisioning-title">
+    <div class="panel-heading">
+        <div>
+            <h2 id="user-provisioning-title">@L["UserProvisioning"]</h2>
+            <p>@L["UserProvisioningSubtitle"]</p>
+        </div>
+        <span class="default-deny-badge">@L["DefaultDeny"]</span>
+    </div>
+
+    <div class="role-admin-body">
+        <form method="post" asp-controller="UserAccessAdministration" asp-action="CreateUser" class="role-create-form access-scope-form" data-access-scope-form>
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="culture" value="@culture" />
+            <label>
+                <span>@L["DisplayName"]</span>
+                <input name="displayName" maxlength="160" required autocomplete="name" />
+            </label>
+            <label>
+                <span>@L["Username"]</span>
+                <input name="username" maxlength="120" required autocomplete="off" dir="ltr" />
+            </label>
+            <label>
+                <span>@L["Email"]</span>
+                <input name="email" type="email" maxlength="254" required autocomplete="off" dir="ltr" />
+            </label>
+            <label>
+                <span>@L["DepartmentCode"]</span>
+                <input name="departmentCode" maxlength="100" autocomplete="off" dir="ltr" />
+            </label>
+            <label>
+                <span>@L["InitialPassword"]</span>
+                <input name="initialPassword" type="password" minlength="12" maxlength="128" required autocomplete="new-password" dir="ltr" />
+                <small>@L["InitialPasswordHint"]</small>
+            </label>
+            <label>
+                <span>@L["InitialRole"]</span>
+                <select name="roleId">
+                    <option value="">@L["NoInitialRole"]</option>
+                    @foreach (var role in Model.Roles)
+                    {
+                        <option value="@role.Id">@L.Role(role.Name)</option>
+                    }
+                </select>
+            </label>
+            <label class="user-role-row">
+                <span>@L["PrivilegedAccount"]</span>
+                <input name="isPrivileged" type="checkbox" value="true" />
+                <input type="hidden" name="isPrivileged" value="false" />
+            </label>
+
+            <fieldset class="user-role-management access-scope-block">
+                <legend>@L["EntityAccess"]</legend>
+                <p>@L["EntityAccessSubtitle"]</p>
+                <label class="user-role-row">
+                    <span>@L["AllEntities"]</span>
+                    <input data-all-entities name="allEntities" type="checkbox" value="true" checked />
+                    <input type="hidden" name="allEntities" value="false" />
+                </label>
+                <div class="role-chip-list" aria-label="@L["SelectedEntities"]">
+                    @foreach (var entity in Model.Entities)
+                    {
+                        <label class="role-chip">
+                            <input data-entity-code="@entity.Code" type="checkbox" name="entityCodes" value="@entity.Code" disabled />
+                            <span>@(isArabic ? entity.NameAr : entity.NameEn) <small dir="ltr">(@entity.Code)</small></span>
+                        </label>
+                    }
+                </div>
+            </fieldset>
+
+            <fieldset class="user-role-management access-scope-block">
+                <legend>@L["ServiceAccess"]</legend>
+                <p>@L["ServiceAccessSubtitle"]</p>
+                <label class="user-role-row">
+                    <span>@L["AllServices"]</span>
+                    <input data-all-services name="allServices" type="checkbox" value="true" checked />
+                    <input type="hidden" name="allServices" value="false" />
+                </label>
+                <div class="service-access-groups" aria-label="@L["SelectedServices"]">
+                    @foreach (var entity in Model.Entities)
+                    {
+                        var entityServices = Model.Services.Where(service => string.Equals(service.EntityCode, entity.Code, StringComparison.OrdinalIgnoreCase)).ToArray();
+                        if (entityServices.Length == 0) { continue; }
+                        <section class="service-access-group" data-service-entity="@entity.Code">
+                            <strong>@(isArabic ? entity.NameAr : entity.NameEn) <small dir="ltr">(@entity.Code)</small></strong>
+                            <div class="role-chip-list">
+                                @foreach (var service in entityServices)
+                                {
+                                    <label class="role-chip">
+                                        <input data-service-code="@service.ServiceCode"
+                                               data-service-entity-code="@service.EntityCode"
+                                               type="checkbox"
+                                               name="serviceKeys"
+                                               value="@UserAccessAdminViewModel.ServiceKey(service.EntityCode, service.ServiceCode)"
+                                               disabled />
+                                        <span>@(isArabic ? service.NameAr : service.NameEn) <small dir="ltr">(@service.ServiceCode)</small></span>
+                                    </label>
+                                }
+                            </div>
+                        </section>
+                    }
+                </div>
+            </fieldset>
+
+            <button class="primary-action" type="submit">@L["CreateUser"]</button>
+        </form>
+
+        @if (Model.SelectedUserId is Guid selectedUserId)
+        {
+            <form method="post"
+                  asp-controller="UserAccessAdministration"
+                  asp-action="SetAccessScope"
+                  asp-route-userId="@selectedUserId"
+                  class="role-create-form access-scope-form"
+                  data-access-scope-form>
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="culture" value="@culture" />
+                <div>
+                    <strong>@L["UserAccess"] — @Model.SelectedUserDisplayName</strong>
+                    <small dir="ltr">@Model.SelectedUsername</small>
+                </div>
+
+                <fieldset class="user-role-management access-scope-block">
+                    <legend>@L["EntityAccess"]</legend>
+                    <p>@L["EntityAccessSubtitle"]</p>
+                    <label class="user-role-row">
+                        <span>@L["AllEntities"]</span>
+                        <input data-all-entities
+                               name="allEntities"
+                               type="checkbox"
+                               value="true"
+                               @(Model.AllEntities ? "checked" : null) />
+                        <input type="hidden" name="allEntities" value="false" />
+                    </label>
+                    <div class="role-chip-list" aria-label="@L["SelectedEntities"]">
+                        @foreach (var entity in Model.Entities)
+                        {
+                            <label class="role-chip">
+                                <input data-entity-code="@entity.Code"
+                                       type="checkbox"
+                                       name="entityCodes"
+                                       value="@entity.Code"
+                                       @(Model.SelectedUserHasEntity(entity.Code) ? "checked" : null)
+                                       @(Model.AllEntities ? "disabled" : null) />
+                                <span>@(isArabic ? entity.NameAr : entity.NameEn) <small dir="ltr">(@entity.Code)</small></span>
+                            </label>
+                        }
+                    </div>
+                    @if (!Model.AllEntities && Model.SelectedEntityCodes.Count == 0)
+                    {
+                        <span class="muted-chip">@L["NoEntityAccess"]</span>
+                    }
+                </fieldset>
+
+                <fieldset class="user-role-management access-scope-block">
+                    <legend>@L["ServiceAccess"]</legend>
+                    <p>@L["ServiceAccessSubtitle"]</p>
+                    <label class="user-role-row">
+                        <span>@L["AllServices"]</span>
+                        <input data-all-services
+                               name="allServices"
+                               type="checkbox"
+                               value="true"
+                               @(Model.AllServices ? "checked" : null) />
+                        <input type="hidden" name="allServices" value="false" />
+                    </label>
+                    <div class="service-access-groups" aria-label="@L["SelectedServices"]">
+                        @foreach (var entity in Model.Entities)
+                        {
+                            var entityServices = Model.Services.Where(service => string.Equals(service.EntityCode, entity.Code, StringComparison.OrdinalIgnoreCase)).ToArray();
+                            if (entityServices.Length == 0) { continue; }
+                            <section class="service-access-group" data-service-entity="@entity.Code">
+                                <strong>@(isArabic ? entity.NameAr : entity.NameEn) <small dir="ltr">(@entity.Code)</small></strong>
+                                <div class="role-chip-list">
+                                    @foreach (var service in entityServices)
+                                    {
+                                        <label class="role-chip">
+                                            <input data-service-code="@service.ServiceCode"
+                                                   data-service-entity-code="@service.EntityCode"
+                                                   type="checkbox"
+                                                   name="serviceKeys"
+                                                   value="@UserAccessAdminViewModel.ServiceKey(service.EntityCode, service.ServiceCode)"
+                                                   @(Model.SelectedUserHasService(service.EntityCode, service.ServiceCode) ? "checked" : null)
+                                                   @(Model.AllServices ? "disabled" : null) />
+                                            <span>@(isArabic ? service.NameAr : service.NameEn) <small dir="ltr">(@service.ServiceCode)</small></span>
+                                        </label>
+                                    }
+                                </div>
+                            </section>
+                        }
+                    </div>
+                    @if (!Model.AllServices && Model.SelectedServiceKeys.Count == 0)
+                    {
+                        <span class="muted-chip">@L["NoServiceAccess"]</span>
+                    }
+                </fieldset>
+
+                <button class="primary-action" type="submit">@L["SaveUserAccess"]</button>
+            </form>
+        }
+    </div>
+</section>
+
+<script>
+(() => {
+    document.querySelectorAll('[data-access-scope-form]').forEach((form) => {
+        const allEntities = form.querySelector('[data-all-entities]');
+        const allServices = form.querySelector('[data-all-services]');
+        const entityBoxes = [...form.querySelectorAll('[data-entity-code]')];
+        const serviceBoxes = [...form.querySelectorAll('[data-service-entity-code]')];
+        if (!allEntities || !allServices) return;
+
+        const sync = () => {
+            entityBoxes.forEach((box) => { box.disabled = allEntities.checked; });
+            const selectedEntities = new Set(entityBoxes.filter((box) => box.checked).map((box) => box.dataset.entityCode));
+            serviceBoxes.forEach((box) => {
+                const outsideSelectedEntity = !allEntities.checked && !selectedEntities.has(box.dataset.serviceEntityCode);
+                box.disabled = allServices.checked || outsideSelectedEntity;
+                if (outsideSelectedEntity) box.checked = false;
+            });
+        };
+
+        allEntities.addEventListener('change', sync);
+        allServices.addEventListener('change', sync);
+        entityBoxes.forEach((box) => box.addEventListener('change', sync));
+        sync();
+    });
+})();
+</script>

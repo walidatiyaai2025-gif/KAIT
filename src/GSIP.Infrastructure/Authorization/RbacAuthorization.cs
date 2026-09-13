@@ -86,7 +86,7 @@ public sealed class GsipPermissionEvaluator(GsipDbContext dbContext) : IGsipPerm
         }
 
         var normalizedServiceCode = serviceCode.Trim().ToUpperInvariant();
-        return await dbContext.RoleServicePermissions
+        var hasServiceGrant = await dbContext.RoleServicePermissions
             .AsNoTracking()
             .AnyAsync(
                 row => entitledRoleIds.Contains(row.RoleId)
@@ -94,6 +94,38 @@ public sealed class GsipPermissionEvaluator(GsipDbContext dbContext) : IGsipPerm
                     && row.PermissionKey == permission
                     && row.IsAllowed,
                 cancellationToken);
+        if (!hasServiceGrant)
+        {
+            return false;
+        }
+
+        var scope = await EntityAccessScopeStore.GetForUserAsync(dbContext, userId, cancellationToken);
+        if (scope.AllEntities && scope.AllServices)
+        {
+            // No explicit user-level restriction exists. Preserve the pre-scope
+            // RBAC/service-grant behavior without requiring catalog metadata.
+            return true;
+        }
+
+        // An explicit user scope needs an exact active current service/entity
+        // binding so forged, stale or ambiguous service codes fail closed.
+        var serviceScopes = await (
+            from service in dbContext.CatalogServices.AsNoTracking()
+            join entity in dbContext.CatalogEntities.AsNoTracking() on service.EntityId equals entity.Id
+            where service.IsCurrent
+                && service.Active
+                && entity.Active
+                && service.Code == normalizedServiceCode
+            select new { EntityCode = entity.Code, ServiceCode = service.Code })
+            .Distinct()
+            .Take(2)
+            .ToListAsync(cancellationToken);
+        if (serviceScopes.Count != 1)
+        {
+            return false;
+        }
+
+        return scope.AllowsService(serviceScopes[0].EntityCode, serviceScopes[0].ServiceCode);
     }
 
     private async Task<List<Guid>> GetRoleIdsAsync(Guid userId, CancellationToken cancellationToken) =>

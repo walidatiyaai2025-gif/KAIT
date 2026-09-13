@@ -20,9 +20,27 @@
                 <input id="permissions-search" type="search" placeholder="@L["SearchPlaceholder"]" autocomplete="off" />
             </label>
             <a class="secondary-action action-link" href="#role-admin">+ @L["CreateRole"]</a>
-            <button class="primary-action" type="button" disabled title="@L["ProvisioningLater"]">+ @L["AddUser"]</button>
+            <a class="primary-action action-link" href="#user-provisioning">+ @L["AddUser"]</a>
         </div>
     </header>
+
+    @if (TempData["PermissionsAdminSuccess"] is string adminSuccess)
+    {
+        <div class="default-deny-callout" role="status"><span aria-hidden="true">✓</span><div><strong>@L[adminSuccess]</strong></div></div>
+    }
+    @if (TempData["PermissionsAdminError"] is string adminError)
+    {
+        <div class="default-deny-callout" role="alert">
+            <span aria-hidden="true">!</span>
+            <div>
+                <strong>@L[adminError]</strong>
+                @if (TempData["PermissionsAdminErrorDetail"] is string adminErrorDetail && !string.IsNullOrWhiteSpace(adminErrorDetail))
+                {
+                    <p>@adminErrorDetail</p>
+                }
+            </div>
+        </div>
+    }
 
     <section class="permissions-kpis" aria-label="@L["PageTitle"]">
         <article><span class="metric-icon">⌛</span><div><strong>@Model.PendingApprovals</strong><span>@L["PendingApprovals"]</span></div></article>
@@ -136,6 +154,8 @@
             }
         </aside>
     </div>
+
+    @await Component.InvokeAsync("UserAccessAdmin", new { userId = Model.SelectedUser?.Id })
 
     <section id="role-admin" class="permission-panel role-admin-panel" aria-labelledby="role-admin-title">
         <div class="panel-heading">
