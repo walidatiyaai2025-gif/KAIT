@@ -34,6 +34,7 @@
   <data name="NewPassword"><value>كلمة المرور الجديدة</value></data>
   <data name="ConfirmPassword"><value>تأكيد كلمة المرور الجديدة</value></data>
   <data name="ChangePassword"><value>غيّر كلمة المرور وتابع</value></data>
+  <data name="PasswordPolicyHint"><value>استخدم من 12 إلى 128 حرفاً مع حرف إنجليزي كبير واحد على الأقل، وحرف صغير، ورقم، ورمز. يتم قبول كلمات المرور بنمط ExamplePass@2020.</value></data>
   <data name="PasswordRequiredFields"><value>أكمل جميع حقول كلمة المرور.</value></data>
   <data name="PasswordMismatch"><value>كلمة المرور الجديدة وتأكيدها غير متطابقين.</value></data>
   <data name="PasswordChangeRejected"><value>تم رفض تغيير كلمة المرور. تحقق من كلمة المرور الحالية وسياسة كلمات المرور المطبقة.</value></data>
