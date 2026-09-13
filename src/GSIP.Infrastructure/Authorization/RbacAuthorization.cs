@@ -86,7 +86,7 @@ public sealed class GsipPermissionEvaluator(GsipDbContext dbContext) : IGsipPerm
         }
 
         var normalizedServiceCode = serviceCode.Trim().ToUpperInvariant();
-        return await dbContext.RoleServicePermissions
+        var hasServiceGrant = await dbContext.RoleServicePermissions
             .AsNoTracking()
             .AnyAsync(
                 row => entitledRoleIds.Contains(row.RoleId)
@@ -94,6 +94,33 @@ public sealed class GsipPermissionEvaluator(GsipDbContext dbContext) : IGsipPerm
                     && row.PermissionKey == permission
                     && row.IsAllowed,
                 cancellationToken);
+        if (!hasServiceGrant)
+        {
+            return false;
+        }
+
+        var scope = await EntityAccessScopeStore.GetForUserAsync(dbContext, userId, cancellationToken);
+        if (scope.IsUnrestricted)
+        {
+            return true;
+        }
+
+        // Service codes are the existing service-permission key. When an explicit
+        // user entity scope exists, resolve that code back to one active current
+        // entity and fail closed if the catalog is ambiguous.
+        var entityCodes = await (
+            from service in dbContext.CatalogServices.AsNoTracking()
+            join entity in dbContext.CatalogEntities.AsNoTracking() on service.EntityId equals entity.Id
+            where service.IsCurrent
+                && service.Active
+                && entity.Active
+                && service.Code == serviceCode
+            select entity.Code)
+            .Distinct()
+            .Take(2)
+            .ToListAsync(cancellationToken);
+
+        return entityCodes.Count == 1 && scope.Allows(entityCodes[0]);
     }
 
     private async Task<List<Guid>> GetRoleIdsAsync(Guid userId, CancellationToken cancellationToken) =>
