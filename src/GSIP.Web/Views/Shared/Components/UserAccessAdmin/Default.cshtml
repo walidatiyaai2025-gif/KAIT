@@ -1,0 +1,142 @@
+@model UserAccessAdminViewModel
+@using System.Globalization
+@{
+    var L = new PermissionsText();
+    var culture = CultureInfo.CurrentUICulture.Name;
+    var isArabic = CultureInfo.CurrentUICulture.TextInfo.IsRightToLeft;
+}
+<section id="user-provisioning" class="permission-panel role-admin-panel" aria-labelledby="user-provisioning-title">
+    <div class="panel-heading">
+        <div>
+            <h2 id="user-provisioning-title">@L["UserProvisioning"]</h2>
+            <p>@L["UserProvisioningSubtitle"]</p>
+        </div>
+        <span class="default-deny-badge">@L["DefaultDeny"]</span>
+    </div>
+
+    <div class="role-admin-body">
+        <form method="post" asp-controller="UserAccessAdministration" asp-action="CreateUser" class="role-create-form">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="culture" value="@culture" />
+            <label>
+                <span>@L["DisplayName"]</span>
+                <input name="displayName" maxlength="160" required autocomplete="name" />
+            </label>
+            <label>
+                <span>@L["Username"]</span>
+                <input name="username" maxlength="120" required autocomplete="off" dir="ltr" />
+            </label>
+            <label>
+                <span>@L["Email"]</span>
+                <input name="email" type="email" maxlength="254" required autocomplete="off" dir="ltr" />
+            </label>
+            <label>
+                <span>@L["DepartmentCode"]</span>
+                <input name="departmentCode" maxlength="100" autocomplete="off" dir="ltr" />
+            </label>
+            <label>
+                <span>@L["InitialPassword"]</span>
+                <input name="initialPassword" type="password" minlength="12" maxlength="128" required autocomplete="new-password" dir="ltr" />
+                <small>@L["InitialPasswordHint"]</small>
+            </label>
+            <label>
+                <span>@L["InitialRole"]</span>
+                <select name="roleId">
+                    <option value="">@L["NoInitialRole"]</option>
+                    @foreach (var role in Model.Roles)
+                    {
+                        <option value="@role.Id">@L.Role(role.Name)</option>
+                    }
+                </select>
+            </label>
+            <label class="user-role-row">
+                <span>@L["PrivilegedAccount"]</span>
+                <input type="hidden" name="isPrivileged" value="false" />
+                <input name="isPrivileged" type="checkbox" value="true" />
+            </label>
+
+            <fieldset class="user-role-management">
+                <legend>@L["EntityAccess"]</legend>
+                <p>@L["EntityAccessSubtitle"]</p>
+                <label class="user-role-row">
+                    <span>@L["AllEntities"]</span>
+                    <input type="hidden" name="allEntities" value="false" />
+                    <input id="new-user-all-entities" name="allEntities" type="checkbox" value="true" checked />
+                </label>
+                <div id="new-user-entity-list" class="role-chip-list" aria-label="@L["SelectedEntities"]">
+                    @foreach (var entity in Model.Entities)
+                    {
+                        <label class="role-chip">
+                            <input type="checkbox" name="entityCodes" value="@entity.Code" disabled />
+                            <span>@(isArabic ? entity.NameAr : entity.NameEn) <small dir="ltr">(@entity.Code)</small></span>
+                        </label>
+                    }
+                </div>
+            </fieldset>
+
+            <button class="primary-action" type="submit">@L["CreateUser"]</button>
+        </form>
+
+        @if (Model.SelectedUserId is Guid selectedUserId)
+        {
+            <form method="post"
+                  asp-controller="UserAccessAdministration"
+                  asp-action="SetEntityScope"
+                  asp-route-userId="@selectedUserId"
+                  class="role-create-form">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="culture" value="@culture" />
+                <div>
+                    <strong>@L["EntityAccess"] — @Model.SelectedUserDisplayName</strong>
+                    <small dir="ltr">@Model.SelectedUsername</small>
+                </div>
+                <label class="user-role-row">
+                    <span>@L["AllEntities"]</span>
+                    <input type="hidden" name="allEntities" value="false" />
+                    <input id="selected-user-all-entities"
+                           name="allEntities"
+                           type="checkbox"
+                           value="true"
+                           @(Model.ScopeIsUnrestricted ? "checked" : null) />
+                </label>
+                <div id="selected-user-entity-list" class="role-chip-list" aria-label="@L["SelectedEntities"]">
+                    @foreach (var entity in Model.Entities)
+                    {
+                        <label class="role-chip">
+                            <input type="checkbox"
+                                   name="entityCodes"
+                                   value="@entity.Code"
+                                   @(Model.SelectedUserHasEntity(entity.Code) ? "checked" : null)
+                                   @(Model.ScopeIsUnrestricted ? "disabled" : null) />
+                            <span>@(isArabic ? entity.NameAr : entity.NameEn) <small dir="ltr">(@entity.Code)</small></span>
+                        </label>
+                    }
+                </div>
+                @if (!Model.ScopeIsUnrestricted && Model.SelectedEntityCodes.Count == 0)
+                {
+                    <span class="muted-chip">@L["NoEntityAccess"]</span>
+                }
+                <button class="primary-action" type="submit">@L["SaveEntityAccess"]</button>
+            </form>
+        }
+    </div>
+</section>
+
+<script>
+(() => {
+    const wireScope = (allId, listId) => {
+        const all = document.getElementById(allId);
+        const list = document.getElementById(listId);
+        if (!all || !list) return;
+        const sync = () => {
+            list.querySelectorAll('input[type="checkbox"]').forEach((box) => {
+                box.disabled = all.checked;
+            });
+        };
+        all.addEventListener('change', sync);
+        sync();
+    };
+    wireScope('new-user-all-entities', 'new-user-entity-list');
+    wireScope('selected-user-all-entities', 'selected-user-entity-list');
+})();
+</script>
