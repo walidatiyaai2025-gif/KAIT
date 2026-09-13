@@ -29,6 +29,8 @@ public sealed class UserAccessAdministrationController(
         Guid? roleId,
         bool allEntities,
         string[]? entityCodes,
+        bool allServices,
+        string[]? serviceKeys,
         string? culture,
         CancellationToken cancellationToken)
     {
@@ -64,10 +66,15 @@ public sealed class UserAccessAdministrationController(
             }
         }
 
-        var validatedEntityCodes = await ValidateEntityCodesAsync(allEntities, entityCodes, cancellationToken);
-        if (validatedEntityCodes is null)
+        var validatedScope = await ValidateScopeAsync(
+            allEntities,
+            entityCodes,
+            allServices,
+            serviceKeys,
+            cancellationToken);
+        if (validatedScope is null)
         {
-            return RedirectWithError("EntityAccessInvalid", culture);
+            return RedirectWithError("UserAccessInvalid", culture);
         }
 
         var user = new ApplicationUser
@@ -108,7 +115,9 @@ public sealed class UserAccessAdministrationController(
                 dbContext,
                 user.Id,
                 allEntities,
-                validatedEntityCodes,
+                validatedScope.EntityCodes,
+                allServices,
+                validatedScope.Services,
                 cancellationToken);
         }
         catch
@@ -122,13 +131,15 @@ public sealed class UserAccessAdministrationController(
         return RedirectToPermissions(user.Id, culture);
     }
 
-    [HttpPost("{userId:guid}/entity-scope")]
+    [HttpPost("{userId:guid}/access-scope")]
     [Authorize(Policy = GsipPermissions.UsersManage)]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SetEntityScope(
+    public async Task<IActionResult> SetAccessScope(
         Guid userId,
         bool allEntities,
         string[]? entityCodes,
+        bool allServices,
+        string[]? serviceKeys,
         string? culture,
         CancellationToken cancellationToken)
     {
@@ -137,55 +148,107 @@ public sealed class UserAccessAdministrationController(
             return NotFound();
         }
 
-        var validatedEntityCodes = await ValidateEntityCodesAsync(allEntities, entityCodes, cancellationToken);
-        if (validatedEntityCodes is null)
+        var validatedScope = await ValidateScopeAsync(
+            allEntities,
+            entityCodes,
+            allServices,
+            serviceKeys,
+            cancellationToken);
+        if (validatedScope is null)
         {
-            return RedirectWithError("EntityAccessInvalid", culture, userId);
+            return RedirectWithError("UserAccessInvalid", culture, userId);
         }
 
         await EntityAccessScopeStore.SetForUserAsync(
             dbContext,
             userId,
             allEntities,
-            validatedEntityCodes,
+            validatedScope.EntityCodes,
+            allServices,
+            validatedScope.Services,
             cancellationToken);
 
-        TempData["PermissionsAdminSuccess"] = "EntityAccessSaved";
+        TempData["PermissionsAdminSuccess"] = "UserAccessSaved";
         return RedirectToPermissions(userId, culture);
     }
 
-    private async Task<IReadOnlyList<string>?> ValidateEntityCodesAsync(
+    private async Task<ValidatedScope?> ValidateScopeAsync(
         bool allEntities,
         IEnumerable<string>? entityCodes,
+        bool allServices,
+        IEnumerable<string>? serviceKeys,
         CancellationToken cancellationToken)
     {
-        if (allEntities)
-        {
-            return [];
-        }
-
-        var requested = (entityCodes ?? [])
-            .Select(code => code?.Trim().ToUpperInvariant() ?? string.Empty)
-            .Where(code => code.Length is > 0 and <= 40)
-            .Distinct(StringComparer.Ordinal)
-            .OrderBy(code => code, StringComparer.Ordinal)
-            .ToArray();
-
-        if (requested.Length == 0)
-        {
-            return requested;
-        }
-
-        var known = await dbContext.CatalogEntities
+        var activeEntities = await dbContext.CatalogEntities
             .AsNoTracking()
             .Where(entity => entity.Active)
             .Select(entity => entity.Code)
             .ToListAsync(cancellationToken);
-        var knownSet = known
-            .Select(code => code.Trim().ToUpperInvariant())
+        var knownEntities = activeEntities
+            .Select(NormalizeCode)
             .ToHashSet(StringComparer.Ordinal);
 
-        return requested.All(knownSet.Contains) ? requested : null;
+        var requestedEntities = allEntities
+            ? []
+            : (entityCodes ?? [])
+                .Select(NormalizeCode)
+                .Where(code => code.Length is > 0 and <= 40)
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(code => code, StringComparer.Ordinal)
+                .ToArray();
+        if (!requestedEntities.All(knownEntities.Contains))
+        {
+            return null;
+        }
+
+        if (allServices)
+        {
+            return new ValidatedScope(requestedEntities, []);
+        }
+
+        var activeServices = await (
+            from service in dbContext.CatalogServices.AsNoTracking()
+            join entity in dbContext.CatalogEntities.AsNoTracking() on service.EntityId equals entity.Id
+            where service.Active && service.IsCurrent && entity.Active
+            select new { EntityCode = entity.Code, ServiceCode = service.Code })
+            .ToListAsync(cancellationToken);
+
+        var knownServices = activeServices
+            .Select(item => UserAccessScope.ServiceKey(item.EntityCode, item.ServiceCode))
+            .ToDictionary(
+                key => key,
+                key =>
+                {
+                    var separator = key.IndexOf("::", StringComparison.Ordinal);
+                    return (key[..separator], key[(separator + 2)..]);
+                },
+                StringComparer.Ordinal);
+
+        var requestedServiceKeys = (serviceKeys ?? [])
+            .Select(NormalizeServiceKey)
+            .Where(key => key.Length is > 0 and <= 96)
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(key => key, StringComparer.Ordinal)
+            .ToArray();
+        if (!requestedServiceKeys.All(knownServices.ContainsKey))
+        {
+            return null;
+        }
+
+        if (!allEntities)
+        {
+            var selectedEntitySet = requestedEntities.ToHashSet(StringComparer.Ordinal);
+            if (requestedServiceKeys.Any(key => !selectedEntitySet.Contains(knownServices[key].Item1)))
+            {
+                return null;
+            }
+        }
+
+        var services = requestedServiceKeys
+            .Select(key => knownServices[key])
+            .Select(item => (EntityCode: item.Item1, ServiceCode: item.Item2))
+            .ToArray();
+        return new ValidatedScope(requestedEntities, services);
     }
 
     private IActionResult RedirectWithError(string resourceKey, string? culture, Guid? userId = null)
@@ -212,4 +275,27 @@ public sealed class UserAccessAdministrationController(
 
     private static string NormalizeCulture(string? culture) =>
         string.Equals(culture, "ar-KW", StringComparison.OrdinalIgnoreCase) ? "ar-KW" : "en";
+
+    private static string NormalizeCode(string? code) =>
+        code?.Trim().ToUpperInvariant() ?? string.Empty;
+
+    private static string NormalizeServiceKey(string? key)
+    {
+        var value = key?.Trim().ToUpperInvariant() ?? string.Empty;
+        if (value.Length is 0 or > 96 || value.Contains('|'))
+        {
+            return string.Empty;
+        }
+
+        var parts = value.Split("::", StringSplitOptions.None);
+        return parts.Length == 2
+            && parts[0].Length is > 0 and <= 40
+            && parts[1].Length is > 0 and <= 54
+                ? $"{parts[0]}::{parts[1]}"
+                : string.Empty;
+    }
+
+    private sealed record ValidatedScope(
+        IReadOnlyList<string> EntityCodes,
+        IReadOnlyList<(string EntityCode, string ServiceCode)> Services);
 }
