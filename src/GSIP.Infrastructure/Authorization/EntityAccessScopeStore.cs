@@ -4,24 +4,47 @@ using Microsoft.EntityFrameworkCore;
 
 namespace GSIP.Infrastructure.Authorization;
 
-public sealed record EntityAccessScope(bool IsUnrestricted, IReadOnlySet<string> EntityCodes)
+public sealed record UserAccessScope(
+    bool AllEntities,
+    IReadOnlySet<string> EntityCodes,
+    bool AllServices,
+    IReadOnlySet<string> ServiceKeys)
 {
-    public bool Allows(string? entityCode) =>
-        IsUnrestricted
+    public bool AllowsEntity(string? entityCode) =>
+        AllEntities
         || (!string.IsNullOrWhiteSpace(entityCode)
-            && EntityCodes.Contains(entityCode.Trim().ToUpperInvariant()));
+            && EntityCodes.Contains(NormalizeCode(entityCode)));
+
+    public bool AllowsService(string? entityCode, string? serviceCode)
+    {
+        if (!AllowsEntity(entityCode))
+        {
+            return false;
+        }
+
+        return AllServices
+            || (!string.IsNullOrWhiteSpace(entityCode)
+                && !string.IsNullOrWhiteSpace(serviceCode)
+                && ServiceKeys.Contains(ServiceKey(entityCode, serviceCode)));
+    }
+
+    public static string ServiceKey(string entityCode, string serviceCode) =>
+        $"{NormalizeCode(entityCode)}::{NormalizeCode(serviceCode)}";
+
+    private static string NormalizeCode(string code) => code.Trim().ToUpperInvariant();
 }
 
 public static class EntityAccessScopeStore
 {
-    public const string LoginProvider = "GSIP.EntityScope";
-    public const string TokenName = "AllowedEntities";
+    public const string LoginProvider = "GSIP.UserAccessScope";
+    public const string EntityTokenName = "AllowedEntities";
+    public const string ServiceTokenName = "AllowedServices";
     private const string NoneValue = "__NONE__";
 
-    private static readonly IReadOnlySet<string> EmptyCodes =
+    private static readonly IReadOnlySet<string> EmptyValues =
         new HashSet<string>(StringComparer.Ordinal);
 
-    public static async Task<EntityAccessScope> GetForUserAsync(
+    public static async Task<UserAccessScope> GetForUserAsync(
         GsipDbContext dbContext,
         Guid userId,
         CancellationToken cancellationToken = default)
@@ -29,57 +52,26 @@ public static class EntityAccessScopeStore
         ArgumentNullException.ThrowIfNull(dbContext);
         if (userId == Guid.Empty)
         {
-            return new EntityAccessScope(false, EmptyCodes);
-        }
-
-        var token = await dbContext.Set<IdentityUserToken<Guid>>()
-            .AsNoTracking()
-            .SingleOrDefaultAsync(
-                row => row.UserId == userId
-                    && row.LoginProvider == LoginProvider
-                    && row.Name == TokenName,
-                cancellationToken);
-
-        if (token is null)
-        {
-            // Backward compatibility: users created before entity scoping remain unrestricted.
-            return new EntityAccessScope(true, EmptyCodes);
-        }
-
-        return new EntityAccessScope(false, Parse(token.Value));
-    }
-
-    public static async Task<IReadOnlyDictionary<Guid, EntityAccessScope>> GetForUsersAsync(
-        GsipDbContext dbContext,
-        IEnumerable<Guid> userIds,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(dbContext);
-        ArgumentNullException.ThrowIfNull(userIds);
-
-        var ids = userIds.Where(id => id != Guid.Empty).Distinct().ToArray();
-        if (ids.Length == 0)
-        {
-            return new Dictionary<Guid, EntityAccessScope>();
+            return new UserAccessScope(false, EmptyValues, false, EmptyValues);
         }
 
         var rows = await dbContext.Set<IdentityUserToken<Guid>>()
             .AsNoTracking()
-            .Where(row => ids.Contains(row.UserId)
+            .Where(row => row.UserId == userId
                 && row.LoginProvider == LoginProvider
-                && row.Name == TokenName)
-            .Select(row => new { row.UserId, row.Value })
+                && (row.Name == EntityTokenName || row.Name == ServiceTokenName))
+            .Select(row => new { row.Name, row.Value })
             .ToListAsync(cancellationToken);
 
-        var explicitScopes = rows.ToDictionary(
-            row => row.UserId,
-            row => new EntityAccessScope(false, Parse(row.Value)));
+        var entityRow = rows.SingleOrDefault(row => row.Name == EntityTokenName);
+        var serviceRow = rows.SingleOrDefault(row => row.Name == ServiceTokenName);
 
-        return ids.ToDictionary(
-            id => id,
-            id => explicitScopes.TryGetValue(id, out var scope)
-                ? scope
-                : new EntityAccessScope(true, EmptyCodes));
+        // Backward compatibility: absence of a token means unrestricted for that dimension.
+        return new UserAccessScope(
+            entityRow is null,
+            entityRow is null ? EmptyValues : ParseValues(entityRow.Value, maximumLength: 40),
+            serviceRow is null,
+            serviceRow is null ? EmptyValues : ParseValues(serviceRow.Value, maximumLength: 96));
     }
 
     public static async Task SetForUserAsync(
@@ -87,6 +79,8 @@ public static class EntityAccessScopeStore
         Guid userId,
         bool allEntities,
         IEnumerable<string>? entityCodes,
+        bool allServices,
+        IEnumerable<(string EntityCode, string ServiceCode)>? services,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(dbContext);
@@ -95,64 +89,97 @@ public static class EntityAccessScopeStore
             throw new ArgumentOutOfRangeException(nameof(userId));
         }
 
-        var row = await dbContext.Set<IdentityUserToken<Guid>>()
-            .SingleOrDefaultAsync(
-                item => item.UserId == userId
-                    && item.LoginProvider == LoginProvider
-                    && item.Name == TokenName,
-                cancellationToken);
+        var rows = await dbContext.Set<IdentityUserToken<Guid>>()
+            .Where(row => row.UserId == userId
+                && row.LoginProvider == LoginProvider
+                && (row.Name == EntityTokenName || row.Name == ServiceTokenName))
+            .ToListAsync(cancellationToken);
 
-        if (allEntities)
+        var normalizedEntities = NormalizeCodes(entityCodes, 40);
+        var normalizedServices = NormalizeServiceKeys(services);
+
+        ApplyToken(
+            dbContext,
+            rows.SingleOrDefault(row => row.Name == EntityTokenName),
+            userId,
+            EntityTokenName,
+            allEntities,
+            normalizedEntities);
+        ApplyToken(
+            dbContext,
+            rows.SingleOrDefault(row => row.Name == ServiceTokenName),
+            userId,
+            ServiceTokenName,
+            allServices,
+            normalizedServices);
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private static void ApplyToken(
+        GsipDbContext dbContext,
+        IdentityUserToken<Guid>? existing,
+        Guid userId,
+        string tokenName,
+        bool unrestricted,
+        IReadOnlyList<string> values)
+    {
+        if (unrestricted)
         {
-            if (row is not null)
+            if (existing is not null)
             {
-                dbContext.Remove(row);
-                await dbContext.SaveChangesAsync(cancellationToken);
+                dbContext.Remove(existing);
             }
             return;
         }
 
-        var normalized = NormalizeCodes(entityCodes);
-        var value = normalized.Count == 0 ? NoneValue : string.Join('|', normalized);
-
-        if (row is null)
+        var value = values.Count == 0 ? NoneValue : string.Join('|', values);
+        if (existing is null)
         {
             dbContext.Add(new IdentityUserToken<Guid>
             {
                 UserId = userId,
                 LoginProvider = LoginProvider,
-                Name = TokenName,
+                Name = tokenName,
                 Value = value
             });
         }
         else
         {
-            row.Value = value;
+            existing.Value = value;
         }
-
-        await dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    private static IReadOnlySet<string> Parse(string? value)
+    private static IReadOnlySet<string> ParseValues(string? value, int maximumLength)
     {
         if (string.IsNullOrWhiteSpace(value)
             || string.Equals(value, NoneValue, StringComparison.Ordinal))
         {
-            return EmptyCodes;
+            return EmptyValues;
         }
 
         return value
             .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(code => code.ToUpperInvariant())
-            .Where(code => code.Length is > 0 and <= 40)
+            .Select(item => item.ToUpperInvariant())
+            .Where(item => item.Length is > 0 && item.Length <= maximumLength)
             .ToHashSet(StringComparer.Ordinal);
     }
 
-    private static IReadOnlyList<string> NormalizeCodes(IEnumerable<string>? entityCodes) =>
-        (entityCodes ?? [])
+    private static IReadOnlyList<string> NormalizeCodes(IEnumerable<string>? codes, int maximumLength) =>
+        (codes ?? [])
             .Select(code => code?.Trim().ToUpperInvariant() ?? string.Empty)
-            .Where(code => code.Length is > 0 and <= 40 && !code.Contains('|'))
+            .Where(code => code.Length is > 0 && code.Length <= maximumLength && !code.Contains('|'))
             .Distinct(StringComparer.Ordinal)
             .OrderBy(code => code, StringComparer.Ordinal)
+            .ToArray();
+
+    private static IReadOnlyList<string> NormalizeServiceKeys(
+        IEnumerable<(string EntityCode, string ServiceCode)>? services) =>
+        (services ?? [])
+            .Where(item => !string.IsNullOrWhiteSpace(item.EntityCode) && !string.IsNullOrWhiteSpace(item.ServiceCode))
+            .Select(item => UserAccessScope.ServiceKey(item.EntityCode, item.ServiceCode))
+            .Where(key => key.Length <= 96 && !key.Contains('|'))
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(key => key, StringComparer.Ordinal)
             .ToArray();
 }
