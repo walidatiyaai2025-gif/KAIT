@@ -9,6 +9,7 @@
     var isPermissions = Context.Request.Path.StartsWithSegments("/permissions");
     var isMetadata = Context.Request.Path.StartsWithSegments("/metadata");
     var isAuthProfiles = Context.Request.Path.StartsWithSegments("/auth-profiles");
+    // Legacy compatibility: the original MOJ UAT /moj-uat route remains supported while /uat is the generic all-services surface.
     var isUat = Context.Request.Path.StartsWithSegments("/uat") || Context.Request.Path.StartsWithSegments("/moj-uat");
     var isExecution = Context.Request.Path.StartsWithSegments("/execute");
     var isRequests = Context.Request.Path.StartsWithSegments("/requests");
