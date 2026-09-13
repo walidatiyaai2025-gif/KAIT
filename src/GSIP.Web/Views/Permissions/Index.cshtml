@@ -19,18 +19,18 @@
                 <span class="sr-only">@L["SearchPlaceholder"]</span>
                 <input id="permissions-search" type="search" placeholder="@L["SearchPlaceholder"]" autocomplete="off" />
             </label>
-            <a class="secondary-action action-link" href="#role-admin">+ @L["CreateRole"]</a>
-            <a class="primary-action action-link" href="#user-provisioning">+ @L["AddUser"]</a>
+            <a class="secondary-action action-link" href="#permissions-roles" data-open-permissions-tab="roles">+ @L["CreateRole"]</a>
+            <a class="primary-action action-link" href="#permissions-users" data-open-permissions-tab="users">+ @L["AddUser"]</a>
         </div>
     </header>
 
     @if (TempData["PermissionsAdminSuccess"] is string adminSuccess)
     {
-        <div class="default-deny-callout" role="status"><span aria-hidden="true">✓</span><div><strong>@L[adminSuccess]</strong></div></div>
+        <div class="default-deny-callout success-callout" role="status"><span aria-hidden="true">✓</span><div><strong>@L[adminSuccess]</strong></div></div>
     }
     @if (TempData["PermissionsAdminError"] is string adminError)
     {
-        <div class="default-deny-callout" role="alert">
+        <div class="default-deny-callout error-callout" role="alert">
             <span aria-hidden="true">!</span>
             <div>
                 <strong>@L[adminError]</strong>
@@ -49,188 +49,224 @@
         <article><span class="metric-icon">◆</span><div><strong>@Model.PrivilegedUsers</strong><span>@L["PrivilegedUsers"]</span></div></article>
     </section>
 
-    <div class="permissions-workspace">
-        <section class="permission-panel permission-matrix-panel" aria-labelledby="role-matrix-title">
-            <div class="panel-heading">
-                <div><h2 id="role-matrix-title">@L["RolesPermissions"]</h2><p>@L["RolesPermissionsSubtitle"]</p></div>
-                <span class="default-deny-badge">@L["DefaultDeny"]</span>
-            </div>
-            <div class="matrix-scroll">
-                <table class="permissions-matrix">
-                    <thead>
-                        <tr>
-                            <th scope="col">@L["Permission"]</th>
-                            @foreach (var role in Model.Roles)
+    <nav class="permissions-tabs" aria-label="@L["PageTitle"]">
+        <div class="permissions-tablist" role="tablist" aria-orientation="horizontal">
+            <button id="permissions-tab-users" class="permissions-tab active" type="button" role="tab" aria-selected="true" aria-controls="permissions-users" tabindex="0" data-permissions-tab="users">
+                <span class="tab-icon" aria-hidden="true">◎</span>
+                <span><strong>@L["UserDetails"]</strong><small>@L["UserProvisioning"]</small></span>
+            </button>
+            <button id="permissions-tab-roles" class="permissions-tab" type="button" role="tab" aria-selected="false" aria-controls="permissions-roles" tabindex="-1" data-permissions-tab="roles">
+                <span class="tab-icon" aria-hidden="true">◈</span>
+                <span><strong>@L["RoleAdministration"]</strong><small>@L["ActiveRoles"]</small></span>
+            </button>
+            <button id="permissions-tab-role-permissions" class="permissions-tab" type="button" role="tab" aria-selected="false" aria-controls="permissions-role-permissions" tabindex="-1" data-permissions-tab="role-permissions">
+                <span class="tab-icon" aria-hidden="true">✓</span>
+                <span><strong>@L["RolesPermissions"]</strong><small>@L["Permission"]</small></span>
+            </button>
+            <button id="permissions-tab-service-permissions" class="permissions-tab" type="button" role="tab" aria-selected="false" aria-controls="permissions-service-permissions" tabindex="-1" data-permissions-tab="service-permissions">
+                <span class="tab-icon" aria-hidden="true">◆</span>
+                <span><strong>@L["ServiceMatrix"]</strong><small>@L["ServiceGrants"]</small></span>
+            </button>
+        </div>
+    </nav>
+
+    <div class="permissions-tabpanels">
+        <section id="permissions-users" class="permissions-tab-panel active" role="tabpanel" aria-labelledby="permissions-tab-users" data-permissions-panel="users">
+            <div class="users-tab-layout">
+                <aside class="permission-panel user-panel" aria-labelledby="user-details-title">
+                    <div class="panel-heading">
+                        <div><h2 id="user-details-title">@L["UserDetails"]</h2><p>@L["ManageAssignedRoles"]</p></div>
+                        <span class="panel-count">@Model.TotalUsers</span>
+                    </div>
+                    @if (Model.Users.Count == 0)
+                    {
+                        <div class="empty-state">@L["NoUsers"]</div>
+                    }
+                    else
+                    {
+                        <nav class="user-list" aria-label="@L["UserDetails"]">
+                            @foreach (var user in Model.Users)
                             {
-                                <th scope="col"><span>@L.Role(role.Name)</span><small>@role.Name</small></th>
+                                <a class="user-list-item @(Model.SelectedUser?.Id == user.Id ? "active" : string.Empty)" href="/permissions?culture=@culture&amp;userId=@user.Id#permissions-users" data-filter-text="@($"{user.DisplayName} {user.Username}")">
+                                    <span class="user-avatar" aria-hidden="true">@((user.DisplayName.FirstOrDefault() == default ? 'U' : char.ToUpperInvariant(user.DisplayName.First())))</span>
+                                    <span><strong>@user.DisplayName</strong><small dir="ltr">@user.Username</small></span>
+                                    <i class="account-dot @(user.IsEnabled ? "enabled" : "disabled")" aria-label="@(user.IsEnabled ? L["Enabled"] : L["Disabled"])"></i>
+                                </a>
                             }
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var group in Model.Permissions.GroupBy(permission => permission.Category))
+                        </nav>
+                        @if (Model.SelectedUser is not null)
                         {
-                            <tr class="category-row" data-filter-text="@group.Key"><th colspan="@(Model.Roles.Count + 1)">@L[$"Category_{group.Key}"]</th></tr>
-                            @foreach (var permission in group)
-                            {
-                                <tr data-filter-text="@($"{permission.Key} {L.Permission(permission.Key)}")">
-                                    <th scope="row"><strong>@L.Permission(permission.Key)</strong><code dir="ltr">@permission.Key</code></th>
+                            <div class="selected-user-card">
+                                <div class="selected-user-heading"><span class="user-avatar large" aria-hidden="true">@((Model.SelectedUser.DisplayName.FirstOrDefault() == default ? 'U' : char.ToUpperInvariant(Model.SelectedUser.DisplayName.First())))</span><div><strong>@Model.SelectedUser.DisplayName</strong><small dir="ltr">@Model.SelectedUser.Username</small></div></div>
+                                <div class="user-status-row"><span class="status-chip @(Model.SelectedUser.IsEnabled ? "ok" : "off")">@(Model.SelectedUser.IsEnabled ? L["Enabled"] : L["Disabled"])</span>@if (Model.SelectedUser.IsPrivileged){<span class="status-chip privileged">@L["Privileged"]</span>}</div>
+                                <h3>@L["AssignedRoles"]</h3>
+                                <div class="role-chip-list">
+                                    @if (Model.SelectedUser.Roles.Count == 0)
+                                    {
+                                        <span class="muted-chip">@L["NoRolesAssigned"]</span>
+                                    }
+                                    else
+                                    {
+                                        @foreach (var role in Model.SelectedUser.Roles){<span class="role-chip">@L.Role(role)</span>}
+                                    }
+                                </div>
+                                <h3>@L["ManageAssignedRoles"]</h3>
+                                <div class="user-role-management">
                                     @foreach (var role in Model.Roles)
                                     {
-                                        var allowed = Model.HasRolePermission(role.Id, permission.Key);
+                                        var assigned = Model.SelectedUserHasRole(role.Id);
+                                        <form method="post" asp-controller="Permissions" asp-action="SetUserRole" class="user-role-row" data-role-id="@role.Id">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="userId" value="@Model.SelectedUser.Id" />
+                                            <input type="hidden" name="roleId" value="@role.Id" />
+                                            <input type="hidden" name="isAssigned" value="@((!assigned).ToString().ToLowerInvariant())" />
+                                            <input type="hidden" name="culture" value="@culture" />
+                                            <span>@L.Role(role.Name)</span>
+                                            <button class="role-assignment-button @(assigned ? "remove" : "assign")" type="submit">@(assigned ? L["Remove"] : L["Assign"])</button>
+                                        </form>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    }
+                </aside>
+
+                <div class="user-provisioning-host">
+                    @await Component.InvokeAsync("UserAccessAdmin", new { userId = Model.SelectedUser?.Id })
+                </div>
+            </div>
+        </section>
+
+        <section id="permissions-roles" class="permissions-tab-panel" role="tabpanel" aria-labelledby="permissions-tab-roles" data-permissions-panel="roles" hidden>
+            <section id="role-admin" class="permission-panel role-admin-panel" aria-labelledby="role-admin-title">
+                <div class="panel-heading">
+                    <div><h2 id="role-admin-title">@L["RoleAdministration"]</h2><p>@L["RoleAdministrationSubtitle"]</p></div>
+                    <span class="default-deny-badge">@L["DefaultDeny"]</span>
+                </div>
+                <div class="role-admin-body">
+                    <form method="post" asp-controller="Permissions" asp-action="CreateRole" class="role-create-form compact-form">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="userId" value="@Model.SelectedUser?.Id" />
+                        <input type="hidden" name="culture" value="@culture" />
+                        <label><span>@L["NewRoleName"]</span><input name="roleName" maxlength="100" required autocomplete="off" /></label>
+                        <button class="primary-action" type="submit">@L["Create"]</button>
+                    </form>
+                    <div class="role-admin-list">
+                        @foreach (var role in Model.Roles)
+                        {
+                            <form method="post" asp-controller="Permissions" asp-action="RenameRole" class="role-admin-row" data-role-id="@role.Id" data-role-name="@role.Name" data-filter-text="@role.Name">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="roleId" value="@role.Id" />
+                                <input type="hidden" name="userId" value="@Model.SelectedUser?.Id" />
+                                <input type="hidden" name="culture" value="@culture" />
+                                <label><span>@(role.IsSeedRole ? L["SeedRole"] : L["RoleAdministration"])</span><input name="roleName" value="@role.Name" maxlength="100" required /></label>
+                                <button class="secondary-action" type="submit">@L["Rename"]</button>
+                            </form>
+                        }
+                    </div>
+                </div>
+            </section>
+        </section>
+
+        <section id="permissions-role-permissions" class="permissions-tab-panel" role="tabpanel" aria-labelledby="permissions-tab-role-permissions" data-permissions-panel="role-permissions" hidden>
+            <section class="permission-panel permission-matrix-panel" aria-labelledby="role-matrix-title">
+                <div class="panel-heading">
+                    <div><h2 id="role-matrix-title">@L["RolesPermissions"]</h2><p>@L["RolesPermissionsSubtitle"]</p></div>
+                    <span class="default-deny-badge">@L["DefaultDeny"]</span>
+                </div>
+                <div class="matrix-scroll">
+                    <table class="permissions-matrix">
+                        <thead>
+                            <tr>
+                                <th scope="col">@L["Permission"]</th>
+                                @foreach (var role in Model.Roles)
+                                {
+                                    <th scope="col"><span>@L.Role(role.Name)</span><small>@role.Name</small></th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var group in Model.Permissions.GroupBy(permission => permission.Category))
+                            {
+                                <tr class="category-row" data-filter-text="@group.Key"><th colspan="@(Model.Roles.Count + 1)">@L[$"Category_{group.Key}"]</th></tr>
+                                @foreach (var permission in group)
+                                {
+                                    <tr data-filter-text="@($"{permission.Key} {L.Permission(permission.Key)}")">
+                                        <th scope="row"><strong>@L.Permission(permission.Key)</strong><code dir="ltr">@permission.Key</code></th>
+                                        @foreach (var role in Model.Roles)
+                                        {
+                                            var allowed = Model.HasRolePermission(role.Id, permission.Key);
+                                            <td>
+                                                <form method="post" asp-controller="Permissions" asp-action="SetRolePermission" class="permission-form">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="roleId" value="@role.Id" />
+                                                    <input type="hidden" name="permissionKey" value="@permission.Key" />
+                                                    <input type="hidden" name="isAllowed" value="@((!allowed).ToString().ToLowerInvariant())" />
+                                                    <input type="hidden" name="userId" value="@Model.SelectedUser?.Id" />
+                                                    <input type="hidden" name="culture" value="@culture" />
+                                                    <button class="permission-toggle @(allowed ? "allowed" : "denied")" type="submit" aria-label="@(allowed ? L["DisablePermission"] : L["EnablePermission"]): @L.Permission(permission.Key) · @L.Role(role.Name)">
+                                                        <span aria-hidden="true">@(allowed ? "✓" : "—")</span><small>@(allowed ? L["Allowed"] : L["Denied"])</small>
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        }
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </section>
+
+        <section id="permissions-service-permissions" class="permissions-tab-panel" role="tabpanel" aria-labelledby="permissions-tab-service-permissions" data-permissions-panel="service-permissions" hidden>
+            <section class="permission-panel service-matrix-panel" aria-labelledby="service-matrix-title">
+                <div class="panel-heading">
+                    <div><h2 id="service-matrix-title">@L["ServiceMatrix"]</h2><p>@L["ServiceMatrixSubtitle"]</p></div>
+                    <span class="default-deny-badge">@L["DefaultDeny"]</span>
+                </div>
+                @if (Model.Services.Count == 0)
+                {
+                    <div class="empty-state wide">@L["NoServices"]</div>
+                }
+                else
+                {
+                    <div class="matrix-scroll">
+                        <table class="permissions-matrix service-matrix">
+                            <thead><tr><th scope="col">@L["Service"]</th>@foreach (var role in Model.Roles){<th scope="col">@L.Role(role.Name)</th>}</tr></thead>
+                            <tbody>
+                            @foreach (var service in Model.Services)
+                            {
+                                <tr data-filter-text="@($"{service.EntityCode} {service.ServiceCode}")">
+                                    <th scope="row"><strong>@service.ServiceCode</strong><small>@L["Entity"]: @service.EntityCode</small></th>
+                                    @foreach (var role in Model.Roles)
+                                    {
+                                        var allowed = Model.HasServiceExecute(role.Id, service.ServiceCode);
+                                        var hasGlobalExecute = Model.HasRolePermission(role.Id, GsipPermissions.ServicesExecute);
                                         <td>
-                                            <form method="post" asp-controller="Permissions" asp-action="SetRolePermission" class="permission-form">
+                                            <form method="post" asp-controller="Permissions" asp-action="SetServicePermission" class="permission-form">
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="roleId" value="@role.Id" />
-                                                <input type="hidden" name="permissionKey" value="@permission.Key" />
+                                                <input type="hidden" name="serviceCode" value="@service.ServiceCode" />
+                                                <input type="hidden" name="permissionKey" value="@GsipPermissions.ServicesExecute" />
                                                 <input type="hidden" name="isAllowed" value="@((!allowed).ToString().ToLowerInvariant())" />
                                                 <input type="hidden" name="userId" value="@Model.SelectedUser?.Id" />
                                                 <input type="hidden" name="culture" value="@culture" />
-                                                <button class="permission-toggle @(allowed ? "allowed" : "denied")" type="submit" aria-label="@(allowed ? L["DisablePermission"] : L["EnablePermission"]): @L.Permission(permission.Key) · @L.Role(role.Name)">
-                                                    <span aria-hidden="true">@(allowed ? "✓" : "—")</span><small>@(allowed ? L["Allowed"] : L["Denied"])</small>
+                                                <button class="permission-toggle @(allowed && hasGlobalExecute ? "allowed" : "denied")" type="submit" disabled="@(!hasGlobalExecute)" aria-label="@(allowed ? L["DisablePermission"] : L["EnablePermission"]): @service.ServiceCode · @L.Role(role.Name)">
+                                                    <span aria-hidden="true">@(allowed && hasGlobalExecute ? "✓" : "—")</span><small>@(allowed && hasGlobalExecute ? L["Allowed"] : L["Denied"])</small>
                                                 </button>
                                             </form>
                                         </td>
                                     }
                                 </tr>
                             }
-                        }
-                    </tbody>
-                </table>
-            </div>
-        </section>
-
-        <aside class="permission-panel user-panel" aria-labelledby="user-details-title">
-            <div class="panel-heading"><div><h2 id="user-details-title">@L["UserDetails"]</h2></div></div>
-            @if (Model.Users.Count == 0)
-            {
-                <div class="empty-state">@L["NoUsers"]</div>
-            }
-            else
-            {
-                <nav class="user-list" aria-label="@L["UserDetails"]">
-                    @foreach (var user in Model.Users.Take(8))
-                    {
-                        <a class="user-list-item @(Model.SelectedUser?.Id == user.Id ? "active" : string.Empty)" href="/permissions?culture=@culture&amp;userId=@user.Id" data-filter-text="@($"{user.DisplayName} {user.Username}")">
-                            <span class="user-avatar" aria-hidden="true">@((user.DisplayName.FirstOrDefault() == default ? 'U' : char.ToUpperInvariant(user.DisplayName.First())))</span>
-                            <span><strong>@user.DisplayName</strong><small dir="ltr">@user.Username</small></span>
-                            <i class="account-dot @(user.IsEnabled ? "enabled" : "disabled")" aria-label="@(user.IsEnabled ? L["Enabled"] : L["Disabled"])"></i>
-                        </a>
-                    }
-                </nav>
-                @if (Model.SelectedUser is not null)
-                {
-                    <div class="selected-user-card">
-                        <div class="selected-user-heading"><span class="user-avatar large" aria-hidden="true">@((Model.SelectedUser.DisplayName.FirstOrDefault() == default ? 'U' : char.ToUpperInvariant(Model.SelectedUser.DisplayName.First())))</span><div><strong>@Model.SelectedUser.DisplayName</strong><small dir="ltr">@Model.SelectedUser.Username</small></div></div>
-                        <div class="user-status-row"><span class="status-chip @(Model.SelectedUser.IsEnabled ? "ok" : "off")">@(Model.SelectedUser.IsEnabled ? L["Enabled"] : L["Disabled"])</span>@if (Model.SelectedUser.IsPrivileged){<span class="status-chip privileged">@L["Privileged"]</span>}</div>
-                        <h3>@L["AssignedRoles"]</h3>
-                        <div class="role-chip-list">
-                            @if (Model.SelectedUser.Roles.Count == 0)
-                            {
-                                <span class="muted-chip">@L["NoRolesAssigned"]</span>
-                            }
-                            else
-                            {
-                                @foreach (var role in Model.SelectedUser.Roles){<span class="role-chip">@L.Role(role)</span>}
-                            }
-                        </div>
-                        <h3>@L["ManageAssignedRoles"]</h3>
-                        <div class="user-role-management">
-                            @foreach (var role in Model.Roles)
-                            {
-                                var assigned = Model.SelectedUserHasRole(role.Id);
-                                <form method="post" asp-controller="Permissions" asp-action="SetUserRole" class="user-role-row" data-role-id="@role.Id">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="userId" value="@Model.SelectedUser.Id" />
-                                    <input type="hidden" name="roleId" value="@role.Id" />
-                                    <input type="hidden" name="isAssigned" value="@((!assigned).ToString().ToLowerInvariant())" />
-                                    <input type="hidden" name="culture" value="@culture" />
-                                    <span>@L.Role(role.Name)</span>
-                                    <button class="role-assignment-button @(assigned ? "remove" : "assign")" type="submit">@(assigned ? L["Remove"] : L["Assign"])</button>
-                                </form>
-                            }
-                        </div>
+                            </tbody>
+                        </table>
                     </div>
                 }
-            }
-        </aside>
+            </section>
+        </section>
     </div>
-
-    @await Component.InvokeAsync("UserAccessAdmin", new { userId = Model.SelectedUser?.Id })
-
-    <section id="role-admin" class="permission-panel role-admin-panel" aria-labelledby="role-admin-title">
-        <div class="panel-heading">
-            <div><h2 id="role-admin-title">@L["RoleAdministration"]</h2><p>@L["RoleAdministrationSubtitle"]</p></div>
-            <span class="default-deny-badge">@L["DefaultDeny"]</span>
-        </div>
-        <div class="role-admin-body">
-            <form method="post" asp-controller="Permissions" asp-action="CreateRole" class="role-create-form">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="userId" value="@Model.SelectedUser?.Id" />
-                <input type="hidden" name="culture" value="@culture" />
-                <label><span>@L["NewRoleName"]</span><input name="roleName" maxlength="100" required autocomplete="off" /></label>
-                <button class="primary-action" type="submit">@L["Create"]</button>
-            </form>
-            <div class="role-admin-list">
-                @foreach (var role in Model.Roles)
-                {
-                    <form method="post" asp-controller="Permissions" asp-action="RenameRole" class="role-admin-row" data-role-id="@role.Id" data-role-name="@role.Name">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="roleId" value="@role.Id" />
-                        <input type="hidden" name="userId" value="@Model.SelectedUser?.Id" />
-                        <input type="hidden" name="culture" value="@culture" />
-                        <label><span>@(role.IsSeedRole ? L["SeedRole"] : L["RoleAdministration"])</span><input name="roleName" value="@role.Name" maxlength="100" required /></label>
-                        <button class="secondary-action" type="submit">@L["Rename"]</button>
-                    </form>
-                }
-            </div>
-        </div>
-    </section>
-
-    <section class="permission-panel service-matrix-panel" aria-labelledby="service-matrix-title">
-        <div class="panel-heading">
-            <div><h2 id="service-matrix-title">@L["ServiceMatrix"]</h2><p>@L["ServiceMatrixSubtitle"]</p></div>
-            <span class="default-deny-badge">@L["DefaultDeny"]</span>
-        </div>
-        @if (Model.Services.Count == 0)
-        {
-            <div class="empty-state wide">@L["NoServices"]</div>
-        }
-        else
-        {
-            <div class="matrix-scroll">
-                <table class="permissions-matrix service-matrix">
-                    <thead><tr><th scope="col">@L["Service"]</th>@foreach (var role in Model.Roles){<th scope="col">@L.Role(role.Name)</th>}</tr></thead>
-                    <tbody>
-                    @foreach (var service in Model.Services)
-                    {
-                        <tr data-filter-text="@($"{service.EntityCode} {service.ServiceCode}")">
-                            <th scope="row"><strong>@service.ServiceCode</strong><small>@L["Entity"]: @service.EntityCode</small></th>
-                            @foreach (var role in Model.Roles)
-                            {
-                                var allowed = Model.HasServiceExecute(role.Id, service.ServiceCode);
-                                var hasGlobalExecute = Model.HasRolePermission(role.Id, GsipPermissions.ServicesExecute);
-                                <td>
-                                    <form method="post" asp-controller="Permissions" asp-action="SetServicePermission" class="permission-form">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="roleId" value="@role.Id" />
-                                        <input type="hidden" name="serviceCode" value="@service.ServiceCode" />
-                                        <input type="hidden" name="permissionKey" value="@GsipPermissions.ServicesExecute" />
-                                        <input type="hidden" name="isAllowed" value="@((!allowed).ToString().ToLowerInvariant())" />
-                                        <input type="hidden" name="userId" value="@Model.SelectedUser?.Id" />
-                                        <input type="hidden" name="culture" value="@culture" />
-                                        <button class="permission-toggle @(allowed && hasGlobalExecute ? "allowed" : "denied")" type="submit" disabled="@(!hasGlobalExecute)" aria-label="@(allowed ? L["DisablePermission"] : L["EnablePermission"]): @service.ServiceCode · @L.Role(role.Name)">
-                                            <span aria-hidden="true">@(allowed && hasGlobalExecute ? "✓" : "—")</span><small>@(allowed && hasGlobalExecute ? L["Allowed"] : L["Denied"])</small>
-                                        </button>
-                                    </form>
-                                </td>
-                            }
-                        </tr>
-                    }
-                    </tbody>
-                </table>
-            </div>
-        }
-    </section>
 
     <aside class="default-deny-callout"><span aria-hidden="true">◆</span><div><strong>@L["DefaultDeny"]</strong><p>@L["DefaultDenyDetail"]</p></div></aside>
     <footer class="permissions-footer">@L["GeneratedAt"] @Model.GeneratedAtUtc.ToString("u") · P04</footer>
@@ -239,14 +275,69 @@
 @section Scripts {
 <script>
 (() => {
+    const tabs = [...document.querySelectorAll('[data-permissions-tab]')];
+    const panels = [...document.querySelectorAll('[data-permissions-panel]')];
+    const tabLinks = [...document.querySelectorAll('[data-open-permissions-tab]')];
     const search = document.getElementById('permissions-search');
-    if (!search) return;
-    search.addEventListener('input', () => {
-        const query = search.value.trim().toLocaleLowerCase();
-        document.querySelectorAll('[data-filter-text]').forEach((row) => {
-            row.hidden = query.length > 0 && !row.dataset.filterText.toLocaleLowerCase().includes(query);
+    if (!tabs.length || !panels.length) return;
+
+    const validTabs = new Set(tabs.map(tab => tab.dataset.permissionsTab));
+    const tabFromHash = () => {
+        const hash = window.location.hash.replace('#permissions-', '');
+        return validTabs.has(hash) ? hash : 'users';
+    };
+
+    const activate = (name, updateHash = true, focus = false) => {
+        if (!validTabs.has(name)) name = 'users';
+        tabs.forEach(tab => {
+            const active = tab.dataset.permissionsTab === name;
+            tab.classList.toggle('active', active);
+            tab.setAttribute('aria-selected', active ? 'true' : 'false');
+            tab.tabIndex = active ? 0 : -1;
+            if (active && focus) tab.focus();
+        });
+        panels.forEach(panel => {
+            const active = panel.dataset.permissionsPanel === name;
+            panel.classList.toggle('active', active);
+            panel.hidden = !active;
+        });
+        if (updateHash) history.replaceState(null, '', `${location.pathname}${location.search}#permissions-${name}`);
+    };
+
+    tabs.forEach((tab, index) => {
+        tab.addEventListener('click', () => activate(tab.dataset.permissionsTab));
+        tab.addEventListener('keydown', event => {
+            let nextIndex = null;
+            if (event.key === 'ArrowRight') nextIndex = (index + 1) % tabs.length;
+            if (event.key === 'ArrowLeft') nextIndex = (index - 1 + tabs.length) % tabs.length;
+            if (event.key === 'Home') nextIndex = 0;
+            if (event.key === 'End') nextIndex = tabs.length - 1;
+            if (nextIndex === null) return;
+            event.preventDefault();
+            activate(tabs[nextIndex].dataset.permissionsTab, true, true);
         });
     });
+
+    tabLinks.forEach(link => {
+        link.addEventListener('click', event => {
+            event.preventDefault();
+            const name = link.dataset.openPermissionsTab;
+            activate(name);
+            document.getElementById(`permissions-${name}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    window.addEventListener('hashchange', () => activate(tabFromHash(), false));
+    activate(tabFromHash(), false);
+
+    if (search) {
+        search.addEventListener('input', () => {
+            const query = search.value.trim().toLocaleLowerCase();
+            document.querySelectorAll('[data-filter-text]').forEach((row) => {
+                row.hidden = query.length > 0 && !row.dataset.filterText.toLocaleLowerCase().includes(query);
+            });
+        });
+    }
 })();
 </script>
 }
