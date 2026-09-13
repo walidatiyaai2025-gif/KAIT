@@ -16,6 +16,8 @@ public sealed class UserAccessAdministrationController(
     GsipDbContext dbContext,
     UserManager<ApplicationUser> userManager) : Controller
 {
+    private const int MaximumServiceKeyLength = 200;
+
     [HttpPost("create")]
     [Authorize(Policy = GsipPermissions.UsersManage)]
     [ValidateAntiForgeryToken]
@@ -226,7 +228,7 @@ public sealed class UserAccessAdministrationController(
 
         var requestedServiceKeys = (serviceKeys ?? [])
             .Select(NormalizeServiceKey)
-            .Where(key => key.Length is > 0 and <= 96)
+            .Where(key => key.Length is > 0 and <= MaximumServiceKeyLength)
             .Distinct(StringComparer.Ordinal)
             .OrderBy(key => key, StringComparer.Ordinal)
             .ToArray();
@@ -282,7 +284,7 @@ public sealed class UserAccessAdministrationController(
     private static string NormalizeServiceKey(string? key)
     {
         var value = key?.Trim().ToUpperInvariant() ?? string.Empty;
-        if (value.Length is 0 or > 96 || value.Contains('|'))
+        if (value.Length is 0 or > MaximumServiceKeyLength || value.Contains('|'))
         {
             return string.Empty;
         }
@@ -290,7 +292,7 @@ public sealed class UserAccessAdministrationController(
         var parts = value.Split("::", StringSplitOptions.None);
         return parts.Length == 2
             && parts[0].Length is > 0 and <= 40
-            && parts[1].Length is > 0 and <= 54
+            && parts[1].Length is > 0 and <= 120
                 ? $"{parts[0]}::{parts[1]}"
                 : string.Empty;
     }
