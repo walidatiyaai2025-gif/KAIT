@@ -40,6 +40,7 @@ public static class EntityAccessScopeStore
     public const string EntityTokenName = "AllowedEntities";
     public const string ServiceTokenName = "AllowedServices";
     private const string NoneValue = "__NONE__";
+    private const int MaximumServiceKeyLength = 200;
 
     private static readonly IReadOnlySet<string> EmptyValues =
         new HashSet<string>(StringComparer.Ordinal);
@@ -71,7 +72,7 @@ public static class EntityAccessScopeStore
             entityRow is null,
             entityRow is null ? EmptyValues : ParseValues(entityRow.Value, maximumLength: 40),
             serviceRow is null,
-            serviceRow is null ? EmptyValues : ParseValues(serviceRow.Value, maximumLength: 96));
+            serviceRow is null ? EmptyValues : ParseValues(serviceRow.Value, MaximumServiceKeyLength));
     }
 
     public static async Task SetForUserAsync(
@@ -178,7 +179,7 @@ public static class EntityAccessScopeStore
         (services ?? [])
             .Where(item => !string.IsNullOrWhiteSpace(item.EntityCode) && !string.IsNullOrWhiteSpace(item.ServiceCode))
             .Select(item => UserAccessScope.ServiceKey(item.EntityCode, item.ServiceCode))
-            .Where(key => key.Length <= 96 && !key.Contains('|'))
+            .Where(key => key.Length <= MaximumServiceKeyLength && !key.Contains('|'))
             .Distinct(StringComparer.Ordinal)
             .OrderBy(key => key, StringComparer.Ordinal)
             .ToArray();
