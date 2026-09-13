@@ -34,6 +34,7 @@
   <data name="NewPassword"><value>New password</value></data>
   <data name="ConfirmPassword"><value>Confirm new password</value></data>
   <data name="ChangePassword"><value>Change password and continue</value></data>
+  <data name="PasswordPolicyHint"><value>Use 12–128 characters with at least one uppercase letter, one lowercase letter, one number, and one symbol. Passwords in the format ExamplePass@2020 are accepted.</value></data>
   <data name="PasswordRequiredFields"><value>Complete all password fields.</value></data>
   <data name="PasswordMismatch"><value>The new password and confirmation do not match.</value></data>
   <data name="PasswordChangeRejected"><value>The password change was rejected. Check the current password and configured password policy.</value></data>
