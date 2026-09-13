@@ -99,28 +99,26 @@ public sealed class GsipPermissionEvaluator(GsipDbContext dbContext) : IGsipPerm
             return false;
         }
 
-        var scope = await EntityAccessScopeStore.GetForUserAsync(dbContext, userId, cancellationToken);
-        if (scope.IsUnrestricted)
-        {
-            return true;
-        }
-
-        // Service codes are the existing service-permission key. When an explicit
-        // user entity scope exists, resolve that code back to one active current
-        // entity and fail closed if the catalog is ambiguous.
-        var entityCodes = await (
+        // Resolve the service grant to exactly one active current service/entity pair.
+        // Ambiguous legacy service codes fail closed before user-level scope is applied.
+        var serviceScopes = await (
             from service in dbContext.CatalogServices.AsNoTracking()
             join entity in dbContext.CatalogEntities.AsNoTracking() on service.EntityId equals entity.Id
             where service.IsCurrent
                 && service.Active
                 && entity.Active
-                && service.Code == serviceCode
-            select entity.Code)
+                && service.Code == normalizedServiceCode
+            select new { EntityCode = entity.Code, ServiceCode = service.Code })
             .Distinct()
             .Take(2)
             .ToListAsync(cancellationToken);
+        if (serviceScopes.Count != 1)
+        {
+            return false;
+        }
 
-        return entityCodes.Count == 1 && scope.Allows(entityCodes[0]);
+        var scope = await EntityAccessScopeStore.GetForUserAsync(dbContext, userId, cancellationToken);
+        return scope.AllowsService(serviceScopes[0].EntityCode, serviceScopes[0].ServiceCode);
     }
 
     private async Task<List<Guid>> GetRoleIdsAsync(Guid userId, CancellationToken cancellationToken) =>
