@@ -98,11 +98,17 @@ public sealed class UatConfigurationController(
             return RedirectWithError(serviceId, "INVALID_PASSWORD");
         if (credentialContract.RequiresApiKey && !IsAcceptableApiKey(apiKey))
             return RedirectWithError(serviceId, "INVALID_API_KEY");
+        if (profile.AuthType == AuthProfileType.TokenEndpoint
+            && !credentialContract.RequiresApiKey
+            && !string.IsNullOrWhiteSpace(apiKey)
+            && !IsAcceptableApiKey(apiKey))
+            return RedirectWithError(serviceId, "INVALID_API_KEY");
         if (credentialContract.RequiresAuxiliary && !IsAcceptableAuxiliary(auxiliaryCredential, credentialContract.AuxiliaryValueType))
             return RedirectWithError(serviceId, "INVALID_AUXILIARY_CREDENTIAL");
 
+        var allowedSecretNames = AllowedSecretNames(credentialContract, profile.AuthType);
         var existingSecretNames = profile.Secrets.Select(item => item.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        if (existingSecretNames.Except(credentialContract.SecretNames, StringComparer.OrdinalIgnoreCase).Any())
+        if (existingSecretNames.Except(allowedSecretNames, StringComparer.OrdinalIgnoreCase).Any())
             return RedirectWithError(serviceId, "INCOMPATIBLE_SECRET_SLOTS");
 
         profile = await authProfiles.SetEnabledAsync(profile.Id, false, cancellationToken);
@@ -111,10 +117,18 @@ public sealed class UatConfigurationController(
             foreach (var secret in credentialContract.Values(username, password, apiKey, auxiliaryCredential))
                 profile = await StoreOrRotateSecretAsync(serviceId, profile, secret.Key, secret.Value, cancellationToken);
 
+            if (profile.AuthType == AuthProfileType.TokenEndpoint
+                && !credentialContract.RequiresApiKey
+                && !string.IsNullOrWhiteSpace(apiKey))
+            {
+                profile = await StoreOrRotateSecretAsync(serviceId, profile, ApiKeySecretName, apiKey, cancellationToken);
+            }
+
             profile = await authProfiles.GetAsync(profile.Id, cancellationToken);
             var finalNames = profile.Secrets.Select(item => item.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
             if (!HasExclusiveOwnerBinding(profile, serviceId)
-                || !credentialContract.SecretNames.SetEquals(finalNames))
+                || !credentialContract.SecretNames.IsSubsetOf(finalNames)
+                || finalNames.Except(allowedSecretNames, StringComparer.OrdinalIgnoreCase).Any())
                 throw new InvalidOperationException("The UAT credential profile did not converge to the required exact scope.");
 
             await authProfiles.SetEnabledAsync(profile.Id, true, cancellationToken);
@@ -315,14 +329,24 @@ public sealed class UatConfigurationController(
 
         var contract = ResolveCredentialContract(service.Entity?.Code ?? string.Empty, config, profile.AuthType);
         var secretNames = profile.Secrets.Select(item => item.SecretName).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var allowedSecretNames = AllowedSecretNames(contract, profile.AuthType);
         var credentialsConfigured = contract.DirectEditorSupported
-            ? contract.SecretNames.SetEquals(secretNames)
+            ? contract.SecretNames.IsSubsetOf(secretNames)
+                && !secretNames.Except(allowedSecretNames, StringComparer.OrdinalIgnoreCase).Any()
             : secretNames.Count > 0;
         var ready = service.Active && config.Active && profile.IsEnabled && credentialsConfigured;
         var status = ready
             ? profile.AuthType == AuthProfileType.TokenEndpoint ? "READY_FOR_UAT_TOKEN_EXECUTION" : "READY_FOR_UAT_EXECUTION"
             : string.IsNullOrWhiteSpace(config.LastTestStatus) ? "UAT_CREDENTIALS_REQUIRED" : config.LastTestStatus;
         return new Readiness(true, credentialsConfigured, ready, status);
+    }
+
+    private static HashSet<string> AllowedSecretNames(CredentialContract contract, AuthProfileType authType)
+    {
+        var allowed = new HashSet<string>(contract.SecretNames, StringComparer.OrdinalIgnoreCase);
+        if (authType == AuthProfileType.TokenEndpoint)
+            allowed.Add(ApiKeySecretName);
+        return allowed;
     }
 
     private static bool HasUsableUatContract(ServiceEnvironmentConfig? config) =>
