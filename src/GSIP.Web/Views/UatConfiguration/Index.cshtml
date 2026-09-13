@@ -1,0 +1,235 @@
+@using System.Globalization
+@model GSIP.Web.Models.UatConfigurationViewModel
+@{
+    var isRtl = CultureInfo.CurrentUICulture.TextInfo.IsRightToLeft;
+    ViewData["Title"] = isRtl ? "اختبار خدمات UAT" : "UAT Service Testing";
+    var selected = Model.SelectedService;
+    var serviceName = selected is null ? string.Empty : (isRtl ? selected.ServiceNameAr : selected.ServiceNameEn);
+    var entityName = selected is null ? string.Empty : (isRtl ? selected.EntityNameAr : selected.EntityNameEn);
+}
+<link rel="stylesheet" href="~/css/auth-profiles.css" asp-append-version="true" />
+
+<section class="auth-admin" aria-labelledby="uat-title">
+    <header class="auth-hero">
+        <div>
+            <span class="auth-kicker">GSIP · UAT · ALL SERVICES</span>
+            <h1 id="uat-title">@(isRtl ? "اختبار UAT لجميع الخدمات" : "UAT testing for all services")</h1>
+            <p>@(isRtl
+                ? "كل خدمة تظهر بنفس خصائص UAT. يتم أخذ الرابط وطريقة الطلب ونوع المصادقة وحقول الاعتماد من العقد الرسمي للخدمة، وأي خدمة بلا عقد UAT رسمي تظل مقفلة بدون تخمين بيانات."
+                : "Every service uses the same UAT surface. Endpoint, HTTP method, authentication and credential requirements come from that service's official contract; services without an official UAT contract remain locked without invented settings.")</p>
+        </div>
+        <div class="auth-security-note" role="note">
+            <span aria-hidden="true">●</span>
+            <strong>@(selected?.ReadyToExecute == true ? (isRtl ? "جاهز للتجربة" : "Ready to test") : (isRtl ? "يحتاج إعداد" : "Setup required"))</strong>
+        </div>
+    </header>
+
+    <form method="get" action="/uat" class="auth-form" aria-label="@(isRtl ? "اختيار الخدمة" : "Select service")">
+        <label>
+            @(isRtl ? "الخدمة" : "Service")
+            <select name="serviceId" onchange="this.form.submit()">
+                @foreach (var item in Model.Services)
+                {
+                    var optionName = isRtl ? item.ServiceNameAr : item.ServiceNameEn;
+                    var optionEntity = isRtl ? item.EntityNameAr : item.EntityNameEn;
+                    <option value="@item.ServiceId" selected="@(selected?.ServiceId == item.ServiceId ? "selected" : null)">
+                        @optionEntity · @optionName · @(item.ContractConfigured ? (item.ReadyToExecute ? "READY" : "SETUP") : "NO UAT CONTRACT")
+                    </option>
+                }
+            </select>
+        </label>
+        <noscript><button class="auth-button" type="submit">@(isRtl ? "فتح" : "Open")</button></noscript>
+    </form>
+
+    @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+    {
+        <div class="auth-alert error" role="alert">
+            @switch (Model.ErrorMessage)
+            {
+                case "UAT_CONTRACT_REQUIRED":
+                    <span>@(isRtl ? "لا يوجد عقد UAT رسمي مكتمل لهذه الخدمة حتى الآن. لم يتم إنشاء رابط أو مصادقة افتراضية." : "This service does not yet have a complete official UAT contract. No endpoint or authentication settings were invented.")</span>
+                    break;
+                case "UAT_AUTH_PROFILE_REQUIRED":
+                    <span>@(isRtl ? "عقد UAT موجود لكن AuthProfile الخاص بالخدمة غير متوفر أو غير مربوط بالنطاق الصحيح." : "The UAT contract exists, but the service AuthProfile is missing or not bound to the exact service/environment scope.")</span>
+                    break;
+                case "UAT_AUTH_EDITOR_UNSUPPORTED":
+                    <span>@(isRtl ? "نوع المصادقة لهذه الخدمة يحتاج إدارة من شاشة Authentication Profiles ولا يمكن افتراض حقول اعتماد غير موثقة." : "This service authentication type must be managed through Authentication Profiles; undocumented credential fields are not inferred.")</span>
+                    break;
+                case "INVALID_API_KEY":
+                    <span>@(isRtl ? "أدخل API Key صالحًا (8 أحرف على الأقل) بدون أسطر جديدة." : "Enter a valid API key (minimum 8 characters) without line breaks.")</span>
+                    break;
+                case "INVALID_USERNAME":
+                    <span>@(isRtl ? "أدخل اسم مستخدم UAT صالحًا." : "Enter a valid UAT username.")</span>
+                    break;
+                case "INVALID_PASSWORD":
+                    <span>@(isRtl ? "أدخل كلمة مرور UAT صالحة." : "Enter a valid UAT password.")</span>
+                    break;
+                case "INVALID_AUXILIARY_CREDENTIAL":
+                    <span>@(isRtl ? "أدخل قيمة الاعتماد الإضافية المطلوبة بالعقد الرسمي." : "Enter the auxiliary credential required by the official contract.")</span>
+                    break;
+                case "INCOMPATIBLE_SECRET_SLOTS":
+                    <span>@(isRtl ? "الـ AuthProfile يحتوي Secret slots إضافية غير متوافقة. تم إيقاف التغيير لحماية بيانات الاعتماد." : "The AuthProfile contains incompatible extra secret slots. The change was stopped safely.")</span>
+                    break;
+                default:
+                    <span>@(isRtl ? "فشل إعداد UAT بصورة آمنة وظلت الخدمة غير مفعلة للاختبار." : "UAT configuration failed safely and the service remains disabled for testing.")</span>
+                    break;
+            }
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(Model.SuccessMessage))
+    {
+        <div class="auth-alert success" role="status">
+            @(Model.SuccessMessage == "UAT_DISABLED"
+                ? (isRtl ? "تم إيقاف UAT لهذه الخدمة." : "UAT was disabled for this service.")
+                : (isRtl ? "تم حفظ بيانات الاعتماد وتفعيل UAT لهذه الخدمة." : "Credentials were stored securely and UAT was enabled for this service."))
+        </div>
+    }
+
+    @if (selected is null)
+    {
+        <div class="auth-alert error" role="alert">@(isRtl ? "لا توجد خدمات معرفة." : "No services are defined.")</div>
+    }
+    else
+    {
+        <div class="auth-stat-grid" aria-label="@(isRtl ? "حالة UAT" : "UAT status")">
+            <article><strong>@(selected.ConfigurationActive ? "ON" : "OFF")</strong><span>UAT</span></article>
+            <article><strong>@selected.AuthenticationType</strong><span>@(isRtl ? "نوع المصادقة" : "Authentication")</span></article>
+            <article><strong>@(selected.CredentialsConfigured ? "READY" : "MISSING")</strong><span>@(isRtl ? "بيانات الاعتماد" : "Credentials")</span></article>
+            <article><strong>@selected.Status</strong><span>@(isRtl ? "الحالة" : "Status")</span></article>
+        </div>
+
+        <div class="auth-workspace">
+            <section class="auth-panel create-panel" aria-labelledby="uat-service-title">
+                <div class="panel-heading">
+                    <div>
+                        <h2 id="uat-service-title">@serviceName</h2>
+                        <p><strong>@entityName</strong> · <code>@selected.EntityCode</code> · <code>@selected.ServiceCode</code></p>
+                    </div>
+                    <span class="isolation-badge @(selected.ContractConfigured ? "isolated" : "blocked")">UAT</span>
+                </div>
+
+                @if (selected.ContractConfigured)
+                {
+                    <div class="binding-ledger">
+                        <div class="binding-chip"><strong>Base URL</strong><code>@selected.BaseUrl</code></div>
+                        @if (!string.IsNullOrWhiteSpace(selected.TokenPath))
+                        {
+                            <div class="binding-chip"><strong>Token</strong><code>@selected.TokenPath</code></div>
+                        }
+                        <div class="binding-chip"><strong>Service Path</strong><code>@selected.RelativePath</code></div>
+                        <div class="binding-chip"><strong>Method</strong><code>@selected.HttpMethod</code></div>
+                        <div class="binding-chip"><strong>Content Type</strong><code>@selected.ContentType</code></div>
+                        <div class="binding-chip"><strong>Timeout</strong><code>@selected.TimeoutSeconds s</code></div>
+                        <div class="binding-chip"><strong>TLS</strong><code>@(selected.ValidateServerCertificate ? "VERIFY" : "INVALID")</code></div>
+                    </div>
+                }
+                else
+                {
+                    <div class="auth-alert error" role="status">
+                        @(isRtl
+                            ? "نفس شاشة UAT موجودة لهذه الخدمة، لكن التنفيذ مقفول حتى إضافة العقد الرسمي: Base URL + Path + Method + Authentication."
+                            : "The same UAT surface is available for this service, but execution is locked until the official contract supplies Base URL + Path + Method + Authentication.")
+                    </div>
+                }
+
+                @if (selected.ContractConfigured && selected.DirectCredentialEditorSupported)
+                {
+                    <form method="post" action="/uat/@selected.ServiceId/configure" class="auth-form" autocomplete="off">
+                        @Html.AntiForgeryToken()
+                        @if (selected.RequiresApiKey)
+                        {
+                            <label>
+                                x-api-key
+                                <input name="apiKey" type="password" required minlength="8" maxlength="4096" autocomplete="new-password" spellcheck="false" />
+                            </label>
+                        }
+                        @if (selected.RequiresUsername)
+                        {
+                            <label>
+                                Username
+                                <input name="username" type="text" required maxlength="4096" autocomplete="off" spellcheck="false" />
+                            </label>
+                        }
+                        @if (selected.RequiresPassword)
+                        {
+                            <label>
+                                Password
+                                <input name="password" type="password" required maxlength="4096" autocomplete="new-password" spellcheck="false" />
+                            </label>
+                        }
+                        @if (selected.RequiresAuxiliaryCredential)
+                        {
+                            <label>
+                                @selected.AuxiliaryCredentialLabel
+                                <input name="auxiliaryCredential" type="password" required maxlength="4096" autocomplete="new-password" spellcheck="false" />
+                            </label>
+                        }
+                        <small>@(isRtl
+                            ? "كل القيم Write-only ولا يعاد عرضها. الحقول تظهر فقط عندما يثبتها عقد UAT الرسمي لهذه الخدمة."
+                            : "All credential values are write-only and never redisplayed. Fields appear only when the official UAT contract proves they are required for this service.")</small>
+                        <button class="auth-button" type="submit">@(isRtl ? "حفظ بيانات الاعتماد وتفعيل UAT" : "Save credentials and enable UAT")</button>
+                    </form>
+                }
+                else if (selected.ContractConfigured && !selected.DirectCredentialEditorSupported)
+                {
+                    <p>
+                        <a class="auth-button secondary" href="/auth-profiles?culture=@CultureInfo.CurrentUICulture.Name">
+                            @(isRtl ? "إدارة Authentication Profile" : "Manage Authentication Profile")
+                        </a>
+                    </p>
+                }
+
+                @if (selected.ReadyToExecute)
+                {
+                    <p>
+                        <a class="auth-button secondary" href="/execute?entityId=@selected.EntityId&serviceId=@selected.ServiceId&environmentId=@selected.EnvironmentId&culture=@CultureInfo.CurrentUICulture.Name">
+                            @(isRtl ? "فتح اختبار الخدمة" : "Open service test")
+                        </a>
+                    </p>
+                }
+            </section>
+
+            <section class="auth-panel hierarchy-panel" aria-labelledby="uat-sequence-title">
+                <div class="panel-heading">
+                    <div>
+                        <h2 id="uat-sequence-title">@(isRtl ? "تسلسل اختبار UAT" : "UAT test sequence")</h2>
+                        <p>@(isRtl ? "Production معزول دائمًا عن UAT ولا يتم نسخ بيانات الاعتماد بين البيئتين." : "Production remains isolated from UAT and credentials are never copied between environments.")</p>
+                    </div>
+                </div>
+                <div class="entity-stack">
+                    <article class="hierarchy-entity">
+                        <header><span class="entity-code">1</span><h3>@(isRtl ? "العقد الرسمي" : "Official contract")</h3></header>
+                        <p>@(selected.ContractConfigured
+                            ? (isRtl ? "تم تحميل خصائص UAT الموثقة لهذه الخدمة." : "The documented UAT properties for this service are loaded.")
+                            : (isRtl ? "غير متوفر بعد؛ التنفيذ مقفول." : "Not available yet; execution is locked."))</p>
+                    </article>
+                    <article class="hierarchy-entity">
+                        <header><span class="entity-code">2</span><h3>@(isRtl ? "المصادقة" : "Authentication")</h3></header>
+                        <p>@(selected.AuthenticationProfileEnabled
+                            ? (isRtl ? "AuthProfile مفعّل داخل نطاق الخدمة + UAT فقط." : "AuthProfile is enabled only for this service + UAT scope.")
+                            : (isRtl ? "AuthProfile غير مفعّل أو بيانات الاعتماد غير مكتملة." : "AuthProfile is disabled or credentials are incomplete."))</p>
+                    </article>
+                    <article class="hierarchy-entity">
+                        <header><span class="entity-code">3</span><h3>@selected.HttpMethod @selected.RelativePath</h3></header>
+                        <p>@(isRtl ? "يتم التنفيذ من شاشة Services فقط بعد اكتمال العقد والمصادقة وتفعيل UAT." : "Execution is opened from Services only after contract, authentication and UAT activation are ready.")</p>
+                    </article>
+                    <article class="hierarchy-entity">
+                        <header><span class="entity-code">PROD</span><h3>@(isRtl ? "معزول" : "Isolated")</h3></header>
+                        <p>@(isRtl ? "لا يوجد UAT → Production fallback ولا يتم تخمين رابط أو بيانات Production." : "There is no UAT → Production fallback, and Production endpoints or credentials are never inferred.")</p>
+                    </article>
+                </div>
+
+                @if (selected.ContractConfigured && selected.ConfigurationActive)
+                {
+                    <form method="post" action="/uat/@selected.ServiceId/disable" class="auth-form">
+                        @Html.AntiForgeryToken()
+                        <button class="auth-button danger-outline" type="submit">@(isRtl ? "إيقاف UAT لهذه الخدمة" : "Disable UAT for this service")</button>
+                    </form>
+                }
+
+                <p><small>@(isRtl ? "آخر اختبار: " : "Last test: ")@(selected.LastTestedAtUtc?.ToString("u") ?? (isRtl ? "لم يتم" : "Not yet"))</small></p>
+            </section>
+        </div>
+    }
+</section>
