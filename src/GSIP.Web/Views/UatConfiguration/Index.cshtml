@@ -137,11 +137,18 @@
                 {
                     <form method="post" action="/uat/@selected.ServiceId/configure" class="auth-form" autocomplete="off">
                         @Html.AntiForgeryToken()
-                        @if (selected.RequiresApiKey)
+                        @if (selected.AuthenticationType == "TokenEndpoint")
                         {
                             <label>
-                                x-api-key
-                                <input name="apiKey" type="password" required minlength="8" maxlength="4096" autocomplete="new-password" spellcheck="false" />
+                                x-api-key @(selected.RequiresApiKey ? (isRtl ? "(مطلوب)" : "(Required)") : (isRtl ? "(اختياري)" : "(Optional)"))
+                                @if (selected.RequiresApiKey)
+                                {
+                                    <input name="apiKey" type="password" required minlength="8" maxlength="4096" autocomplete="new-password" spellcheck="false" />
+                                }
+                                else
+                                {
+                                    <input name="apiKey" type="password" minlength="8" maxlength="4096" autocomplete="new-password" spellcheck="false" />
+                                }
                             </label>
                         }
                         @if (selected.RequiresUsername)
@@ -166,8 +173,8 @@
                             </label>
                         }
                         <small>@(isRtl
-                            ? "كل القيم Write-only ولا يعاد عرضها. الحقول تظهر فقط عندما يثبتها عقد UAT الرسمي لهذه الخدمة."
-                            : "All credential values are write-only and never redisplayed. Fields appear only when the official UAT contract proves they are required for this service.")</small>
+                            ? "كل القيم Write-only ولا يعاد عرضها. في TokenEndpoint يظهر x-api-key دائمًا؛ يكون مطلوبًا فقط عندما ينص عقد UAT عليه، وإلا فهو اختياري. ترك الحقل الاختياري فارغًا لا ينشئ مفتاحًا جديدًا ولا يستبدل مفتاحًا محفوظًا."
+                            : "All credential values are write-only and never redisplayed. For TokenEndpoint services, x-api-key is always shown; it is required only when the UAT contract requires it, otherwise it is optional. Leaving an optional API key blank does not create or replace a stored key.")</small>
                         <button class="auth-button" type="submit">@(isRtl ? "حفظ بيانات الاعتماد وتفعيل UAT" : "Save credentials and enable UAT")</button>
                     </form>
                 }
