@@ -15,7 +15,7 @@
     </div>
 
     <div class="role-admin-body">
-        <form method="post" asp-controller="UserAccessAdministration" asp-action="CreateUser" class="role-create-form">
+        <form method="post" asp-controller="UserAccessAdministration" asp-action="CreateUser" class="role-create-form access-scope-form" data-access-scope-form>
             @Html.AntiForgeryToken()
             <input type="hidden" name="culture" value="@culture" />
             <label>
@@ -55,21 +55,55 @@
                 <input name="isPrivileged" type="checkbox" value="true" />
             </label>
 
-            <fieldset class="user-role-management">
+            <fieldset class="user-role-management access-scope-block">
                 <legend>@L["EntityAccess"]</legend>
                 <p>@L["EntityAccessSubtitle"]</p>
                 <label class="user-role-row">
                     <span>@L["AllEntities"]</span>
                     <input type="hidden" name="allEntities" value="false" />
-                    <input id="new-user-all-entities" name="allEntities" type="checkbox" value="true" checked />
+                    <input data-all-entities name="allEntities" type="checkbox" value="true" checked />
                 </label>
-                <div id="new-user-entity-list" class="role-chip-list" aria-label="@L["SelectedEntities"]">
+                <div class="role-chip-list" aria-label="@L["SelectedEntities"]">
                     @foreach (var entity in Model.Entities)
                     {
                         <label class="role-chip">
-                            <input type="checkbox" name="entityCodes" value="@entity.Code" disabled />
+                            <input data-entity-code="@entity.Code" type="checkbox" name="entityCodes" value="@entity.Code" disabled />
                             <span>@(isArabic ? entity.NameAr : entity.NameEn) <small dir="ltr">(@entity.Code)</small></span>
                         </label>
+                    }
+                </div>
+            </fieldset>
+
+            <fieldset class="user-role-management access-scope-block">
+                <legend>@L["ServiceAccess"]</legend>
+                <p>@L["ServiceAccessSubtitle"]</p>
+                <label class="user-role-row">
+                    <span>@L["AllServices"]</span>
+                    <input type="hidden" name="allServices" value="false" />
+                    <input data-all-services name="allServices" type="checkbox" value="true" checked />
+                </label>
+                <div class="service-access-groups" aria-label="@L["SelectedServices"]">
+                    @foreach (var entity in Model.Entities)
+                    {
+                        var entityServices = Model.Services.Where(service => string.Equals(service.EntityCode, entity.Code, StringComparison.OrdinalIgnoreCase)).ToArray();
+                        if (entityServices.Length == 0) { continue; }
+                        <section class="service-access-group" data-service-entity="@entity.Code">
+                            <strong>@(isArabic ? entity.NameAr : entity.NameEn) <small dir="ltr">(@entity.Code)</small></strong>
+                            <div class="role-chip-list">
+                                @foreach (var service in entityServices)
+                                {
+                                    <label class="role-chip">
+                                        <input data-service-code="@service.ServiceCode"
+                                               data-service-entity-code="@service.EntityCode"
+                                               type="checkbox"
+                                               name="serviceKeys"
+                                               value="@UserAccessAdminViewModel.ServiceKey(service.EntityCode, service.ServiceCode)"
+                                               disabled />
+                                        <span>@(isArabic ? service.NameAr : service.NameEn) <small dir="ltr">(@service.ServiceCode)</small></span>
+                                    </label>
+                                }
+                            </div>
+                        </section>
                     }
                 </div>
             </fieldset>
@@ -81,42 +115,93 @@
         {
             <form method="post"
                   asp-controller="UserAccessAdministration"
-                  asp-action="SetEntityScope"
+                  asp-action="SetAccessScope"
                   asp-route-userId="@selectedUserId"
-                  class="role-create-form">
+                  class="role-create-form access-scope-form"
+                  data-access-scope-form>
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="culture" value="@culture" />
                 <div>
-                    <strong>@L["EntityAccess"] — @Model.SelectedUserDisplayName</strong>
+                    <strong>@L["UserAccess"] — @Model.SelectedUserDisplayName</strong>
                     <small dir="ltr">@Model.SelectedUsername</small>
                 </div>
-                <label class="user-role-row">
-                    <span>@L["AllEntities"]</span>
-                    <input type="hidden" name="allEntities" value="false" />
-                    <input id="selected-user-all-entities"
-                           name="allEntities"
-                           type="checkbox"
-                           value="true"
-                           @(Model.ScopeIsUnrestricted ? "checked" : null) />
-                </label>
-                <div id="selected-user-entity-list" class="role-chip-list" aria-label="@L["SelectedEntities"]">
-                    @foreach (var entity in Model.Entities)
+
+                <fieldset class="user-role-management access-scope-block">
+                    <legend>@L["EntityAccess"]</legend>
+                    <p>@L["EntityAccessSubtitle"]</p>
+                    <label class="user-role-row">
+                        <span>@L["AllEntities"]</span>
+                        <input type="hidden" name="allEntities" value="false" />
+                        <input data-all-entities
+                               name="allEntities"
+                               type="checkbox"
+                               value="true"
+                               @(Model.AllEntities ? "checked" : null) />
+                    </label>
+                    <div class="role-chip-list" aria-label="@L["SelectedEntities"]">
+                        @foreach (var entity in Model.Entities)
+                        {
+                            <label class="role-chip">
+                                <input data-entity-code="@entity.Code"
+                                       type="checkbox"
+                                       name="entityCodes"
+                                       value="@entity.Code"
+                                       @(Model.SelectedUserHasEntity(entity.Code) ? "checked" : null)
+                                       @(Model.AllEntities ? "disabled" : null) />
+                                <span>@(isArabic ? entity.NameAr : entity.NameEn) <small dir="ltr">(@entity.Code)</small></span>
+                            </label>
+                        }
+                    </div>
+                    @if (!Model.AllEntities && Model.SelectedEntityCodes.Count == 0)
                     {
-                        <label class="role-chip">
-                            <input type="checkbox"
-                                   name="entityCodes"
-                                   value="@entity.Code"
-                                   @(Model.SelectedUserHasEntity(entity.Code) ? "checked" : null)
-                                   @(Model.ScopeIsUnrestricted ? "disabled" : null) />
-                            <span>@(isArabic ? entity.NameAr : entity.NameEn) <small dir="ltr">(@entity.Code)</small></span>
-                        </label>
+                        <span class="muted-chip">@L["NoEntityAccess"]</span>
                     }
-                </div>
-                @if (!Model.ScopeIsUnrestricted && Model.SelectedEntityCodes.Count == 0)
-                {
-                    <span class="muted-chip">@L["NoEntityAccess"]</span>
-                }
-                <button class="primary-action" type="submit">@L["SaveEntityAccess"]</button>
+                </fieldset>
+
+                <fieldset class="user-role-management access-scope-block">
+                    <legend>@L["ServiceAccess"]</legend>
+                    <p>@L["ServiceAccessSubtitle"]</p>
+                    <label class="user-role-row">
+                        <span>@L["AllServices"]</span>
+                        <input type="hidden" name="allServices" value="false" />
+                        <input data-all-services
+                               name="allServices"
+                               type="checkbox"
+                               value="true"
+                               @(Model.AllServices ? "checked" : null) />
+                    </label>
+                    <div class="service-access-groups" aria-label="@L["SelectedServices"]">
+                        @foreach (var entity in Model.Entities)
+                        {
+                            var entityServices = Model.Services.Where(service => string.Equals(service.EntityCode, entity.Code, StringComparison.OrdinalIgnoreCase)).ToArray();
+                            if (entityServices.Length == 0) { continue; }
+                            <section class="service-access-group" data-service-entity="@entity.Code">
+                                <strong>@(isArabic ? entity.NameAr : entity.NameEn) <small dir="ltr">(@entity.Code)</small></strong>
+                                <div class="role-chip-list">
+                                    @foreach (var service in entityServices)
+                                    {
+                                        <label class="role-chip">
+                                            <input data-service-code="@service.ServiceCode"
+                                                   data-service-entity-code="@service.EntityCode"
+                                                   type="checkbox"
+                                                   name="serviceKeys"
+                                                   value="@UserAccessAdminViewModel.ServiceKey(service.EntityCode, service.ServiceCode)"
+                                                   @(Model.SelectedUserHasService(service.EntityCode, service.ServiceCode) ? "checked" : null)
+                                                   @(Model.AllServices ? "disabled" : null) />
+                                            <span>@(isArabic ? service.NameAr : service.NameEn) <small dir="ltr">(@service.ServiceCode)</small></span>
+                                        </label>
+                                    }
+                                </div>
+                            </section>
+                        }
+                    </div>
+                    @if (!Model.AllServices && Model.SelectedServiceKeys.Count == 0)
+                    {
+                        <span class="muted-chip">@L["NoServiceAccess"]</span>
+                    }
+                </fieldset>
+
+                <button class="primary-action" type="submit">@L["SaveUserAccess"]</button>
             </form>
         }
     </div>
@@ -124,19 +209,27 @@
 
 <script>
 (() => {
-    const wireScope = (allId, listId) => {
-        const all = document.getElementById(allId);
-        const list = document.getElementById(listId);
-        if (!all || !list) return;
+    document.querySelectorAll('[data-access-scope-form]').forEach((form) => {
+        const allEntities = form.querySelector('[data-all-entities]');
+        const allServices = form.querySelector('[data-all-services]');
+        const entityBoxes = [...form.querySelectorAll('[data-entity-code]')];
+        const serviceBoxes = [...form.querySelectorAll('[data-service-entity-code]')];
+        if (!allEntities || !allServices) return;
+
         const sync = () => {
-            list.querySelectorAll('input[type="checkbox"]').forEach((box) => {
-                box.disabled = all.checked;
+            entityBoxes.forEach((box) => { box.disabled = allEntities.checked; });
+            const selectedEntities = new Set(entityBoxes.filter((box) => box.checked).map((box) => box.dataset.entityCode));
+            serviceBoxes.forEach((box) => {
+                const outsideSelectedEntity = !allEntities.checked && !selectedEntities.has(box.dataset.serviceEntityCode);
+                box.disabled = allServices.checked || outsideSelectedEntity;
+                if (outsideSelectedEntity) box.checked = false;
             });
         };
-        all.addEventListener('change', sync);
+
+        allEntities.addEventListener('change', sync);
+        allServices.addEventListener('change', sync);
+        entityBoxes.forEach((box) => box.addEventListener('change', sync));
         sync();
-    };
-    wireScope('new-user-all-entities', 'new-user-entity-list');
-    wireScope('selected-user-all-entities', 'selected-user-entity-list');
+    });
 })();
 </script>
