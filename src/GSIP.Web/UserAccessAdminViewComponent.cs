@@ -22,6 +22,18 @@ public sealed class UserAccessAdminViewComponent(GsipDbContext dbContext) : View
                 entity.NameEn))
             .ToListAsync();
 
+        var services = await (
+            from service in dbContext.CatalogServices.AsNoTracking()
+            join entity in dbContext.CatalogEntities.AsNoTracking() on service.EntityId equals entity.Id
+            where service.Active && service.IsCurrent && entity.Active
+            orderby entity.DisplayOrder, entity.Code, service.Code
+            select new UserAccessServiceOptionViewModel(
+                entity.Code,
+                service.Code,
+                service.NameAr,
+                service.NameEn))
+            .ToListAsync();
+
         var roles = await dbContext.Roles
             .AsNoTracking()
             .OrderBy(role => role.Name)
@@ -33,7 +45,11 @@ public sealed class UserAccessAdminViewComponent(GsipDbContext dbContext) : View
         Guid? selectedUserId = null;
         var selectedDisplayName = string.Empty;
         var selectedUsername = string.Empty;
-        var scope = new EntityAccessScope(true, new HashSet<string>(StringComparer.Ordinal));
+        var scope = new UserAccessScope(
+            true,
+            new HashSet<string>(StringComparer.Ordinal),
+            true,
+            new HashSet<string>(StringComparer.Ordinal));
 
         if (userId is Guid exactUserId && exactUserId != Guid.Empty)
         {
@@ -59,12 +75,15 @@ public sealed class UserAccessAdminViewComponent(GsipDbContext dbContext) : View
         return View(new UserAccessAdminViewModel
         {
             Entities = entities,
+            Services = services,
             Roles = roles,
             SelectedUserId = selectedUserId,
             SelectedUserDisplayName = selectedDisplayName,
             SelectedUsername = selectedUsername,
-            ScopeIsUnrestricted = scope.IsUnrestricted,
-            SelectedEntityCodes = scope.EntityCodes
+            AllEntities = scope.AllEntities,
+            SelectedEntityCodes = scope.EntityCodes,
+            AllServices = scope.AllServices,
+            SelectedServiceKeys = scope.ServiceKeys
         });
     }
 }
