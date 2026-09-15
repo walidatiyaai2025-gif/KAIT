@@ -59,14 +59,14 @@
             <div class="sidebar-accent"></div>
             <nav>
                 <a class="nav-item @(isHome ? "active" : string.Empty)" href="/?culture=@CultureInfo.CurrentUICulture.Name"><span class="nav-glyph">⌂</span><span>@L["Home"]</span></a>
-                <a class="nav-item @(isMetadata ? "active" : string.Empty)" href="/metadata?culture=@CultureInfo.CurrentUICulture.Name"><span class="nav-glyph">◇</span><span>@L["Entities"]</span></a>
-                <a class="nav-item @(isExecution ? "active" : string.Empty)" href="/execute?culture=@CultureInfo.CurrentUICulture.Name"><span class="nav-glyph">▦</span><span>@L["Services"]</span></a>
+                <a class="nav-item @(isMetadata ? "active" : string.Empty)" href="/metadata?culture=@CultureInfo.CurrentUICulture.Name"><span class="nav-glyph">◇</span><span>@L["EntitiesAndServices"]</span></a>
+                <a class="nav-item @(isExecution ? "active" : string.Empty)" href="/execute?culture=@CultureInfo.CurrentUICulture.Name"><span class="nav-glyph">▦</span><span>@L["ServiceExecution"]</span></a>
                 <a class="nav-item @(isAuthProfiles ? "active" : string.Empty)" href="/auth-profiles?culture=@CultureInfo.CurrentUICulture.Name"><span class="nav-glyph">◆</span><span>@L["AuthProfiles"]</span></a>
-                <a class="nav-item @(isUat ? "active" : string.Empty)" href="/uat?culture=@CultureInfo.CurrentUICulture.Name"><span class="nav-glyph">⚡</span><span>@(isRtl ? "اختبار UAT" : "UAT Testing")</span></a>
+                <a class="nav-item @(isUat ? "active" : string.Empty)" href="/uat?culture=@CultureInfo.CurrentUICulture.Name"><span class="nav-glyph">⚡</span><span>@L["UatTesting"]</span></a>
                 <a class="nav-item @(isRequests ? "active" : string.Empty)" href="/requests?culture=@CultureInfo.CurrentUICulture.Name"><span class="nav-glyph">≡</span><span>@L["Requests"]</span></a>
                 <a class="nav-item @(isAudit ? "active" : string.Empty)" href="/audit?culture=@CultureInfo.CurrentUICulture.Name"><span class="nav-glyph">◴</span><span>@L["Audit"]</span></a>
                 <a class="nav-item @(isPermissions ? "active" : string.Empty)" href="/permissions?culture=@CultureInfo.CurrentUICulture.Name"><span class="nav-glyph">◈</span><span>@L["Permissions"]</span></a>
-                <a class="nav-item @(isOperations ? "active" : string.Empty)" href="/operations?culture=@CultureInfo.CurrentUICulture.Name"><span class="nav-glyph">⚙</span><span>@L["Settings"]</span></a>
+                <a class="nav-item @(isOperations ? "active" : string.Empty)" href="/operations?culture=@CultureInfo.CurrentUICulture.Name"><span class="nav-glyph">⚙</span><span>@L["OperationsHealth"]</span></a>
             </nav>
             <div class="sidebar-foot"><span class="phase-dot"></span><div><strong>P17</strong><small>@L["Home"]</small></div></div>
         </aside>
