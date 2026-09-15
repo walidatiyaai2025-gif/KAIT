@@ -35,15 +35,58 @@ base_resources = sorted(
 )
 require(bool(base_resources), "No canonical Web localization resources were found.")
 
+resource_values: dict[str, dict[str, str]] = {}
 for base in base_resources:
     arabic = base.with_name(base.stem + ".ar-KW.resx")
     require(arabic.exists(), f"Arabic resource counterpart is missing: {arabic.relative_to(ROOT)}")
     base_values = resx_values(base)
     ar_values = resx_values(arabic)
+    resource_values[base.stem] = base_values
     require(set(base_values) == set(ar_values), f"Resource key parity failed for {base.name} / {arabic.name}.")
     require(all(value.strip() for value in ar_values.values()), f"Empty Arabic resource value found in {arabic.name}.")
     require(all("�" not in value for value in ar_values.values()), f"Encoding replacement character found in {arabic.name}.")
     require(any(re.search(r"[\u0600-\u06FF]", value) for value in ar_values.values()), f"No Arabic content found in {arabic.name}.")
+
+# Every literal resource lookup in Razor must resolve to a real resource key. The Text facades
+# intentionally fall back to the requested key, so without this gate a typo can leak a machine-like
+# identifier directly into the UI in both English and Arabic.
+text_resource_map = {
+    "ShellText": "ShellResource",
+    "IdentityText": "IdentityResource",
+    "MetadataText": "MetadataResource",
+    "ExecutionText": "ExecutionResource",
+    "PermissionsText": "PermissionsResource",
+}
+views_root = ROOT / "src/GSIP.Web/Views"
+for view in sorted(views_root.rglob("*.cshtml")):
+    source = view.read_text(encoding="utf-8")
+    bindings: dict[str, str] = {}
+
+    for text_type, variable in re.findall(r"@inject\s+(\w+Text)\s+(\w+)", source):
+        if text_type in text_resource_map:
+            bindings[variable] = text_resource_map[text_type]
+
+    for variable, text_type in re.findall(r"\bvar\s+(\w+)\s*=\s*new\s+(\w+Text)\s*\(\s*\)\s*;", source):
+        if text_type in text_resource_map:
+            bindings[variable] = text_resource_map[text_type]
+
+    for resource_type, variable in re.findall(r"@inject\s+(?:Microsoft\.Extensions\.Localization\.)?IStringLocalizer<(\w+Resource)>\s+(\w+)", source):
+        bindings[variable] = resource_type
+
+    for variable, resource_name in bindings.items():
+        require(resource_name in resource_values, f"Unknown resource facade {resource_name} in {view.relative_to(ROOT)}.")
+        keys = resource_values[resource_name]
+        literal_pattern = rf"\b{re.escape(variable)}\s*\[\s*\"([^\"]+)\"\s*\]"
+        for key in re.findall(literal_pattern, source):
+            require(key in keys, f"Missing resource key '{key}' in {resource_name}.resx used by {view.relative_to(ROOT)}.")
+
+# Dynamic permissions status messages are looked up through L[messageKey]. Audit the producer side
+# too, so a controller cannot introduce a raw identifier that static Razor lookup scanning cannot see.
+permissions_keys = resource_values["PermissionsResource"]
+for controller in sorted((ROOT / "src/GSIP.Web/Controllers").glob("*.cs")):
+    source = controller.read_text(encoding="utf-8")
+    for key in re.findall(r'TempData\["PermissionsAdmin(?:Success|Error)"\]\s*=\s*"([^"]+)"', source):
+        require(key in permissions_keys, f"Permissions TempData key '{key}' has no localized label ({controller.relative_to(ROOT)}).")
 
 layout = read("src/GSIP.Web/Views/Shared/_Layout.cshtml")
 translation_js = read("src/GSIP.Web/wwwroot/js/translation-convergence.js")
@@ -63,6 +106,30 @@ require('src="~/js/translation-convergence.js"' in layout, "Arabic translation c
 require("document.documentElement.lang.toLowerCase().startsWith('ar')" in translation_js, "Translation convergence runtime is not Arabic-mode scoped.")
 require("MutationObserver" in translation_js, "Dynamic Arabic UI content is not covered by the translation convergence runtime.")
 require("setup-message[data-operation-code]" in translation_js, "Setup operation messages are not protected from English fallback in Arabic mode.")
+
+# Keep the established information architecture and routes, but require labels that describe the
+# actual destination. This prevents a catalog from being called only 'Entities', execution from being
+# called only 'Services', or operations/health from being mislabeled as generic settings.
+nav_contract = [
+    ('href="/?culture=', '@L["Home"]'),
+    ('href="/metadata?culture=', '@L["EntitiesAndServices"]'),
+    ('href="/execute?culture=', '@L["ServiceExecution"]'),
+    ('href="/auth-profiles?culture=', '@L["AuthProfiles"]'),
+    ('href="/uat?culture=', '@L["UatTesting"]'),
+    ('href="/requests?culture=', '@L["Requests"]'),
+    ('href="/audit?culture=', '@L["Audit"]'),
+    ('href="/permissions?culture=', '@L["Permissions"]'),
+    ('href="/operations?culture=', '@L["OperationsHealth"]'),
+]
+nav_positions = []
+for route_marker, label_marker in nav_contract:
+    require(route_marker in layout, f"Established navigation route missing: {route_marker}")
+    route_position = layout.index(route_marker)
+    label_position = layout.find(label_marker, route_position, layout.find("</a>", route_position) + 4)
+    require(label_position >= 0, f"Navigation route {route_marker} is not using semantic localized label {label_marker}.")
+    nav_positions.append(route_position)
+require(nav_positions == sorted(nav_positions), "Primary navigation order changed unexpectedly.")
+require('@(isRtl ? "اختبار UAT" : "UAT Testing")' not in layout, "UAT navigation label is still hard-coded instead of resource-localized.")
 
 required_runtime_mappings = {
     "Setup progress": "تقدم الإعداد",

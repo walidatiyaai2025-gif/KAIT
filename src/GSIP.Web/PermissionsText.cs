@@ -14,7 +14,9 @@ public sealed class PermissionsText
         get
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(name);
-            return Resources.GetString(name, CultureInfo.CurrentUICulture) ?? name;
+            return Resources.GetString(name, CultureInfo.CurrentUICulture)
+                ?? Resources.GetString("LabelUnavailable", CultureInfo.CurrentUICulture)
+                ?? "Label unavailable";
         }
     }
 
@@ -22,8 +24,9 @@ public sealed class PermissionsText
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(permissionKey);
         var resourceKey = "Permission_" + permissionKey.Replace('.', '_');
-        var localized = this[resourceKey];
-        return string.Equals(localized, resourceKey, StringComparison.Ordinal) ? permissionKey : localized;
+        return Resources.GetString(resourceKey, CultureInfo.CurrentUICulture)
+            ?? Resources.GetString("PermissionUnmapped", CultureInfo.CurrentUICulture)
+            ?? "Unmapped permission";
     }
 
     public string Role(string roleName)
